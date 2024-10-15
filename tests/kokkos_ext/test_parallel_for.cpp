@@ -31,17 +31,22 @@ struct MyDummyFunctor
 };
 
 //! Dummy function that can be transparently used with graph or execution space instance.
-template <typename Sender, typename ViewType>
+template <bool label, typename Sender, typename ViewType>
 decltype(auto) my_function(Sender&& sender, const ViewType& data)
 {
     using policy_t = Kokkos::RangePolicy<typename std::remove_reference_t<Sender>::execution_space>;
 
-    return std::forward<Sender>(sender) | Kokkos::Experimental::graph::parallel_for(
-        policy_t(0, 1),
-        MyDummyFunctor{.data = data}
-    );
+    #define MY_FUNCTION_CORE(...)                                                        \
+        return std::forward<Sender>(sender) | Kokkos::Experimental::graph::parallel_for( \
+            __VA_ARGS__ __VA_OPT__(,)                                                    \
+            policy_t(0, 1),                                                              \
+            MyDummyFunctor{.data = data}                                                 \
+        );
+    if constexpr (label) MY_FUNCTION_CORE("this is a test parallel-for")
+    else                 MY_FUNCTION_CORE()
 }
 
+template <typename T>
 class ParallelForTest : public ::testing::Test
 {
 public:
@@ -58,38 +63,46 @@ protected:
     view_t          data;
 };
 
-#define CHECK_DATA_CONTENT ASSERT_EQ(Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, data)(0), 1);
+using ParallelForTestTypes = ::testing::Types<
+    std::integral_constant<bool, true>,
+    std::integral_constant<bool, false>
+>;
+
+TYPED_TEST_SUITE(ParallelForTest, ParallelForTestTypes);
+
+//! Avoid any global fence, as it could hide potential issues.
+#define CHECK_DATA_CONTENT(__exec__)                                     \
+    typename TestFixture::view_t::value_type result = 0;                 \
+    Kokkos::deep_copy(__exec__, result, Kokkos::subview(this->data, 0)); \
+    __exec__.fence();                                                    \
+    ASSERT_EQ(result, 1);
 
 //! @test Check the execution space instance mode for the parallel-for construct.
-TEST_F(ParallelForTest, exec)
+TYPED_TEST(ParallelForTest, exec)
 {
-    decltype(auto) tail = my_function(exec, data);
+    decltype(auto) tail = my_function<TypeParam::value>(this->exec, this->data);
 
     static_assert(std::same_as<decltype(tail), execution_space&>);
 
-    ASSERT_EQ(std::addressof(exec), std::addressof(tail)) << "You abused of the execution space instance.";
+    ASSERT_EQ(std::addressof(this->exec), std::addressof(tail)) << "You abused of the execution space instance.";
 
-    Kokkos::Experimental::submit(exec, std::move(tail));
+    Kokkos::Experimental::submit(this->exec, std::move(tail));
 
-    exec.fence();
-
-    CHECK_DATA_CONTENT
+    CHECK_DATA_CONTENT(this->exec)
 }
 
 //! @test Check the graph mode for the parallel-for construct.
-TEST_F(ParallelForTest, graph)
+TYPED_TEST(ParallelForTest, graph)
 {
-    decltype(auto) root = Kokkos::Experimental::graph::create_graph(exec);
+    decltype(auto) root = Kokkos::Experimental::graph::create_graph(this->exec);
 
-    decltype(auto) tail = my_function(root, data);
+    decltype(auto) tail = my_function<TypeParam::value>(root, this->data);
 
     static_assert(Kokkos::Impl::is_specialization_of<decltype(tail), Kokkos::Experimental::GraphNodeRef>::value);
 
-    Kokkos::Experimental::graph::submit(exec, std::move(tail));
+    Kokkos::Experimental::graph::submit(this->exec, std::move(tail));
 
-    exec.fence();
-
-    CHECK_DATA_CONTENT
+    CHECK_DATA_CONTENT(this->exec)
 }
 
 } // namespace tests::kokkos_ext
