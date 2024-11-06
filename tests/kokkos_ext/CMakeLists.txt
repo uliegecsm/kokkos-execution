@@ -1,5 +1,5 @@
 if(CUDA IN_LIST Kokkos_DEVICES)
-    set(LAUNCHER_ARGS LAUNCHER compute-sanitizer)
+    set(LAUNCHER_ARGS LAUNCHER compute-sanitizer --leak-check=full)
 else()
     set(LAUNCHER_ARGS)
 endif()
