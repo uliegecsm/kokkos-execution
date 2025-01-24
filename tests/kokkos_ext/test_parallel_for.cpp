@@ -2,6 +2,8 @@
 
 #include "kokkos_ext/Kokkos_Graph_Execution.hpp"
 
+#include "tests/kokkos_ext/Helpers.hpp"
+
 /**
  * @addtogroup unittests
  *
@@ -19,16 +21,6 @@ using execution_space = Kokkos::DefaultExecutionSpace;
 
 namespace tests::kokkos_ext
 {
-
-template <typename ViewType>
-struct MyDummyFunctor
-{
-    ViewType data;
-
-    template <std::integral T>
-    KOKKOS_FUNCTION
-    void operator()(const T index) const { ++data(index); }
-};
 
 //! Dummy function that can be transparently used with graph or execution space instance.
 template <bool label, typename Sender, typename ViewType>
