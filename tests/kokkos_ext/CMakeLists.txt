@@ -8,6 +8,7 @@ else()
 endif()
 
 add_one_test(NAME exec_scheduler  ${LAUNCHER_ARGS})
+add_one_test(NAME graph_scheduler ${LAUNCHER_ARGS})
 add_one_test(NAME parallel_for    ${LAUNCHER_ARGS})
 add_one_test(NAME parallel_reduce ${LAUNCHER_ARGS})
 add_one_test(NAME utils           ${LAUNCHER_ARGS})
