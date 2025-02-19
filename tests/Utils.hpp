@@ -3,6 +3,12 @@
 
 #include <thread>
 
+#include "tests/IgnoreWarnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
+#include "exec/static_thread_pool.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 namespace utils
 {
 
@@ -20,6 +26,49 @@ struct FillWithThreadID
     void operator()(const T index) {
         ids->operator[](index) = get_thread_id();
     }
+};
+
+//! Helper to define a @c then that returns the thread ID.
+#define THEN_RETURN_ID ::stdexec::then([]{ return std::this_thread::get_id(); })
+
+//! Helper to define a @c then that stores the thread ID.
+#define THEN_STORE_ID(__index__, ...) ::stdexec::then([&]() -> void { thr_##__index__ = std::this_thread::get_id(); __VA_ARGS__ })
+
+/**
+ * @brief Pool of @c exec::static_thread_pool with a single thread in each of them.
+ *
+ * @todo Check that the list of @c IDs is unique (there is no duplicate).
+ */
+template <char... IDs>
+class StaticThreadPool
+{
+private:
+    template <char, typename>
+    struct index_of_impl {};
+
+    template <char ID, char... Rest>
+    struct index_of_impl<ID, std::integer_sequence<char, ID, Rest...>> : std::integral_constant<std::size_t, 0> {};
+
+    template <char ID, char Test, char... Rest>
+    struct index_of_impl<ID, std::integer_sequence<char, Test, Rest...>> : std::integral_constant<std::size_t, 1 + index_of_impl<ID, std::integer_sequence<char, Rest...>>::value> {};
+
+public:
+    template <char ID>
+    constexpr static auto index_of() { return index_of_impl<ID, std::integer_sequence<char, IDs...>>::value; }
+
+    StaticThreadPool()
+    {
+        for(size_t ipool = 0; ipool < sizeof...(IDs); ++ipool)
+            threads.at(ipool) = std::get<0>(::stdexec::sync_wait(::stdexec::schedule(pools.at(ipool).get_scheduler()) | THEN_RETURN_ID).value());
+    }
+
+protected:
+    //! Ensure that all pools are initialized with a single thread.
+    std::array<::exec::static_thread_pool, sizeof...(IDs)> pools {std::is_same_v<decltype(IDs), char> ...};
+
+    std::thread::id main = std::get<0>(::stdexec::sync_wait(::stdexec::just() | THEN_RETURN_ID).value());
+
+    std::array<std::thread::id, sizeof...(IDs)> threads;
 };
 
 } // namespace utils
