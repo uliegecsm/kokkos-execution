@@ -32,7 +32,7 @@ struct FillWithThreadID
 #define THEN_RETURN_ID ::stdexec::then([]{ return std::this_thread::get_id(); })
 
 //! Helper to define a @c then that stores the thread ID.
-#define THEN_STORE_ID(__index__, ...) ::stdexec::then([&]() -> void { thr_##__index__ = std::this_thread::get_id(); __VA_ARGS__ })
+#define THEN_STORE_ID(__id__, ...) ::stdexec::then([&]() -> void { __id__ = std::this_thread::get_id(); __VA_ARGS__ })
 
 /**
  * @brief Pool of @c exec::static_thread_pool with a single thread in each of them.
