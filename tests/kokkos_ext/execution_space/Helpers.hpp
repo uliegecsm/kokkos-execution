@@ -3,9 +3,9 @@
 
 #include "gtest/gtest.h"
 
-#include "plog/Init.h"
-#include "plog/Formatters/MessageOnlyFormatter.h"
 #include "plog/Appenders/ConsoleAppender.h"
+#include "plog/Formatters/MessageOnlyFormatter.h"
+#include "plog/Init.h"
 
 #include "kokkos_ext/impl/ExecutionSpaceContext.hpp"
 
