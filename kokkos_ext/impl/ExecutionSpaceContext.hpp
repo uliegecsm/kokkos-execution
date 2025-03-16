@@ -12,6 +12,8 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "Kokkos_Core.hpp"
 
+#include "kokkos_ext/impl/execution_space/sync_wait.hpp"
+
 namespace Kokkos::Experimental
 {
 
@@ -33,9 +35,29 @@ struct ExecutionSpaceScheduler
         Exec exec;
     };
 
+    template <stdexec::receiver Rcvr>
+    struct OpState
+    {
+        using operation_state_concept = stdexec::operation_state_t;
+
+        Rcvr rcvr;
+
+        //! @todo Check signature. And check whether we should move the receiver.
+        void start() & noexcept {
+            stdexec::set_value(std::move(rcvr));
+        }
+    };
+
     struct Sender
     {
         using sender_concept = stdexec::sender_t;
+
+        using completion_signatures = ::stdexec::completion_signatures<::stdexec::set_value_t()>;
+
+        template <stdexec::receiver_of<completion_signatures> Rcvr>
+        OpState<std::remove_cvref_t<Rcvr>> connect(Rcvr&& rcvr) noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Rcvr>, Rcvr&&>) {
+            return {std::forward<Rcvr>(rcvr)};
+        }
 
         auto& get_env() const noexcept { return env; }
 
@@ -46,6 +68,44 @@ struct ExecutionSpaceScheduler
     explicit ExecutionSpaceScheduler(T&& exec) : env{std::forward<T>(exec)} {}
 
     ::stdexec::sender auto schedule() const noexcept { return Sender{.env = env}; }
+
+    /**
+     * @name Customization points.
+     *
+     * Sender algorithms are customizable. We follow the approach developped in
+     * https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-customization.
+     *
+     * See also:
+     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/exec/static_thread_pool.hpp#L236-L245
+     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/exec/static_thread_pool.hpp#L264-L278
+     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/exec/static_thread_pool.hpp#L427-L429
+     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/stdexec/__detail/__sender_introspection.hpp#L23-L31
+     */
+    ///@{
+    struct Domain
+    {
+        /**
+         * @brief Customize @c sync_wait.
+         *
+         * References:
+         *  - https://github.com/NVIDIA/stdexec/blob/e8a6a7b25fbc2463e1dfe0ee20973b1fe622bfcf/include/nvexec/stream_context.cuh#L247-L251
+         *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#spec-execution.senders.consumers.sync_wait
+         *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-dispatch
+         */
+        template <stdexec::sender Sndr>
+        auto apply_sender(stdexec::sync_wait_t, Sndr&& sndr) const noexcept
+        {
+            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
+                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+                return SyncWait{}(std::move(schd), std::forward<Sndr>(sndr));
+            } else {
+                static_assert(false, "No 'ExecutionSpaceScheduler' can be found on which to sync wait.");
+            }
+        }
+    };
+
+    auto query(stdexec::get_domain_t) const noexcept { return Domain{}; }
+    ///@}
 
     bool operator==(const ExecutionSpaceScheduler&) const noexcept = default;
 
