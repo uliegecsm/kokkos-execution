@@ -1,7 +1,7 @@
-#include "tests/kokkos_ext/execution_space/Helpers.hpp"
-
 #include "kokkos-utils/callbacks/Helpers.hpp"
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
+
+#include "tests/kokkos_ext/execution_space/Helpers.hpp"
 
 /**
  * @addtogroup unittests
@@ -31,7 +31,7 @@ using ExecutionSpaceContextTest = impl::ExecutionSpaceContextTest<execution_spac
  */
 TEST_F(ExecutionSpaceContextTest, sync_wait)
 {
-    const context_t esc{*exec};
+    const context_t esc{exec};
 
     auto chain = ::stdexec::schedule(esc.get_scheduler());
 
@@ -43,15 +43,59 @@ TEST_F(ExecutionSpaceContextTest, sync_wait)
             static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
             ASSERT_TRUE(value.has_value());
         }),
-        ::testing::Contains(
-            ABeginFenceEvent(
-                ::testing::Field(&Kokkos::utils::callbacks::BeginFenceEvent::name,   ::testing::StrEq(std::format("{}: sync_wait", Kokkos::Impl::TypeInfo<execution_space>::name()))),
-                ::testing::Field(&Kokkos::utils::callbacks::BeginFenceEvent::dev_id, ::testing::Eq(Kokkos::Tools::Experimental::device_id(*exec)))
-            )
-        )
+        ::testing::Contains(MATCHER_FOR_BEGIN_FENCE)
     );
 
     Kokkos::utils::callbacks::Manager::finalize();
+}
+
+/// This helper struct throws when @c Kokkos will copy construct it, see
+/// https://github.com/kokkos/kokkos/blob/1e75c539491b8ce46c4671ce2e2275e15f1c27bc/core/src/Kokkos_Parallel.hpp#L142-L144
+/// for instance. This ensures that we can catch in @c Kokkos::Experimental::details::execution_space::ThenReceiver::set_value.
+struct Throws
+{
+    Throws() = default;
+    Throws& operator=(const Throws&) = default;
+    Throws(Throws&&) = default;
+    Throws& operator=(Throws&&) = default;
+
+    Throws(const Throws&) {
+        throw std::runtime_error("throwing in copy constructor");
+    }
+
+    KOKKOS_FUNCTION
+    void operator()() const {
+        Kokkos::abort("This is not intended to be called.");
+    }
+};
+
+/**
+ * The matchers expect a @c const call operator, but the @ref chain
+ * has to be moved into the @c sync_wait (so it has to be @c mutable).
+ * This is not achievable with a lambda.
+ */
+template <typename T>
+struct Mutable
+{
+    mutable T chain;
+
+    void operator()() const {
+        ::stdexec::sync_wait(std::move(chain));
+    }
+};
+
+//! @test Check that @ref Kokkos::Experimental::details::execution_space::SyncWait properly rethrows if needed.
+TEST_F(ExecutionSpaceContextTest, rethrows)
+{
+    const context_t esc{exec};
+
+    auto chain = ::stdexec::schedule(esc.get_scheduler())
+        | ::stdexec::then(Throws{});
+
+    ASSERT_THAT(
+        Mutable{.chain = std::move(chain)},
+        testing::ThrowsMessage<std::runtime_error>(testing::StrEq("throwing in copy constructor"))
+    );
 }
 
 } // namespace tests::kokkos_ext

@@ -26,7 +26,7 @@ TEST_F(ExecutionSpaceContextTest, is_a_scheduler)
     static_assert(::stdexec::sender   <schedule_sender_t>);
     static_assert(::stdexec::scheduler<scheduler_t>);
 
-    const context_t context{*exec};
+    const context_t context{exec};
 
     const stdexec::scheduler auto sch = context.get_scheduler();
 
