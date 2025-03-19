@@ -1,5 +1,8 @@
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 
+#include "kokkos-utils/callbacks/Helpers.hpp"
+#include "kokkos-utils/callbacks/RecorderListener.hpp"
+
 /**
  * @addtogroup unittests
  *
@@ -32,15 +35,23 @@ TEST_F(ExecutionSpaceContextTest, sync_wait)
 
     auto chain = ::stdexec::schedule(esc.get_scheduler());
 
-    ::testing::internal::CaptureStdout();
+    Kokkos::utils::callbacks::Manager::initialize();
 
-    const auto value = ::stdexec::sync_wait(std::move(chain));
+    ASSERT_THAT(
+        Kokkos::utils::callbacks::RecorderListener<Kokkos::utils::callbacks::BeginFenceEvent>::record([chain = std::move(chain)] () mutable {
+            const auto value = ::stdexec::sync_wait(std::move(chain));
+            static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
+            ASSERT_TRUE(value.has_value());
+        }),
+        ::testing::Contains(
+            ABeginFenceEvent(
+                ::testing::Field(&Kokkos::utils::callbacks::BeginFenceEvent::name,   ::testing::StrEq(std::format("{}: sync_wait", Kokkos::Impl::TypeInfo<execution_space>::name()))),
+                ::testing::Field(&Kokkos::utils::callbacks::BeginFenceEvent::dev_id, ::testing::Eq(Kokkos::Tools::Experimental::device_id(*exec)))
+            )
+        )
+    );
 
-    EXPECT_EQ(::testing::internal::GetCapturedStdout(), std::format("SyncWaitReceiver: fencing {} ({})\n", Kokkos::Impl::TypeInfo<execution_space>::name(), exec->impl_instance_id()));
-
-    static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
-
-    ASSERT_TRUE(value.has_value());
+    Kokkos::utils::callbacks::Manager::finalize();
 }
 
 } // namespace tests::kokkos_ext
