@@ -3,10 +3,6 @@
 
 #include "gtest/gtest.h"
 
-#include "plog/Appenders/ConsoleAppender.h"
-#include "plog/Formatters/MessageOnlyFormatter.h"
-#include "plog/Init.h"
-
 #include "kokkos_ext/impl/ExecutionSpaceContext.hpp"
 
 namespace tests::kokkos_ext
@@ -23,9 +19,7 @@ public:
     using scheduler_domain_t = std::invoke_result_t<::stdexec::get_domain_t, scheduler_t>;
 
 public:
-    static void SetUpTestSuite()
-    {
-        plog::init(plog::verbose, &console_appender);
+    static void SetUpTestSuite() {
         exec = Kokkos::Experimental::partition_space(Exec{}, 1)[0];
     }
 
@@ -33,7 +27,6 @@ public:
 
 protected:
     static inline std::optional<Exec> exec = std::nullopt;
-    static inline plog::ConsoleAppender<plog::MessageOnlyFormatter> console_appender;
 };
 
 } // namespace impl
