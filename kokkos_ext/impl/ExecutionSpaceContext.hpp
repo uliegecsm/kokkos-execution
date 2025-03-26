@@ -13,6 +13,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "Kokkos_Core.hpp"
 
 #include "kokkos_ext/impl/execution_space/sync_wait.hpp"
+#include "kokkos_ext/impl/execution_space/then.hpp"
 
 namespace Kokkos::Experimental
 {
@@ -82,6 +83,21 @@ struct ExecutionSpaceScheduler
      *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/stdexec/__detail/__sender_introspection.hpp#L23-L31
      */
     ///@{
+    //! For @c then.
+    struct TransformThen
+    {
+        ExecutionSpaceScheduler schd;
+
+        template <typename Functor, stdexec::sender Sndr>
+        auto operator()(stdexec::then_t, Functor&& functor, Sndr&& sndr) && noexcept {
+            return ThenSender<Sndr, Functor, ExecutionSpaceScheduler>{
+                .sndr    = std::forward<Sndr>(sndr),
+                .functor = std::forward<Functor>(functor),
+                .schd    = std::move(schd)
+            };
+        }
+    };
+
     struct Domain
     {
         /**
@@ -91,15 +107,44 @@ struct ExecutionSpaceScheduler
          *  - https://github.com/NVIDIA/stdexec/blob/e8a6a7b25fbc2463e1dfe0ee20973b1fe622bfcf/include/nvexec/stream_context.cuh#L247-L251
          *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#spec-execution.senders.consumers.sync_wait
          *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-dispatch
+         *
+         * @todo Make the @c noexcept specifier depend on the completion signatures of @p sndr.
          */
         template <stdexec::sender Sndr>
-        auto apply_sender(stdexec::sync_wait_t, Sndr&& sndr) const noexcept
+        auto apply_sender(stdexec::sync_wait_t, Sndr&& sndr) const noexcept(false)
         {
             if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
                 auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
                 return SyncWait{}(std::move(schd), std::forward<Sndr>(sndr));
             } else {
                 static_assert(false, "No 'ExecutionSpaceScheduler' can be found on which to sync wait.");
+            }
+        }
+
+        //! For early customization of @c then.
+        template <stdexec::sender_expr_for<stdexec::then_t> Sndr>
+        auto transform_sender(Sndr&& sndr) const noexcept
+        {
+            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
+                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+                return sndr.apply(std::forward<Sndr>(sndr), TransformThen{.schd = std::move(schd)});
+            } else {
+                static_assert(false, "No 'ExecutionSpaceScheduler' can be found in the sender's environment on which to schedule 'then'.");
+            }
+        }
+
+        //! For late customization of @c then.
+        template <stdexec::sender_expr_for<stdexec::then_t> Sndr, typename Env>
+        auto transform_sender(Sndr&& sndr, const Env& env_) const noexcept
+        {
+            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
+                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+                return sndr.apply(std::forward<Sndr>(sndr), TransformThen{.schd = std::move(schd)});
+            } else if constexpr (::stdexec::__starts_on<Sndr, ExecutionSpaceScheduler, Env>) {
+                auto schd = stdexec::get_scheduler(env_);
+                return sndr.apply(std::forward<Sndr>(sndr), TransformThen{.schd = std::move(schd)});
+            } else {
+                static_assert(false, "No 'ExecutionSpaceScheduler' can be found on which to schedule 'then'.");
             }
         }
     };
