@@ -26,8 +26,6 @@ using ExecutionSpaceContextTest = impl::ExecutionSpaceContextTest<execution_spac
  * @test Ensure that @c sync_wait is properly customized.
  *
  * Improperly customized @c sync_wait should result in a missing synchronization.
- *
- * @todo Use some @c Kokkos tools hook to ensure that proper fencing happens instead of relying on captured output.
  */
 TEST_F(ExecutionSpaceContextTest, sync_wait)
 {
@@ -43,7 +41,7 @@ TEST_F(ExecutionSpaceContextTest, sync_wait)
             static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
             ASSERT_TRUE(value.has_value());
         }),
-        ::testing::Contains(MATCHER_FOR_BEGIN_FENCE)
+        ::testing::Contains(MATCHER_FOR_BEGIN_FENCE(exec, sync_wait))
     );
 
     Kokkos::utils::callbacks::Manager::finalize();

@@ -28,7 +28,7 @@ class ThenTest : public impl::ExecutionSpaceContextTest<execution_space>,
 {
 public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
-    using variant_t           = std::variant<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
+    using variant_t           = std::variant    <BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
 };
 
 /**
@@ -38,7 +38,7 @@ public:
  */
 TEST_F(ThenTest, then_early_customization)
 {
-    const view_s_t data(Kokkos::view_alloc(exec));
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
 
@@ -70,9 +70,9 @@ TEST_F(ThenTest, then_early_customization)
             ::stdexec::sync_wait(std::move(chain));
         }),
         ContainsInOrder<variant_t>(
-            MATCHER_FOR_BEGIN_PFOR,
-            MATCHER_FOR_BEGIN_PFOR,
-            MATCHER_FOR_BEGIN_FENCE
+            MATCHER_FOR_BEGIN_PFOR (exec),
+            MATCHER_FOR_BEGIN_PFOR (exec),
+            MATCHER_FOR_BEGIN_FENCE(exec, sync_wait)
         )
     );
 
@@ -85,7 +85,7 @@ TEST_F(ThenTest, then_early_customization)
  */
 TEST_F(ThenTest, then_late_customization)
 {
-    const view_s_t data(Kokkos::view_alloc(exec));
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
 
@@ -120,7 +120,7 @@ TEST_F(ThenTest, then_late_customization)
         recorder_listener_t::record([starts_on = std::move(starts_on)] () mutable {
             ::stdexec::sync_wait(std::move(starts_on));
         }),
-        ContainsInOrder<variant_t>(MATCHER_FOR_BEGIN_PFOR, MATCHER_FOR_BEGIN_PFOR)
+        ContainsInOrder<variant_t>(MATCHER_FOR_BEGIN_PFOR(exec), MATCHER_FOR_BEGIN_PFOR(exec))
     );
 
     exec.fence();
@@ -136,7 +136,7 @@ TEST_F(ThenTest, then_lifetime)
 {
     //! Create the chain in a scope.
     auto create_chain_in_scope = [&](){
-        const view_s_t data(Kokkos::view_alloc("my data in shared space", exec));
+        const view_s_t data(Kokkos::view_alloc("data - shared space", exec));
 
         const context_t esc{exec};
 
@@ -179,19 +179,19 @@ TEST_F(ThenTest, then_lifetime)
                     &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
                     ::testing::Field(
                         &Kokkos::utils::callbacks::AllocDescriptor::name,
-                        ::testing::StrEq("my data in shared space")
+                        ::testing::StrEq("data - shared space")
                     )
                 )
             ),
-            MATCHER_FOR_BEGIN_PFOR,
-            MATCHER_FOR_BEGIN_PFOR,
-            MATCHER_FOR_BEGIN_FENCE,
+            MATCHER_FOR_BEGIN_PFOR (exec),
+            MATCHER_FOR_BEGIN_PFOR (exec),
+            MATCHER_FOR_BEGIN_FENCE(exec, sync_wait),
             Kokkos::utils::callbacks::ADeallocateDataEvent(
                 ::testing::Field(
                     &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
                     ::testing::Field(
                         &Kokkos::utils::callbacks::AllocDescriptor::name,
-                        ::testing::StrEq("my data in shared space")
+                        ::testing::StrEq("data - shared space")
                     )
                 )
             )
