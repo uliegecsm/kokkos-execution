@@ -70,8 +70,8 @@ TEST_F(ThenTest, then_early_customization)
             ::stdexec::sync_wait(std::move(chain));
         }),
         ContainsInOrder<variant_t>(
-            MATCHER_FOR_BEGIN_PFOR (exec),
-            MATCHER_FOR_BEGIN_PFOR (exec),
+            MATCHER_FOR_BEGIN_PFOR (exec, then),
+            MATCHER_FOR_BEGIN_PFOR (exec, then),
             MATCHER_FOR_BEGIN_FENCE(exec, sync_wait)
         )
     );
@@ -120,7 +120,9 @@ TEST_F(ThenTest, then_late_customization)
         recorder_listener_t::record([starts_on = std::move(starts_on)] () mutable {
             ::stdexec::sync_wait(std::move(starts_on));
         }),
-        ContainsInOrder<variant_t>(MATCHER_FOR_BEGIN_PFOR(exec), MATCHER_FOR_BEGIN_PFOR(exec))
+        ContainsInOrder<variant_t>(
+            MATCHER_FOR_BEGIN_PFOR(exec, then),
+            MATCHER_FOR_BEGIN_PFOR(exec, then))
     );
 
     exec.fence();
@@ -183,8 +185,8 @@ TEST_F(ThenTest, then_lifetime)
                     )
                 )
             ),
-            MATCHER_FOR_BEGIN_PFOR (exec),
-            MATCHER_FOR_BEGIN_PFOR (exec),
+            MATCHER_FOR_BEGIN_PFOR (exec, then),
+            MATCHER_FOR_BEGIN_PFOR (exec, then),
             MATCHER_FOR_BEGIN_FENCE(exec, sync_wait),
             Kokkos::utils::callbacks::ADeallocateDataEvent(
                 ::testing::Field(

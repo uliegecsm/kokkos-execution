@@ -1,0 +1,92 @@
+#include "kokkos-utils/callbacks/Helpers.hpp"
+#include "kokkos-utils/callbacks/RecorderListener.hpp"
+
+#include "tests/kokkos_ext/execution_space/Helpers.hpp"
+#include "tests/stdexec/Utils.hpp"
+
+/**
+ * @addtogroup unittests
+ *
+ * Customization of @c bulk by @c Kokkos::Experimental::ExecutionSpaceContext
+ * --------------------------------------------------------------------------
+ *
+ * This group of tests check that @ref Kokkos::Experimental::ExecutionSpaceContext properly customizes
+ * @c bulk.
+ *
+ * The tests can be found in @ref kokkos_ext/execution_space/test_bulk.cpp.
+ */
+
+using execution_space = Kokkos::DefaultExecutionSpace;
+
+namespace tests::kokkos_ext
+{
+
+using namespace Kokkos::utils::callbacks;
+
+class BulkTest : public impl::ExecutionSpaceContextTest<execution_space>,
+                 public Kokkos::utils::callbacks::ManagerTestFixture
+{
+public:
+    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
+    using variant_t           = std::variant    <BeginFenceEvent, BeginParallelForEvent>;
+};
+
+template <typename ViewType>
+struct BulkFunctor
+{
+    ViewType data;
+
+    template <std::integral T>
+    KOKKOS_FUNCTION
+    void operator()(const T index) const {
+        Kokkos::atomic_add(data.data(), index);
+    }
+};
+
+//! @test Check that @ref Kokkos::Experimental::ExecutionSpaceContext does its duty well when used with @c bulk.
+TEST_F(BulkTest, bulk)
+{
+    constexpr size_t size = 10;
+
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec};
+
+    auto chain = ::stdexec::schedule(esc.get_scheduler())
+        | ::stdexec::bulk(size, BulkFunctor{.data = data});
+
+    using chain_t = decltype(chain);
+
+    //! The chain's environment cannot be queried for its domain.
+    static_assert(!::stdexec::tag_invocable<::stdexec::get_domain_t, ::stdexec::env_of_t<chain_t>>);
+
+    //! However, it has a completion scheduler for the value channel.
+    static_assert(::stdexec::__has_completion_scheduler<chain_t, ::stdexec::set_value_t>);
+
+    static_assert(std::same_as<
+        ::stdexec::__detail::__completion_scheduler_for<::stdexec::env_of_t<chain_t>, ::stdexec::set_value_t>,
+        scheduler_t
+    >);
+
+    //! Therefore, it has a **non-default early** completion domain.
+    static_assert(std::same_as<
+        ::stdexec::__detail::__completion_domain_of<chain_t>,
+        scheduler_domain_t
+    >);
+
+    static_assert(std::same_as<::stdexec::__early_domain_of_t<chain_t>, scheduler_domain_t>);
+
+    ASSERT_THAT(
+        recorder_listener_t::record([chain = std::move(chain)] () mutable {
+            ::stdexec::sync_wait(std::move(chain));
+        }),
+        ContainsInOrder<variant_t>(
+            MATCHER_FOR_BEGIN_PFOR (exec, bulk),
+            MATCHER_FOR_BEGIN_FENCE(exec, sync_wait)
+        )
+    );
+
+    ASSERT_EQ(data(), size / 2 * (size - 1));
+}
+
+} // namespace tests::kokkos_ext
