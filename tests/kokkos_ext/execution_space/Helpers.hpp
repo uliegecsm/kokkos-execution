@@ -57,6 +57,8 @@ protected:
 
 #define MATCHER_FOR_BEGIN_FENCE(__exec__, __label__) ABeginFenceEvent      (MATCHER_FOR_NAME(BeginFence,       __exec__, __label__), MATCHER_FOR_DEV_ID(BeginFence,       __exec__))
 #define MATCHER_FOR_BEGIN_PFOR(__exec__, __label__)  ABeginParallelForEvent(MATCHER_FOR_NAME(BeginParallelFor, __exec__, __label__), MATCHER_FOR_DEV_ID(BeginParallelFor, __exec__))
+#define MATCHER_FOR_PUSH_REGION(__label__)           APushRegionEventWithName(::testing::StrEq(__label__))
+#define MATCHER_FOR_POP_REGION()                     APopRegionEvent()
 
 } // namespace tests::kokkos_ext
 
