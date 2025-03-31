@@ -12,6 +12,8 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "Kokkos_Core.hpp"
 
+#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
+
 #include "kokkos_ext/impl/execution_space/bulk.hpp"
 #include "kokkos_ext/impl/execution_space/sync_wait.hpp"
 #include "kokkos_ext/impl/execution_space/then.hpp"
