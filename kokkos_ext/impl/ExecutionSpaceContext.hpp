@@ -12,6 +12,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "Kokkos_Core.hpp"
 
+#include "kokkos_ext/impl/execution_space/bulk.hpp"
 #include "kokkos_ext/impl/execution_space/sync_wait.hpp"
 #include "kokkos_ext/impl/execution_space/then.hpp"
 
@@ -83,8 +84,8 @@ struct ExecutionSpaceScheduler
      *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/stdexec/__detail/__sender_introspection.hpp#L23-L31
      */
     ///@{
-    //! For @c then.
-    struct TransformThen
+    //! For @c then and @c bulk.
+    struct TransformDispatch
     {
         ExecutionSpaceScheduler schd;
 
@@ -93,6 +94,17 @@ struct ExecutionSpaceScheduler
             return ThenSender<Sndr, Functor, ExecutionSpaceScheduler>{
                 .sndr    = std::forward<Sndr>(sndr),
                 .functor = std::forward<Functor>(functor),
+                .schd    = std::move(schd)
+            };
+        }
+
+        template <typename Data, stdexec::sender Sndr>
+        auto operator()(stdexec::bulk_t, Data&& data, Sndr&& sndr) && noexcept {
+            auto [shape, functor] = std::forward<Data>(data);
+            return BulkSender<Sndr, decltype(shape), decltype(functor), ExecutionSpaceScheduler>{
+                .sndr    = std::forward<Sndr>(sndr),
+                .shape   = std::move(shape),
+                .functor = std::move(functor),
                 .schd    = std::move(schd)
             };
         }
@@ -121,30 +133,30 @@ struct ExecutionSpaceScheduler
             }
         }
 
-        //! For early customization of @c then.
-        template <stdexec::sender_expr_for<stdexec::then_t> Sndr>
+        //! For early customization of @c then or @c bulk.
+        template <stdexec::sender Sndr> requires (std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t> || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>)
         auto transform_sender(Sndr&& sndr) const noexcept
         {
             if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
                 auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
-                return sndr.apply(std::forward<Sndr>(sndr), TransformThen{.schd = std::move(schd)});
+                return sndr.apply(std::forward<Sndr>(sndr), TransformDispatch{.schd = std::move(schd)});
             } else {
-                static_assert(false, "No 'ExecutionSpaceScheduler' can be found in the sender's environment on which to schedule 'then'.");
+                static_assert(false, "No 'ExecutionSpaceScheduler' can be found in the sender's environment on which to schedule 'then'/'bulk'.");
             }
         }
 
-        //! For late customization of @c then.
-        template <stdexec::sender_expr_for<stdexec::then_t> Sndr, typename Env>
+        //! For late customization of @c then or @c bulk.
+        template <stdexec::sender Sndr, typename Env> requires (std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t> || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>)
         auto transform_sender(Sndr&& sndr, const Env& env_) const noexcept
         {
             if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
                 auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
-                return sndr.apply(std::forward<Sndr>(sndr), TransformThen{.schd = std::move(schd)});
+                return sndr.apply(std::forward<Sndr>(sndr), TransformDispatch{.schd = std::move(schd)});
             } else if constexpr (::stdexec::__starts_on<Sndr, ExecutionSpaceScheduler, Env>) {
                 auto schd = stdexec::get_scheduler(env_);
-                return sndr.apply(std::forward<Sndr>(sndr), TransformThen{.schd = std::move(schd)});
+                return sndr.apply(std::forward<Sndr>(sndr), TransformDispatch{.schd = std::move(schd)});
             } else {
-                static_assert(false, "No 'ExecutionSpaceScheduler' can be found on which to schedule 'then'.");
+                static_assert(false, "No 'ExecutionSpaceScheduler' can be found on which to schedule 'then'/'bulk'.");
             }
         }
     };
