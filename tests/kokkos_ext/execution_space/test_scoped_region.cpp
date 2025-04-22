@@ -1,8 +1,8 @@
-#include "kokkos-utils/callbacks/Helpers.hpp"
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 
 #include "kokkos_ext/impl/execution_space/scoped_region.hpp"
 
+#include "tests/CallbackMatchers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
 
@@ -50,13 +50,13 @@ TEST_F(ScopedRegionTest, many)
     ASSERT_THAT(
         recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); }),
         ::testing::ElementsAre(
-            MATCHER_FOR_BEGIN_FENCE(exec, push),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
             MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
-            MATCHER_FOR_BEGIN_PFOR (exec, then),
-            MATCHER_FOR_BEGIN_PFOR (exec, then),
-            MATCHER_FOR_BEGIN_FENCE(exec, pop),
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
             MATCHER_FOR_POP_REGION (),
-            MATCHER_FOR_BEGIN_FENCE(exec, sync_wait)
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
         )
     );
 }

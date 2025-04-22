@@ -1,6 +1,6 @@
-#include "kokkos-utils/callbacks/Helpers.hpp"
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 
+#include "tests/CallbackMatchers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 
 /**
@@ -41,7 +41,7 @@ TEST_F(ExecutionSpaceContextTest, sync_wait)
             static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
             ASSERT_TRUE(value.has_value());
         }),
-        ::testing::Contains(MATCHER_FOR_BEGIN_FENCE(exec, sync_wait))
+        ::testing::ElementsAre(MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")))
     );
 
     Kokkos::utils::callbacks::Manager::finalize();

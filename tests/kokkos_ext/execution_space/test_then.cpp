@@ -1,6 +1,6 @@
-#include "kokkos-utils/callbacks/Helpers.hpp"
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 
+#include "tests/CallbackMatchers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
 
@@ -70,9 +70,9 @@ TEST_F(ThenTest, then_early_customization)
             ::stdexec::sync_wait(std::move(chain));
         }),
         ContainsInOrder<variant_t>(
-            MATCHER_FOR_BEGIN_PFOR (exec, then),
-            MATCHER_FOR_BEGIN_PFOR (exec, then),
-            MATCHER_FOR_BEGIN_FENCE(exec, sync_wait)
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
         )
     );
 
@@ -121,8 +121,8 @@ TEST_F(ThenTest, then_late_customization)
             ::stdexec::sync_wait(std::move(starts_on));
         }),
         ContainsInOrder<variant_t>(
-            MATCHER_FOR_BEGIN_PFOR(exec, then),
-            MATCHER_FOR_BEGIN_PFOR(exec, then))
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")))
     );
 
     exec.fence();
@@ -185,9 +185,9 @@ TEST_F(ThenTest, then_lifetime)
                     )
                 )
             ),
-            MATCHER_FOR_BEGIN_PFOR (exec, then),
-            MATCHER_FOR_BEGIN_PFOR (exec, then),
-            MATCHER_FOR_BEGIN_FENCE(exec, sync_wait),
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")),
             Kokkos::utils::callbacks::ADeallocateDataEvent(
                 ::testing::Field(
                     &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,

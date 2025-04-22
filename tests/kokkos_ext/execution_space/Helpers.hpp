@@ -3,6 +3,8 @@
 
 #include "gtest/gtest.h"
 
+#include "kokkos-utils/concepts/ExecutionSpace.hpp"
+
 #include "kokkos_ext/impl/ExecutionSpaceContext.hpp"
 
 #include "tests/Functors.hpp"
@@ -36,29 +38,11 @@ protected:
 //! Add a @c then using @ref tests::ThenFunctor that may throw.
 #define ADD_THEN ::stdexec::then(ThenFunctor<std::remove_cvref_t<decltype(data)>, true>{.data = data})
 
-#define MATCHER_FOR_NAME(__type__, __exec__, __name__)                                  \
-    ::testing::Field(                                                                   \
-        &Kokkos::utils::callbacks::__type__##Event::name,                               \
-        ::testing::StrEq(                                                               \
-            std::format(                                                                \
-                "{}: " #__name__,                                                       \
-                Kokkos::Impl::TypeInfo<std::remove_cvref_t<decltype(__exec__)>>::name() \
-            )                                                                           \
-        )                                                                               \
-    )
-
-#define MATCHER_FOR_DEV_ID(__type__, __exec__)               \
-    ::testing::Field(                                        \
-        &Kokkos::utils::callbacks::__type__##Event::dev_id,  \
-        ::testing::Eq(                                       \
-            Kokkos::Tools::Experimental::device_id(__exec__) \
-        )                                                    \
-    )
-
-#define MATCHER_FOR_BEGIN_FENCE(__exec__, __label__) ABeginFenceEvent      (MATCHER_FOR_NAME(BeginFence,       __exec__, __label__), MATCHER_FOR_DEV_ID(BeginFence,       __exec__))
-#define MATCHER_FOR_BEGIN_PFOR(__exec__, __label__)  ABeginParallelForEvent(MATCHER_FOR_NAME(BeginParallelFor, __exec__, __label__), MATCHER_FOR_DEV_ID(BeginParallelFor, __exec__))
-#define MATCHER_FOR_PUSH_REGION(__label__)           APushRegionEventWithName(::testing::StrEq(__label__))
-#define MATCHER_FOR_POP_REGION()                     APopRegionEvent()
+//! Get the dispatch label from @p Exec and @p label.
+template <Kokkos::utils::concepts::ExecutionSpace Exec, typename Label>
+constexpr std::string dispatch_label(const Exec&, Label&& label) {
+    return std::string(Kokkos::Impl::TypeInfo<Exec>::name()).append(": ").append(std::forward<Label>(label));
+}
 
 } // namespace tests::kokkos_ext
 
