@@ -53,7 +53,7 @@ TEST_F(BulkTest, bulk)
     const context_t esc{exec};
 
     auto chain = ::stdexec::schedule(esc.get_scheduler())
-        | ::stdexec::bulk(size, BulkFunctor{.data = data});
+        | ::stdexec::bulk(::stdexec::par, size, BulkFunctor{.data = data});
 
     using chain_t = decltype(chain);
 
