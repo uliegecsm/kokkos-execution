@@ -102,9 +102,10 @@ struct ExecutionSpaceScheduler
 
         template <typename Data, stdexec::sender Sndr>
         auto operator()(stdexec::bulk_t, Data&& data, Sndr&& sndr) && noexcept {
-            auto [shape, functor] = std::forward<Data>(data);
-            return BulkSender<Sndr, decltype(shape), decltype(functor), ExecutionSpaceScheduler>{
+            auto [policy, shape, functor] = std::forward<Data>(data);
+            return BulkSender<Sndr, decltype(policy), decltype(shape), decltype(functor), ExecutionSpaceScheduler>{
                 .sndr    = std::forward<Sndr>(sndr),
+                .policy  = std::move(policy),
                 .shape   = std::move(shape),
                 .functor = std::move(functor),
                 .schd    = std::move(schd)
