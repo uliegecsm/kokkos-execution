@@ -3,7 +3,10 @@
 
 #include "gtest/gtest.h"
 
+#include "Kokkos_Core.hpp"
+
 #include "kokkos-utils/concepts/ExecutionSpace.hpp"
+#include "kokkos-utils/tests/fixtures/ExecutionSpaceInstance.hpp"
 
 #include "kokkos_ext/impl/ExecutionSpaceContext.hpp"
 
@@ -14,7 +17,8 @@ namespace tests::kokkos_ext
 namespace impl
 {
 template <typename Exec>
-struct ExecutionSpaceContextTest : public virtual ::testing::Test
+struct ExecutionSpaceContextTest : public virtual ::testing::Test,
+                                   public Kokkos::utils::tests::fixtures::ExecutionSpaceInstance<Exec>
 {
 public:
     using context_t          = Kokkos::Experimental::ExecutionSpaceContext<Exec>;
@@ -23,14 +27,6 @@ public:
     using scheduler_domain_t = std::invoke_result_t<::stdexec::get_domain_t, scheduler_t>;
 
     using view_s_t = Kokkos::View<int, Kokkos::SharedSpace>;
-
-public:
-    ExecutionSpaceContextTest()
-        : exec(Kokkos::Experimental::partition_space(Exec{}, 1)[0])
-    {}
-
-protected:
-    Exec exec {};
 };
 
 } // namespace impl
