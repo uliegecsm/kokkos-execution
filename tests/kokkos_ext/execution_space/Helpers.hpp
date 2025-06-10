@@ -6,7 +6,7 @@
 #include "Kokkos_Core.hpp"
 
 #include "kokkos-utils/concepts/ExecutionSpace.hpp"
-#include "kokkos-utils/tests/fixtures/ExecutionSpaceInstance.hpp"
+#include "kokkos-utils/tests/scoped/ExecutionSpace.hpp"
 
 #include "kokkos_ext/impl/ExecutionSpaceContext.hpp"
 
@@ -18,7 +18,7 @@ namespace impl
 {
 template <typename Exec>
 struct ExecutionSpaceContextTest : public virtual ::testing::Test,
-                                   public Kokkos::utils::tests::fixtures::ExecutionSpaceInstance<Exec>
+                                   public Kokkos::utils::tests::scoped::ExecutionSpace<Exec>
 {
 public:
     using context_t          = Kokkos::Experimental::ExecutionSpaceContext<Exec>;

@@ -1,4 +1,5 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
+#include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
 #include "tests/CallbackMatchers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
@@ -24,7 +25,7 @@ namespace tests::kokkos_ext
 using namespace Kokkos::utils::callbacks;
 
 class BulkTest : public impl::ExecutionSpaceContextTest<execution_space>,
-                 public Kokkos::utils::callbacks::ManagerTestFixture
+                 public Kokkos::utils::tests::scoped::callbacks::Manager
 {
 public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
