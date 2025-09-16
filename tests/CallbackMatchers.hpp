@@ -31,4 +31,8 @@
 #define MATCHER_FOR_PUSH_REGION(_label_)         APushRegionEventWithName (::testing::StrEq(_label_))
 #define MATCHER_FOR_POP_REGION()                 APopRegionEvent()
 
+#define MATCHER_FOR_BEGIN_DEEP_COPY(_dst_, _src_) \
+    ABeginDeepCopyEvent(Kokkos::utils::callbacks::PartialMatcher<Kokkos::utils::callbacks::BeginDeepCopyEvent>{}( \
+        Kokkos::utils::callbacks::BeginDeepCopyEvent{.dst = KOKKOS_IMPL_STRIP_PARENS(_dst_), .src = KOKKOS_IMPL_STRIP_PARENS(_src_)}))
+
 #endif // GRAPH_DISPATCHING_TESTS_CALLBACKMATCHERS_HPP
