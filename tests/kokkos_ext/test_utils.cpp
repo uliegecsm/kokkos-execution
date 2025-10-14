@@ -26,7 +26,16 @@ TEST(update_policy, range_policy_exec)
 {
     const auto [exec_a, exec_b] = Kokkos::Experimental::partition_space(execution_space{}, 1, 1);
 
-    ASSERT_NE(exec_a, exec_b);
+    /// For @c Kokkos::OpenMP, see https://github.com/kokkos/kokkos/commit/a09c6ce45655f37bedf767d68ff42b7382ba89e7.
+#if defined(KOKKOS_ENABLE_OPENMP)
+    if constexpr (std::same_as<execution_space, Kokkos::OpenMP>) {
+        ASSERT_EQ(exec_a, exec_b);
+    } else {
+#endif
+        ASSERT_NE(exec_a, exec_b);
+#if defined(KOKKOS_ENABLE_OPENMP)
+    }
+#endif
 
     const Kokkos::RangePolicy<execution_space> initial(exec_a, 0, 1, Kokkos::ChunkSize(2));
     ASSERT_EQ(initial.space(), exec_a);
