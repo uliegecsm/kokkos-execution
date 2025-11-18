@@ -78,7 +78,7 @@ struct ExecutionSpaceScheduler
     /**
      * @name Customization points.
      *
-     * Sender algorithms are customizable. We follow the approach developped in
+     * Sender algorithms are customizable. We follow the approach developed in
      * https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-customization.
      *
      * See also:
