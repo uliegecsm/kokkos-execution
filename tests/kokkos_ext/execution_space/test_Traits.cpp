@@ -38,7 +38,15 @@ TEST_F(ExecutionSpaceContextTest, has_custom_domain)
 {
     static_assert(std::same_as<scheduler_domain_t, scheduler_t::Domain>);
 
-    static_assert(std::same_as<stdexec::__early_domain_of_t<schedule_sender_t>, scheduler_t::Domain>);
+    static_assert(std::same_as<
+        ::stdexec::__domain_of_t<schedule_sender_t>,
+        ::stdexec::default_domain
+    >);
+
+    static_assert(std::same_as<
+        ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, schedule_sender_t>,
+        scheduler_t::Domain
+    >);
 }
 
 } // namespace tests::kokkos_ext

@@ -33,11 +33,10 @@ public:
 };
 
 /**
- * @test Check that @ref Kokkos::Experimental::ExecutionSpaceContext does its duty well when used with @c then.
- *       In this case, the scheduler is already known when @c then is called, such that our customization of
- *       @c ExecutionSpaceScheduler::Domain::transform_sender for @c then is called readily (early).
+ * @test Check that @ref Kokkos::Experimental::ExecutionSpaceContext does its duty well when used with @c then
+ *       within a chain started with @c stdexec::schedule.
  */
-TEST_F(ThenTest, then_early_customization)
+TEST_F(ThenTest, then_schedule)
 {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
@@ -47,24 +46,21 @@ TEST_F(ThenTest, then_early_customization)
 
     using chain_t = decltype(chain);
 
-    //! The chain's environment cannot be queried for its domain.
-    static_assert(!::stdexec::tag_invocable<::stdexec::get_domain_t, ::stdexec::env_of_t<chain_t>>);
-
-    //! However, it has a completion scheduler for the value channel.
-    static_assert(::stdexec::__has_completion_scheduler<chain_t, ::stdexec::set_value_t>);
-
+    //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler::Domain domain.
     static_assert(std::same_as<
-        ::stdexec::__detail::__completion_scheduler_for<::stdexec::env_of_t<chain_t>, ::stdexec::set_value_t>,
+        ::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>,
+        ::stdexec::default_domain
+    >);
+    static_assert(std::same_as<
+        ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
+        Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler<execution_space>::Domain
+    >);
+
+    //! It has a completion scheduler for the value channel.
+    static_assert(std::same_as<
+        decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
         scheduler_t
     >);
-
-    //! Therefore, it has a **non-default early** completion domain.
-    static_assert(std::same_as<
-        ::stdexec::__detail::__completion_domain_of<chain_t>,
-        scheduler_domain_t
-    >);
-
-    static_assert(std::same_as<::stdexec::__early_domain_of_t<chain_t>, scheduler_domain_t>);
 
     ASSERT_THAT(
         recorder_listener_t::record([chain = std::move(chain)] () mutable {
@@ -81,10 +77,10 @@ TEST_F(ThenTest, then_early_customization)
 }
 
 /**
- * @test Similar to @ref tests::kokkos_ext::ThenTest_then_early_customization_Test, but the completion scheduler is not known
- *       until @c starts_on is called (late).
+ * @test Similar to @ref tests::kokkos_ext::ThenTest_then_schedule_Test, but the chain is scheduled
+ *       with a @c starts_on.
  */
-TEST_F(ThenTest, then_late_customization)
+TEST_F(ThenTest, then_starts_on)
 {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
@@ -93,25 +89,41 @@ TEST_F(ThenTest, then_late_customization)
     //! Create a chain that does not start with a schedule sender.
     auto chain = ::stdexec::just() | ADD_THEN | ADD_THEN;
 
-    /// The chain's last sender cannot be queried for a completion scheduler. See also
-    /// https://github.com/NVIDIA/stdexec/blob/b888185d667f68b9a8bda5d0c81d03edf9ec3fe1/include/stdexec/__detail/__env.hpp#L212-L215.
+    /// The chain cannot be queried for a completion scheduler.
     /// It may complete on the value channel or the error channel, since @c Kokkos may throw.
-    /// It hasn't been customized yet, so the early domain is the default one.
+    /// It hasn't been connected yet, so the domain is indeterminate.
     using chain_t = decltype(chain);
 
-    static_assert(!::stdexec::__has_completion_scheduler<chain_t, ::stdexec::set_value_t>);
+    static_assert(!tests::stdexec::has_completion_scheduler_for<chain_t, ::stdexec::set_value_t>);
     static_assert(tests::stdexec::has_completion_signatures<chain_t, ::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>);
 
-    static_assert(std::same_as<::stdexec::__early_domain_of_t<chain_t>, ::stdexec::default_domain>);
+    static_assert(std::same_as<
+        ::stdexec::__completion_domain_of_t<::stdexec::set_value_t, chain_t>,
+        ::stdexec::indeterminate_domain<>
+    >);
 
     //! Call @c starts_on.
     auto starts_on = ::stdexec::starts_on(esc.get_scheduler(), std::move(chain));
 
     using starts_on_t = decltype(starts_on);
 
-    /// We are still not able to query the completion scheduler, and the completion signatures are still both the value and error channels.
-    static_assert(!::stdexec::__has_completion_scheduler<starts_on_t, ::stdexec::set_value_t>);
-    static_assert(tests::stdexec::has_completion_signatures<starts_on_t, ::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>);
+    //! It has a completion scheduler for the value channel.
+    static_assert(tests::stdexec::has_completion_scheduler_for<starts_on_t, ::stdexec::set_value_t>);
+    static_assert(std::same_as<
+        decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(starts_on))),
+        scheduler_t
+    >);
+
+    //! Until it is connected, the completion signatures are *dependent* (they are not fully known yet).
+    static_assert(std::same_as<std::invoke_result_t<
+        ::stdexec::get_completion_signatures_t, starts_on_t>,
+        ::stdexec::_ERROR_<::stdexec::__detail::__dependent_completions>
+    >);
+
+    static_assert(std::same_as<std::invoke_result_t<
+        ::stdexec::get_completion_signatures_t, starts_on_t, ::stdexec::env<>>,
+        ::stdexec::completion_signatures<::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>
+    >);
 
     /// We can compile and sync wait; the @c then are indeed launched using our customization of @c then.
     /// However, the result can't be verified yet because we haven't customized @c starts_on yet.
@@ -152,24 +164,21 @@ TEST_F(ThenTest, then_lifetime)
 
         using chain_t = decltype(chain);
 
-        //! The chain's environment cannot be queried for its domain.
-        static_assert(!::stdexec::tag_invocable<::stdexec::get_domain_t, ::stdexec::env_of_t<chain_t>>);
-
-        //! However, it has a completion scheduler for the value channel.
-        static_assert(::stdexec::__has_completion_scheduler<chain_t, ::stdexec::set_value_t>);
-
+        //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler::Domain domain.
         static_assert(std::same_as<
-            ::stdexec::__detail::__completion_scheduler_for<::stdexec::env_of_t<chain_t>, ::stdexec::set_value_t>,
+            ::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>,
+            ::stdexec::default_domain
+        >);
+        static_assert(std::same_as<
+            ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
+            Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler<execution_space>::Domain
+        >);
+
+        //! It has a completion scheduler for the value channel.
+        static_assert(std::same_as<
+            decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
             scheduler_t
         >);
-
-        //! Therefore, it has a **non-default early** completion domain.
-        static_assert(std::same_as<
-            ::stdexec::__detail::__completion_domain_of<chain_t>,
-            scheduler_domain_t
-        >);
-
-        static_assert(std::same_as<::stdexec::__early_domain_of_t<chain_t>, scheduler_domain_t>);
 
         ::stdexec::sync_wait(std::move(chain));
     };

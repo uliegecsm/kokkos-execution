@@ -58,24 +58,21 @@ TEST_F(BulkTest, bulk)
 
     using chain_t = decltype(chain);
 
-    //! The chain's environment cannot be queried for its domain.
-    static_assert(!::stdexec::tag_invocable<::stdexec::get_domain_t, ::stdexec::env_of_t<chain_t>>);
-
-    //! However, it has a completion scheduler for the value channel.
-    static_assert(::stdexec::__has_completion_scheduler<chain_t, ::stdexec::set_value_t>);
-
+    //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler::Domain domain.
     static_assert(std::same_as<
-        ::stdexec::__detail::__completion_scheduler_for<::stdexec::env_of_t<chain_t>, ::stdexec::set_value_t>,
+        ::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>,
+        ::stdexec::default_domain
+    >);
+    static_assert(std::same_as<
+        ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
+        Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler<execution_space>::Domain
+    >);
+
+    //! It has a completion scheduler for the value channel.
+    static_assert(std::same_as<
+        decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
         scheduler_t
     >);
-
-    //! Therefore, it has a **non-default early** completion domain.
-    static_assert(std::same_as<
-        ::stdexec::__detail::__completion_domain_of<chain_t>,
-        scheduler_domain_t
-    >);
-
-    static_assert(std::same_as<::stdexec::__early_domain_of_t<chain_t>, scheduler_domain_t>);
 
     ASSERT_THAT(
         recorder_listener_t::record([chain = std::move(chain)] () mutable {
