@@ -130,7 +130,11 @@ struct ExecutionSpaceScheduler
         template <stdexec::sender Sndr>
         auto apply_sender(stdexec::sync_wait_t, Sndr&& sndr) const noexcept(false)
         {
-            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
+            constexpr bool completes_on = std::same_as<
+                std::invoke_result_t<::stdexec::get_completion_scheduler_t<::stdexec::set_value_t>, ::stdexec::env_of_t<Sndr>>,
+                ExecutionSpaceScheduler
+            >;
+            if constexpr (completes_on) {
                 auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
                 return SyncWait{}(std::move(schd), std::forward<Sndr>(sndr));
             } else {
@@ -138,35 +142,25 @@ struct ExecutionSpaceScheduler
             }
         }
 
-        //! For early customization of @c then or @c bulk.
-        template <stdexec::sender Sndr> requires (std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t> || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>)
-        auto transform_sender(Sndr&& sndr) const noexcept
-        {
-            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
-                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
-                return sndr.apply(std::forward<Sndr>(sndr), TransformDispatch{.schd = std::move(schd)});
-            } else {
-                static_assert(false, "No 'ExecutionSpaceScheduler' can be found in the sender's environment on which to schedule 'then'/'bulk'.");
-            }
-        }
-
-        //! For late customization of @c then or @c bulk.
+        //! For customization of @c then or @c bulk.
         template <stdexec::sender Sndr, typename Env> requires (std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t> || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>)
-        auto transform_sender(Sndr&& sndr, const Env& env_) const noexcept
+        auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) const noexcept
         {
-            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler>) {
-                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
-                return sndr.apply(std::forward<Sndr>(sndr), TransformDispatch{.schd = std::move(schd)});
-            } else if constexpr (::stdexec::__starts_on<Sndr, ExecutionSpaceScheduler, Env>) {
-                auto schd = stdexec::get_scheduler(env_);
+            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler, Env>) {
+                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env_);
                 return sndr.apply(std::forward<Sndr>(sndr), TransformDispatch{.schd = std::move(schd)});
             } else {
-                static_assert(false, "No 'ExecutionSpaceScheduler' can be found on which to schedule 'then'/'bulk'.");
+                static_assert(::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler, Env>);
             }
         }
     };
 
     auto query(stdexec::get_domain_t) const noexcept { return Domain{}; }
+
+    template<class... EnvArgs>
+    auto query(::stdexec::get_completion_domain_t<::stdexec::set_value_t>, const EnvArgs&...) const noexcept { 
+        return Domain{}; 
+    }
     ///@}
 
     bool operator==(const ExecutionSpaceScheduler&) const noexcept = default;
