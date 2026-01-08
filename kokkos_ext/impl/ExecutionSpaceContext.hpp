@@ -17,6 +17,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
 
 #include "kokkos_ext/impl/execution_space/bulk.hpp"
+#include "kokkos_ext/impl/execution_space/continues_on.hpp"
 #include "kokkos_ext/impl/execution_space/sync_wait.hpp"
 #include "kokkos_ext/impl/execution_space/then.hpp"
 
@@ -33,8 +34,9 @@ struct ExecutionSpaceScheduler
     struct Env
     {
         //! The accepted completion tag types must agree with @c Sender::completion_signatures.
-        template <::stdexec::__one_of<::stdexec::set_value_t> CompletionTag>
-        auto query(stdexec::get_completion_scheduler_t<CompletionTag>) const noexcept { return ExecutionSpaceScheduler{exec}; }
+        [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
+            return ExecutionSpaceScheduler{exec};
+        }
 
         bool operator==(const Env&) const noexcept = default;
 
@@ -115,6 +117,15 @@ struct ExecutionSpaceScheduler
         }
     };
 
+    struct TransformContinuesOn
+    {
+        template <stdexec::scheduler Schd, ::stdexec::sender Sndr>
+        auto operator()(stdexec::continues_on_t, Schd&& schd, Sndr&& sndr) && noexcept {
+            static_assert(std::same_as<Schd, ExecutionSpaceScheduler>);
+            return ContinuesOnSender{.schd = std::forward<Schd>(schd), .sndr = std::forward<Sndr>(sndr)};
+        }
+    };
+
     struct Domain
     {
         /**
@@ -131,11 +142,11 @@ struct ExecutionSpaceScheduler
         auto apply_sender(stdexec::sync_wait_t, Sndr&& sndr) const noexcept(false)
         {
             constexpr bool completes_on = std::same_as<
-                std::invoke_result_t<::stdexec::get_completion_scheduler_t<::stdexec::set_value_t>, ::stdexec::env_of_t<Sndr>>,
+                std::invoke_result_t<::stdexec::get_completion_scheduler_t<::stdexec::set_value_t>, ::stdexec::env_of_t<Sndr>, stdexec::env<>>,
                 ExecutionSpaceScheduler
             >;
             if constexpr (completes_on) {
-                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+                auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::env{});
                 return SyncWait{}(std::move(schd), std::forward<Sndr>(sndr));
             } else {
                 static_assert(false, "No 'ExecutionSpaceScheduler' can be found on which to sync wait.");
@@ -153,13 +164,23 @@ struct ExecutionSpaceScheduler
                 static_assert(::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler, Env>);
             }
         }
+
+        //! For customization of @c continues_on.
+        template <stdexec::sender_expr_for<stdexec::continues_on_t> Sndr, typename Env>
+        auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env&) const noexcept
+        {
+            if constexpr (::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler, Env>) {
+                return sndr.apply(std::forward<Sndr>(sndr), TransformContinuesOn{});
+            } else {
+                static_assert(::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler, Env>);
+            }
+        }
     };
 
     auto query(stdexec::get_domain_t) const noexcept { return Domain{}; }
 
-    template<class... EnvArgs>
-    auto query(::stdexec::get_completion_domain_t<::stdexec::set_value_t>, const EnvArgs&...) const noexcept { 
-        return Domain{}; 
+    [[nodiscard]] constexpr auto query(stdexec::get_completion_domain_t<::stdexec::set_value_t>) const noexcept -> Domain {
+        return {};
     }
     ///@}
 
