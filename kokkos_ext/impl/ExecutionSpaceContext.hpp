@@ -18,6 +18,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos_ext/impl/execution_space/bulk.hpp"
 #include "kokkos_ext/impl/execution_space/continues_on.hpp"
+#include "kokkos_ext/impl/execution_space/schedule_from.hpp"
 #include "kokkos_ext/impl/execution_space/sync_wait.hpp"
 #include "kokkos_ext/impl/execution_space/then.hpp"
 
@@ -26,23 +27,23 @@ namespace Kokkos::Experimental
 
 namespace details::execution_space
 {
+//! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
+template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+struct ExecutionSpaceSchedulerEnv
+{
+    [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
+        return ExecutionSpaceScheduler{exec};
+    }
+
+    bool operator==(const ExecutionSpaceSchedulerEnv&) const noexcept = default;
+
+    Exec exec;
+};
+
 //! Scheduler for a @c Kokkos execution space.
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
 struct ExecutionSpaceScheduler
 {
-    //! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
-    struct Env
-    {
-        //! The accepted completion tag types must agree with @c Sender::completion_signatures.
-        [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
-            return ExecutionSpaceScheduler{exec};
-        }
-
-        bool operator==(const Env&) const noexcept = default;
-
-        Exec exec;
-    };
-
     template <stdexec::receiver Rcvr>
     struct OpState
     {
@@ -69,7 +70,7 @@ struct ExecutionSpaceScheduler
 
         auto& get_env() const noexcept { return env; }
 
-        Env env;
+        ExecutionSpaceSchedulerEnv<Exec> env;
     };
 
     template <typename T>
@@ -175,6 +176,27 @@ struct ExecutionSpaceScheduler
                 static_assert(::stdexec::__completes_on<Sndr, ExecutionSpaceScheduler, Env>);
             }
         }
+
+        //! For customization of @c schedule_from.
+        template <stdexec::sender_expr_for<stdexec::schedule_from_t> Sndr, typename Env>
+        auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env& env_) const noexcept
+        {
+            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env_);
+
+            auto [tag, from, inner] = std::forward<Sndr>(sndr);
+
+            const bool skip = [&](){
+                if constexpr (std::same_as<std::remove_cvref_t<Env>, ExecutionSpaceSchedulerEnv<Exec>>) {
+                    return schd.env.exec == env_.exec;
+                }
+                return false;
+            }();
+            return ScheduleFromSender{
+                .env = std::move(schd.env),
+                .sndr = std::move(inner),
+                .skip = skip
+            };
+        }
     };
 
     auto query(stdexec::get_domain_t) const noexcept { return Domain{}; }
@@ -186,7 +208,7 @@ struct ExecutionSpaceScheduler
 
     bool operator==(const ExecutionSpaceScheduler&) const noexcept = default;
 
-    Env env;
+    ExecutionSpaceSchedulerEnv<Exec> env;
 };
 
 //! Deduction guide for @ref ExecutionSpaceScheduler.

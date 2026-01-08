@@ -7,6 +7,9 @@ namespace Kokkos::Experimental::details::execution_space
 {
 
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+struct ExecutionSpaceSchedulerEnv;
+
+template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
 struct ExecutionSpaceScheduler;
 
 } // namespace Kokkos::Experimental::details::execution_space
