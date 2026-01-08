@@ -110,4 +110,53 @@ TEST_F(ContinuesOnTest, transition_to_same_execution_space_instance)
     ASSERT_EQ(data(), 3) << "A synchronization is missing.";
 }
 
+/**
+ * @test Check that @c continues_on is properly customized (with appropriate synchronization)
+ *       when transitioning from one execution space instance to another (of the same type).
+ */
+TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back)
+{
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
+
+    const context_t esc_A{exec_A};
+    const context_t esc_B{exec_B};
+
+    std::cout << "Execution space instance 'exec_A' has device ID " << Kokkos::Tools::Experimental::device_id(exec_A) << '.' << std::endl;
+    std::cout << "Execution space instance 'exec_B' has device ID " << Kokkos::Tools::Experimental::device_id(exec_B) << '.' << std::endl;
+
+    auto chain = ::stdexec::just()
+        | ::stdexec::continues_on(esc_A.get_scheduler())
+        | ADD_THEN
+        | ::stdexec::continues_on(esc_B.get_scheduler())
+        | ADD_THEN
+        | ::stdexec::continues_on(esc_A.get_scheduler())
+        | ADD_THEN;
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto records = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+
+    if(exec_A == exec_B) {
+        ASSERT_THAT(records, ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR (exec_A, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR (exec_B, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR (exec_A, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))
+        ));
+    } else {
+        ASSERT_THAT(records, ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR (exec_A, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_PFOR (exec_B, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_PFOR (exec_A, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))
+        ));
+    }
+
+    ASSERT_EQ(data(), 3) << "A synchronization is missing.";
+}
+
 } // namespace tests::kokkos_ext
