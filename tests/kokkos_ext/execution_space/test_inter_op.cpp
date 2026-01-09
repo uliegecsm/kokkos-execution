@@ -67,6 +67,8 @@ TEST_F(InterOpTest, transition_to_inline_scheduler)
         | ::stdexec::continues_on(::stdexec::inline_scheduler{})
         | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 4, .value = 4, .data = data.data()});
 
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
     const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
     for (const auto& recorded_event : recorded_events) {
         std::visit([] (const auto& arg) { std::cout << "- " << arg << std::endl; }, recorded_event);
@@ -75,6 +77,32 @@ TEST_F(InterOpTest, transition_to_inline_scheduler)
     EXPECT_THAT(recorded_events, ::testing::ElementsAre(
         MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
         MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))
+    ));
+
+    ASSERT_EQ(data(), 8);
+}
+
+//! @test Transition from @c stdexec::inline_scheduler to @ref Kokkos::Experimental::ExecutionSpaceContext.
+TEST_F(InterOpTest, transition_from_inline_scheduler)
+{
+    const view_s_t data(Kokkos::view_alloc("data - shared space"));
+
+    const context_t esc{exec};
+
+    SHOW_EXEC_SPACE_ID(exec)
+
+    auto chain = ::stdexec::schedule(::stdexec::inline_scheduler{})
+        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
+        | ::stdexec::continues_on(esc.get_scheduler())
+        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()});
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+
+    EXPECT_THAT(recorded_events, ::testing::ElementsAre(
+        MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
     ));
 
     ASSERT_EQ(data(), 8);
@@ -95,6 +123,8 @@ TEST_F(InterOpTest, transition_to_static_thread_pool)
         | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 0, .value = 4, .data = data.data()})
         | ::stdexec::continues_on(pool.get_scheduler())
         | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 4, .value = 4, .data = data.data()});
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
 
