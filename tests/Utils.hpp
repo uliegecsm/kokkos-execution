@@ -39,6 +39,10 @@ struct FillWithThreadID
 //! Helper that dumps the current thread ID to @c std::cout.
 #define THEN_SHOW_ID ::stdexec::then([]() -> void { std::cout << std::this_thread::get_id() << std::endl; })
 
+//! Helper that dumps a @c Kokkos execution space ID to @c std::cout.
+#define SHOW_EXEC_SPACE_ID(_exec_) \
+    std::cout << "Execution space instance " #_exec_ " has device ID " << Kokkos::Tools::Experimental::device_id(_exec_) << '.' << std::endl;
+
 /**
  * @brief Pool of @c exec::static_thread_pool with a single thread in each of them.
  *
