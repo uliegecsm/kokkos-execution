@@ -40,6 +40,15 @@ constexpr std::string dispatch_label(const Exec&, Label&& label) {
     return std::string(Kokkos::Impl::TypeInfo<Exec>::name()).append(": ").append(std::forward<Label>(label));
 }
 
+template<typename T1, typename T2>
+constexpr bool are_same_instances(const T1& lhs, const T2& rhs) {
+    if constexpr (std::same_as<T1, T2>) {
+        return lhs == rhs;
+    } else {
+        return false;
+    }
+}
+
 } // namespace tests::kokkos_ext
 
 #endif // GRAPH_DISPATCHING_TESTS_KOKKOS_EXT_EXECUTION_SPACE_HELPERS_HPP
