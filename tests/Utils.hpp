@@ -81,6 +81,50 @@ protected:
     std::array<std::thread::id, sizeof...(IDs)> threads;
 };
 
+/**
+ * @brief Check how the scheduler customizes @c stdexec::continues_on.
+ *
+ * Use this function to ensure your own scheduler is properly customizing everything that's needed.
+ */
+template <stdexec::scheduler Schd>
+constexpr bool check_continues_on()
+{
+    using sndr_t = decltype(::stdexec::just() | ::stdexec::continues_on(std::declval<Schd>()));
+
+    //! Check the complete "demangled" sender type.
+    static_assert(std::same_as<
+        ::stdexec::__detail::__demangle_t<sndr_t>,
+        ::stdexec::__basic_sender<
+            ::stdexec::__trnsfr::continues_on_t,
+            Schd,
+            ::stdexec::__basic_sender<
+                ::stdexec::__schfr::schedule_from_t,
+                ::stdexec::__,
+                ::stdexec::__basic_sender<::stdexec::__just::just_t, ::stdexec::__tup::__tuple<>>>>
+    >);
+
+    //! Diagnose any issue that could make the resulting sender invalid.
+    ::stdexec::__diagnose_sender_concept_failure<sndr_t>();
+
+    //! Check the completing domain;
+    static_assert(std::same_as<
+        ::stdexec::__domain_of_t<::stdexec::env_of_t<sndr_t>>,
+        ::stdexec::default_domain
+    >);
+    static_assert(std::same_as<
+        ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, sndr_t>,
+        std::invoke_result_t<::stdexec::get_completion_domain_t<::stdexec::set_value_t>, Schd>
+    >);
+
+    //! It must advertise a valid completion scheduler.
+    static_assert(std::same_as<
+        ::stdexec::__completion_scheduler_of_t<::stdexec::set_value_t, sndr_t>,
+        Schd
+    >);
+
+    return true;
+}
+
 } // namespace utils
 
 #endif // GRAPH_DISPATCHING_TESTS_UTILS_HPP

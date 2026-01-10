@@ -34,25 +34,10 @@ public:
     using variant_t           = std::variant    <BeginFenceEvent, BeginParallelForEvent>;
 };
 
-//! @test Similar to @ref tests::stdexec::adaptors::ContinuesOnTest_no_schedule_sender_continues_on_Test.
-TEST_F(ContinuesOnTest, completing_domain)
+//! @test Check traits of the sender created by the customized @c continues_on.
+TEST_F(ContinuesOnTest, traits)
 {
-    const context_t esc{exec};
-
-    ::stdexec::sender auto sndr = ::stdexec::just(42) | ::stdexec::continues_on(esc.get_scheduler());
-
-    static_assert(std::same_as<
-        ::stdexec::__domain_of_t<::stdexec::env_of_t<decltype(sndr)>>,
-        ::stdexec::default_domain
-    >);
-
-    static_assert(std::same_as<
-        ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, decltype(sndr)>,
-        Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler<execution_space>::Domain
-    >);
-
-    //! @todo This should be working once properly customized.
-    static_assert(!::tests::stdexec::has_completion_scheduler_for<decltype(sndr), ::stdexec::set_value_t>);
+    static_assert(::utils::check_continues_on<decltype(context_t{exec}.get_scheduler())>());
 }
 
 //! @test A @c then and a @c sync_wait following a @c continues_on properly use the execution space instance.
