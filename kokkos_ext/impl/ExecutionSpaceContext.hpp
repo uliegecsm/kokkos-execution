@@ -98,42 +98,21 @@ struct ExecutionSpaceScheduler
             return SyncWait{}(std::move(schd), std::forward<Sndr>(sndr));
         }
 
-        //! For customization of @c then or @c bulk or @c continues_on.
+        //! For customization of @c then or @c bulk or @c continues_on or @c schedule_from.
         template <stdexec::sender Sndr, typename Env> requires (
             (
                 std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t>
              || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>
              || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::continues_on_t>
+             || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::schedule_from_t>
             )
             && execution_space_completing_sender<Sndr, Env>)
         static auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) noexcept
         {
-            return sndr.apply(
+            return stdexec::__sexpr_apply(
                 std::forward<Sndr>(sndr),
                 transform_sender_for<stdexec::tag_of_t<Sndr>, Env>{.env_ = env_}
             );
-        }
-
-        //! For customization of @c schedule_from.
-        template <stdexec::sender_expr_for<stdexec::schedule_from_t> Sndr, typename Env>
-            requires execution_space_completing_sender<Sndr, Env>
-        auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env& env_) const noexcept
-        {
-            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env_);
-
-            auto [tag, from, inner] = std::forward<Sndr>(sndr);
-
-            const bool skip = [&](){
-                if constexpr (std::same_as<std::remove_cvref_t<Env>, ExecutionSpaceSchedulerEnv<Exec>>) {
-                    return schd.env.exec == env_.exec;
-                }
-                return false;
-            }();
-            return ScheduleFromSender{
-                .env = std::move(schd.env),
-                .sndr = std::move(inner),
-                .skip = skip
-            };
         }
     };
 
