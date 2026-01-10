@@ -27,13 +27,6 @@ namespace Kokkos::Experimental
 
 namespace details::execution_space
 {
-//! Concept for a sender whose completion scheduler is @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler.
-template <class Sndr, class Env = ::stdexec::env<>>
-concept execution_space_completing_sender = ::stdexec::sender<Sndr>
-    && ::stdexec::__is_instance_of<std::invoke_result_t<
-        ::stdexec::get_completion_scheduler_t<::stdexec::set_value_t>, ::stdexec::env_of_t<Sndr>, Env>,
-        ExecutionSpaceScheduler
-    >;
 
 //! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
@@ -86,46 +79,6 @@ struct ExecutionSpaceScheduler
 
     ::stdexec::sender auto schedule() const noexcept { return Sender{.env = env}; }
 
-    /**
-     * @name Customization points.
-     *
-     * Sender algorithms are customizable. We follow the approach developed in
-     * https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-customization.
-     *
-     * See also:
-     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/exec/static_thread_pool.hpp#L236-L245
-     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/exec/static_thread_pool.hpp#L264-L278
-     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/exec/static_thread_pool.hpp#L427-L429
-     *  - https://github.com/NVIDIA/stdexec/blob/3302dda347491a6818861d418d37d930c7ef088e/include/stdexec/__detail/__sender_introspection.hpp#L23-L31
-     */
-    ///@{
-    //! For @c then and @c bulk.
-    struct TransformDispatch
-    {
-        ExecutionSpaceScheduler schd;
-
-        template <typename Functor, stdexec::sender Sndr>
-        auto operator()(stdexec::then_t, Functor&& functor, Sndr&& sndr) && noexcept {
-            return ThenSender<Sndr, Functor, ExecutionSpaceScheduler>{
-                .sndr    = std::forward<Sndr>(sndr),
-                .functor = std::forward<Functor>(functor),
-                .schd    = std::move(schd)
-            };
-        }
-
-        template <typename Data, stdexec::sender Sndr>
-        auto operator()(stdexec::bulk_t, Data&& data, Sndr&& sndr) && noexcept {
-            auto [policy, shape, functor] = std::forward<Data>(data);
-            return BulkSender<Sndr, decltype(policy), decltype(shape), decltype(functor), ExecutionSpaceScheduler>{
-                .sndr    = std::forward<Sndr>(sndr),
-                .policy  = std::move(policy),
-                .shape   = std::move(shape),
-                .functor = std::move(functor),
-                .schd    = std::move(schd)
-            };
-        }
-    };
-
     struct Domain
     {
         /**
@@ -145,23 +98,19 @@ struct ExecutionSpaceScheduler
             return SyncWait{}(std::move(schd), std::forward<Sndr>(sndr));
         }
 
-        //! For customization of @c then or @c bulk.
+        //! For customization of @c then or @c bulk or @c continues_on.
         template <stdexec::sender Sndr, typename Env> requires (
-            (std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t> || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>)
+            (
+                std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t>
+             || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>
+             || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::continues_on_t>
+            )
             && execution_space_completing_sender<Sndr, Env>)
-        auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) const noexcept
+        static auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) noexcept
         {
-            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env_);
-            return sndr.apply(std::forward<Sndr>(sndr), TransformDispatch{.schd = std::move(schd)});
-        }
-
-        //! For customization of @c continues_on.
-        template <stdexec::sender_expr_for<stdexec::continues_on_t> Sndr, typename Env>
-            requires execution_space_completing_sender<Sndr, Env>
-        static auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env&) noexcept {
             return sndr.apply(
                 std::forward<Sndr>(sndr),
-                transform_sender_for<stdexec::continues_on_t, Env>{}
+                transform_sender_for<stdexec::tag_of_t<Sndr>, Env>{.env_ = env_}
             );
         }
 
@@ -193,7 +142,6 @@ struct ExecutionSpaceScheduler
     [[nodiscard]] constexpr auto query(stdexec::get_completion_domain_t<::stdexec::set_value_t>) const noexcept -> Domain {
         return {};
     }
-    ///@}
 
     bool operator==(const ExecutionSpaceScheduler&) const noexcept = default;
 
