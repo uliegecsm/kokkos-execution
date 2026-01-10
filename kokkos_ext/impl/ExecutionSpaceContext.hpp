@@ -139,8 +139,14 @@ struct ExecutionSpaceScheduler
 
     auto query(stdexec::get_domain_t) const noexcept { return Domain{}; }
 
-    [[nodiscard]] constexpr auto query(stdexec::get_completion_domain_t<::stdexec::set_value_t>) const noexcept -> Domain {
+    [[nodiscard]] constexpr auto
+    query(stdexec::get_completion_domain_t<::stdexec::set_value_t>) const noexcept -> Domain {
         return {};
+    }
+
+    [[nodiscard]] constexpr auto
+    query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> ExecutionSpaceScheduler {
+        return ExecutionSpaceScheduler{env};
     }
 
     bool operator==(const ExecutionSpaceScheduler&) const noexcept = default;
