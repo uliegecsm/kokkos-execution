@@ -6,6 +6,9 @@
 namespace Kokkos::Experimental::details::execution_space
 {
 
+template <class Tag, class Env>
+struct transform_sender_for;
+
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
 struct ExecutionSpaceSchedulerEnv;
 

@@ -126,15 +126,6 @@ struct ExecutionSpaceScheduler
         }
     };
 
-    struct TransformContinuesOn
-    {
-        template <stdexec::scheduler Schd, ::stdexec::sender Sndr>
-        auto operator()(stdexec::continues_on_t, Schd&& schd, Sndr&& sndr) && noexcept {
-            static_assert(std::same_as<Schd, ExecutionSpaceScheduler>);
-            return ContinuesOnSender{.schd = std::forward<Schd>(schd), .sndr = std::forward<Sndr>(sndr)};
-        }
-    };
-
     struct Domain
     {
         /**
@@ -167,8 +158,11 @@ struct ExecutionSpaceScheduler
         //! For customization of @c continues_on.
         template <stdexec::sender_expr_for<stdexec::continues_on_t> Sndr, typename Env>
             requires execution_space_completing_sender<Sndr, Env>
-        auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env&) const noexcept {
-            return sndr.apply(std::forward<Sndr>(sndr), TransformContinuesOn{});
+        static auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env&) noexcept {
+            return sndr.apply(
+                std::forward<Sndr>(sndr),
+                transform_sender_for<stdexec::continues_on_t, Env>{}
+            );
         }
 
         //! For customization of @c schedule_from.
