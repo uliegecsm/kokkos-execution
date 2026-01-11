@@ -58,14 +58,14 @@ TEST_F(BulkTest, bulk)
 
     using chain_t = decltype(chain);
 
-    //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler::Domain domain.
+    //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::Domain domain.
     static_assert(std::same_as<
         ::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>,
         ::stdexec::default_domain
     >);
     static_assert(std::same_as<
         ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
-        Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler<execution_space>::Domain
+        Kokkos::Experimental::details::execution_space::Domain
     >);
 
     //! It has a completion scheduler for the value channel.
