@@ -29,7 +29,6 @@ class BulkTest : public impl::ExecutionSpaceContextTest<execution_space>,
 {
 public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
-    using variant_t           = std::variant    <BeginFenceEvent, BeginParallelForEvent>;
 };
 
 template <typename ViewType>
@@ -78,7 +77,7 @@ TEST_F(BulkTest, bulk)
         recorder_listener_t::record([chain = std::move(chain)] () mutable {
             ::stdexec::sync_wait(std::move(chain));
         }),
-        ContainsInOrder<variant_t>(
+        ::testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "bulk")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
         )

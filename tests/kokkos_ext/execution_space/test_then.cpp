@@ -66,7 +66,7 @@ TEST_F(ThenTest, then_schedule)
         recorder_listener_t::record([chain = std::move(chain)] () mutable {
             ::stdexec::sync_wait(std::move(chain));
         }),
-        ContainsInOrder<variant_t>(
+        ::testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
@@ -125,20 +125,16 @@ TEST_F(ThenTest, then_starts_on)
         ::stdexec::completion_signatures<::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>
     >);
 
-    /// We can compile and sync wait; the @c then are indeed launched using our customization of @c then.
-    /// However, the result can't be verified yet because we haven't customized @c starts_on yet.
-    /// We are therefore missing a fence, that we have to add manually.
-    /// @todo Remove the manual fence once the @c starts_on is properly customized.
-    ASSERT_THAT(
-        recorder_listener_t::record([starts_on = std::move(starts_on)] () mutable {
-            ::stdexec::sync_wait(std::move(starts_on));
-        }),
-        ContainsInOrder<variant_t>(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")))
-    );
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    exec.fence();
+    ASSERT_THAT(
+        recorder_listener_t::record([starts_on = std::move(starts_on)] () mutable { ::stdexec::sync_wait(std::move(starts_on)); }),
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
+    ));
+
     ASSERT_EQ(data(), 2);
 }
 
