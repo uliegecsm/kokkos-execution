@@ -128,7 +128,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
 
     /**
      * The environment of the receiver created by the customization of the most downstream @c then
-     * is not queryable with @ref Kokkos::Experimental::details::execution_space::get_exec_t.
+     * is queryable with @ref Kokkos::Experimental::details::execution_space::get_exec_t.
      */
     using then_rcvr_t = Kokkos::Experimental::details::execution_space::ThenReceiver<
         tests::kokkos_ext::DummyReceiver,
@@ -136,7 +136,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         Kokkos::Experimental::details::execution_space::Scheduler<execution_space>
     >;
     static_assert(std::same_as<decltype(op_state.rcvr.rcvr.rcvr.rcvr), then_rcvr_t>);
-    static_assert(!::stdexec::__queryable_with<
+    static_assert(::stdexec::__queryable_with<
                   ::stdexec::env_of_t<then_rcvr_t>,
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
@@ -169,7 +169,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
     ASSERT_EQ(
-        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr.rcvr)).get(), exec_B);
+        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr.rcvr)).get(), exec_A);
 
     using then_sfrom_con_B_then_rcvr_t = Kokkos::Experimental::details::execution_space::ThenReceiver<
         sfrom_con_B_then_rcvr_t,
@@ -182,7 +182,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
     ASSERT_EQ(
-        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr)).get(), exec_B);
+        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr)).get(), exec_A);
 
     static_assert(std::same_as<
                   decltype(op_state),

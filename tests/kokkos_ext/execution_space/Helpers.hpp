@@ -32,6 +32,7 @@ public:
     using schedule_sender_t  = decltype(::stdexec::schedule(std::declval<scheduler_t>()));
 
     using view_s_t = Kokkos::View<int, Kokkos::SharedSpace>;
+    using view_sa_t = Kokkos::View<int, Kokkos::SharedSpace, Kokkos::MemoryTraits<Kokkos::Atomic>>;
 
 public:
 #if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
