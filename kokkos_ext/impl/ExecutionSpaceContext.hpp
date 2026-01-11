@@ -41,6 +41,28 @@ struct ExecutionSpaceSchedulerEnv
     Exec exec;
 };
 
+struct Domain : public stdexec::default_domain
+{
+    template <typename Tag, ::stdexec::sender Sndr, typename... Args>
+        requires stdexec::__callable<apply_sender_for<Tag>, Sndr, Args...>
+    static auto apply_sender(Tag, Sndr&& sndr, Args&&... args) {
+        return apply_sender_for<Tag>{}(std::forward<Sndr>(sndr), std::forward<Args>(args)...);
+    }
+
+    template <stdexec::sender Sndr, typename Env>
+        requires stdexec::__callable<
+            stdexec::__sexpr_apply_t,
+            Sndr,
+            transform_sender_for<stdexec::tag_of_t<Sndr>, Env>
+        >
+    static auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) {
+        return stdexec::__sexpr_apply(
+            std::forward<Sndr>(sndr),
+            transform_sender_for<stdexec::tag_of_t<Sndr>, Env>{.env_ = env_}
+        );
+    }
+};
+
 //! Scheduler for a @c Kokkos execution space.
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
 struct ExecutionSpaceScheduler
@@ -78,43 +100,6 @@ struct ExecutionSpaceScheduler
     explicit ExecutionSpaceScheduler(T&& exec) : env{std::forward<T>(exec)} {}
 
     ::stdexec::sender auto schedule() const noexcept { return Sender{.env = env}; }
-
-    struct Domain
-    {
-        /**
-         * @brief Customize @c sync_wait.
-         *
-         * References:
-         *  - https://github.com/NVIDIA/stdexec/blob/e8a6a7b25fbc2463e1dfe0ee20973b1fe622bfcf/include/nvexec/stream_context.cuh#L247-L251
-         *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#spec-execution.senders.consumers.sync_wait
-         *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-dispatch
-         *
-         * @todo Make the @c noexcept specifier depend on the completion signatures of @p sndr.
-         */
-        template <execution_space_completing_sender Sndr>
-        auto apply_sender(stdexec::sync_wait_t, Sndr&& sndr) const noexcept(false)
-        {
-            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::env{});
-            return SyncWait{}(std::move(schd), std::forward<Sndr>(sndr));
-        }
-
-        //! For customization of @c then or @c bulk or @c continues_on or @c schedule_from.
-        template <stdexec::sender Sndr, typename Env> requires (
-            (
-                std::same_as<stdexec::tag_of_t<Sndr>, stdexec::then_t>
-             || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::bulk_t>
-             || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::continues_on_t>
-             || std::same_as<stdexec::tag_of_t<Sndr>, stdexec::schedule_from_t>
-            )
-            && execution_space_completing_sender<Sndr, Env>)
-        static auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) noexcept
-        {
-            return stdexec::__sexpr_apply(
-                std::forward<Sndr>(sndr),
-                transform_sender_for<stdexec::tag_of_t<Sndr>, Env>{.env_ = env_}
-            );
-        }
-    };
 
     auto query(stdexec::get_domain_t) const noexcept { return Domain{}; }
 
