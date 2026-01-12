@@ -5,6 +5,12 @@
 
 #include "Kokkos_Core.hpp"
 
+#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+#include "plog/Formatters/TxtFormatter.h"
+#include "plog/Initializers/ConsoleInitializer.h"
+#include "plog/Log.h"
+#endif
+
 #include "kokkos-utils/concepts/ExecutionSpace.hpp"
 #include "kokkos-utils/tests/scoped/ExecutionSpace.hpp"
 
@@ -27,6 +33,13 @@ public:
     using scheduler_domain_t = std::invoke_result_t<::stdexec::get_domain_t, scheduler_t>;
 
     using view_s_t = Kokkos::View<int, Kokkos::SharedSpace>;
+
+public:
+#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+    static void SetUpTestSuite() {
+        ::plog::init<::plog::TxtFormatter>(::plog::debug, ::plog::streamStdOut);
+    }
+#endif
 };
 
 } // namespace impl
