@@ -14,6 +14,10 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "Kokkos_Core.hpp"
 
+#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+#include "plog/Log.h"
+#endif
+
 #include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
 
 #include "kokkos_ext/impl/execution_space/bulk.hpp"
@@ -46,6 +50,9 @@ struct Domain : public stdexec::default_domain
     template <typename Tag, ::stdexec::sender Sndr, typename... Args>
         requires stdexec::__callable<apply_sender_for<Tag>, Sndr, Args...>
     static auto apply_sender(Tag, Sndr&& sndr, Args&&... args) {
+#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+        PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": apply_sender for tag " << Kokkos::Impl::TypeInfo<Tag>::name();
+#endif
         return apply_sender_for<Tag>{}(std::forward<Sndr>(sndr), std::forward<Args>(args)...);
     }
 
@@ -56,6 +63,9 @@ struct Domain : public stdexec::default_domain
             transform_sender_for<stdexec::tag_of_t<Sndr>, Env>
         >
     static auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) {
+#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+        PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": transform_sender for tag " << Kokkos::Impl::TypeInfo<stdexec::tag_of_t<Sndr>>::name();
+#endif
         return stdexec::__sexpr_apply(
             std::forward<Sndr>(sndr),
             transform_sender_for<stdexec::tag_of_t<Sndr>, Env>{.env_ = env_}
