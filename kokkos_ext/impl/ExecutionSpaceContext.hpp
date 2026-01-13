@@ -32,19 +32,6 @@ namespace Kokkos::Experimental
 namespace details::execution_space
 {
 
-//! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
-template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
-struct ExecutionSpaceSchedulerEnv
-{
-    [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
-        return ExecutionSpaceScheduler{exec};
-    }
-
-    bool operator==(const ExecutionSpaceSchedulerEnv&) const noexcept = default;
-
-    Exec exec;
-};
-
 struct Domain : public stdexec::default_domain
 {
     template <typename Tag, ::stdexec::sender Sndr, typename... Args>
@@ -73,10 +60,30 @@ struct Domain : public stdexec::default_domain
     }
 };
 
+//! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
+template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+struct ExecutionSpaceSchedulerEnv
+{
+    [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
+        return ExecutionSpaceScheduler{exec};
+    }
+
+    [[nodiscard]] constexpr auto query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
+        return {};
+    }
+
+    bool operator==(const ExecutionSpaceSchedulerEnv&) const noexcept = default;
+
+    Exec exec;
+};
+
 //! Scheduler for a @c Kokkos execution space.
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
 struct ExecutionSpaceScheduler
 {
+    //! As per https://eel.is/c++draft/exec.sched#1.
+    using scheduler_concept = stdexec::scheduler_t;
+
     template <stdexec::receiver Rcvr>
     struct OpState
     {
@@ -106,12 +113,7 @@ struct ExecutionSpaceScheduler
         ExecutionSpaceSchedulerEnv<Exec> env;
     };
 
-    template <typename T>
-    explicit ExecutionSpaceScheduler(T&& exec) : env{std::forward<T>(exec)} {}
-
     ::stdexec::sender auto schedule() const noexcept { return Sender{.env = env}; }
-
-    auto query(stdexec::get_domain_t) const noexcept { return Domain{}; }
 
     [[nodiscard]] constexpr auto
     query(stdexec::get_completion_domain_t<::stdexec::set_value_t>) const noexcept -> Domain {
@@ -146,7 +148,9 @@ struct ExecutionSpaceContext
 {
     Exec exec;
 
-    auto get_scheduler() const noexcept { return details::execution_space::ExecutionSpaceScheduler{exec}; }
+    auto get_scheduler() const noexcept -> details::execution_space::ExecutionSpaceScheduler<Exec> {
+        return {exec};
+    }
 };
 
 } // namespace Kokkos::Experimental
