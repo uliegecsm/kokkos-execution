@@ -30,7 +30,6 @@ public:
     using context_t          = Kokkos::Experimental::ExecutionSpaceContext<Exec>;
     using scheduler_t        = decltype(std::declval<const context_t>().get_scheduler());
     using schedule_sender_t  = decltype(::stdexec::schedule(std::declval<scheduler_t>()));
-    using scheduler_domain_t = std::invoke_result_t<::stdexec::get_domain_t, scheduler_t>;
 
     using view_s_t = Kokkos::View<int, Kokkos::SharedSpace>;
 
