@@ -16,15 +16,15 @@
 
 using execution_space = Kokkos::DefaultExecutionSpace;
 
-namespace tests::kokkos_ext
-{
+namespace tests::kokkos_ext {
 
-using execution_space_scheduler_t = decltype(std::declval<const Kokkos::Experimental::ExecutionSpaceContext<execution_space>&>().get_scheduler());
-using execution_space_env_t       = Kokkos::Experimental::details::execution_space::ExecutionSpaceSchedulerEnv<execution_space>;
+using execution_space_scheduler_t =
+    decltype(std::declval<const Kokkos::Experimental::ExecutionSpaceContext<execution_space>&>().get_scheduler());
+using execution_space_env_t =
+    Kokkos::Experimental::details::execution_space::ExecutionSpaceSchedulerEnv<execution_space>;
 
 //! @test @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler verifies @c stdexec::scheduler.
-constexpr bool test_is_a_scheduler()
-{
+constexpr bool test_is_a_scheduler() {
     static_assert(stdexec::scheduler<execution_space_scheduler_t>);
 
     /**
@@ -40,15 +40,20 @@ constexpr bool test_is_a_scheduler()
 static_assert(test_is_a_scheduler());
 
 //! @test Check @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler queries.
-constexpr bool test_scheduler_queries()
-{
+constexpr bool test_scheduler_queries() {
     static_assert(std::same_as<
-        stdexec::__query_result_t<execution_space_scheduler_t, stdexec::get_completion_domain_t<stdexec::set_value_t>>,
-        Kokkos::Experimental::details::execution_space::Domain
+                  stdexec::__query_result_t<
+                      execution_space_scheduler_t,
+                      stdexec::get_completion_domain_t<stdexec::set_value_t>
+                  >,
+                  Kokkos::Experimental::details::execution_space::Domain
     >);
     static_assert(std::same_as<
-        stdexec::__query_result_t<execution_space_scheduler_t, stdexec::get_completion_scheduler_t<stdexec::set_value_t>>,
-        execution_space_scheduler_t
+                  stdexec::__query_result_t<
+                      execution_space_scheduler_t,
+                      stdexec::get_completion_scheduler_t<stdexec::set_value_t>
+                  >,
+                  execution_space_scheduler_t
     >);
 
     return true;
@@ -59,29 +64,27 @@ static_assert(test_scheduler_queries());
  * @test Check that the @c stdexec::get_env query on @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler::Sender returns
  *       @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceSchedulerEnv.
  */
-constexpr bool test_scheduler_sender_get_env()
-{
-    static_assert(std::same_as<
-        stdexec::env_of_t<typename execution_space_scheduler_t::Sender>,
-        const execution_space_env_t&
-    >);
+constexpr bool test_scheduler_sender_get_env() {
+    static_assert(
+        std::same_as<stdexec::env_of_t<typename execution_space_scheduler_t::Sender>, const execution_space_env_t&>);
 
     return true;
 }
 static_assert(test_scheduler_sender_get_env());
 
 //! @test Check queries of @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceSchedulerEnv.
-constexpr bool test_environment_queries()
-{
-    static_assert(std::same_as<
-        stdexec::__query_result_t<execution_space_env_t, stdexec::get_completion_scheduler_t<stdexec::set_value_t>>,
-        execution_space_scheduler_t
-    >);
+constexpr bool test_environment_queries() {
+    static_assert(
+        std::same_as<
+            stdexec::__query_result_t<execution_space_env_t, stdexec::get_completion_scheduler_t<stdexec::set_value_t>>,
+            execution_space_scheduler_t
+        >);
 
-    static_assert(std::same_as<
-        stdexec::__query_result_t<execution_space_env_t, stdexec::get_completion_domain_t<stdexec::set_value_t>>,
-        Kokkos::Experimental::details::execution_space::Domain
-    >);
+    static_assert(
+        std::same_as<
+            stdexec::__query_result_t<execution_space_env_t, stdexec::get_completion_domain_t<stdexec::set_value_t>>,
+            Kokkos::Experimental::details::execution_space::Domain
+        >);
 
     return true;
 }
