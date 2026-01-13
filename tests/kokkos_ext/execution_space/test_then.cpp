@@ -4,6 +4,7 @@
 #include "tests/CallbackMatchers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
+#include "tests/utils/ThrowsWhenCopied.hpp"
 
 /**
  * @addtogroup unittests
@@ -136,6 +137,20 @@ TEST_F(ThenTest, then_starts_on)
     ));
 
     ASSERT_EQ(data(), 2);
+}
+
+//! @test If an exception is thrown while dispatching a @c Kokkos parallel region, it is properly caught and propagated.
+TEST_F(ThenTest, error_propagates)
+{
+    const context_t esc{exec};
+
+    ::stdexec::sender auto sndr = ::stdexec::schedule(esc.get_scheduler())
+        | ::stdexec::then(::tests::utils::ThrowsWhenCopied{});
+
+    ASSERT_THAT(
+        ::tests::utils::MutableMoveToSyncWait{.sndr = std::move(sndr)},
+        ::testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("ThrowsWhenCopied: Throwing in copy constructor!"))
+    );
 }
 
 /**
