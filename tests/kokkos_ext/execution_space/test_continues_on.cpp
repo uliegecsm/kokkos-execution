@@ -191,4 +191,26 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
     ASSERT_EQ(data(), 3) << "A synchronization is missing.";
 }
 
+//! @test No kernel launch happens, but @c stdexec::sync_wait fences when starting with @c stdexec::just_stopped.
+TEST_F(ContinuesOnTest, just_stopped)
+{
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec}; SHOW_EXEC_SPACE_ID(exec)
+
+    auto chain = ::stdexec::just_stopped()
+        | ::stdexec::continues_on(esc.get_scheduler())
+        | ADD_THEN;
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+
+    ASSERT_THAT(recorded_events, ::testing::ElementsAre(
+        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
+    ));
+
+    ASSERT_EQ(data(), 0) << "It should not execute on 'set_error'.";
+}
+
 } // namespace tests::kokkos_ext
