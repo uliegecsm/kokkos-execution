@@ -13,3 +13,4 @@ add_one_test(NAME parallel_reduce ${LAUNCHER_ARGS})
 add_one_test(NAME utils           ${LAUNCHER_ARGS})
 
 add_subdirectory(execution_space)
+add_subdirectory(graph)
