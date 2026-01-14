@@ -16,8 +16,6 @@ PRAGMA_DIAGNOSTIC_POP
 #include "plog/Log.h"
 #endif
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
-
 #include "kokkos_ext/impl/execution_space/bulk.hpp"
 #include "kokkos_ext/impl/execution_space/continues_on.hpp"
 #include "kokkos_ext/impl/execution_space/schedule_from.hpp"
