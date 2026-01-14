@@ -12,10 +12,10 @@ struct apply_sender_for;
 template <class Tag, class Env>
 struct transform_sender_for;
 
-template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+template <Kokkos::ExecutionSpace Exec>
 struct SchedulerEnv;
 
-template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
 //! Concept for a sender whose completion scheduler is @ref Kokkos::Experimental::details::execution_space::Scheduler.

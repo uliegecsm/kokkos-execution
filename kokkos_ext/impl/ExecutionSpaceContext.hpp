@@ -59,7 +59,7 @@ struct Domain : public stdexec::default_domain
 };
 
 //! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
-template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+template <Kokkos::ExecutionSpace Exec>
 struct SchedulerEnv
 {
     [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> Scheduler<Exec> {
@@ -79,7 +79,7 @@ struct SchedulerEnv
  * Note that storing a @c Kokkos execution space instance and moving it around
  * generally implies a shared pointer copy, see https://github.com/kokkos/kokkos/pull/8807.
  */
-template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+template <Kokkos::ExecutionSpace Exec>
 struct Scheduler
 {
     //! As per https://eel.is/c++draft/exec.sched#1.
@@ -140,7 +140,7 @@ struct Scheduler
  *  1. The execution context will be the @c Cuda stream stored by the @c Kokkos::Cuda instance @ref exec.
  *  2. The execution resource is the GPU the stream is attached to.
  */
-template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
+template <Kokkos::ExecutionSpace Exec>
 struct ExecutionSpaceContext
 {
     Exec exec;
