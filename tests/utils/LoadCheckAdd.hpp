@@ -4,6 +4,18 @@
 #include "Kokkos_Core.hpp"
 
 namespace tests::utils {
+
+template <Kokkos::ExecutionSpace Exec>
+constexpr bool on_device() {
+#if defined(KOKKOS_ENABLE_CUDA)
+    return std::same_as<Exec, Kokkos::Cuda>;
+#elif defined(KOKKOS_ENABLE_HIP)
+    return std::same_as<Exec, Kokkos::HIP>;
+#else
+    return false;
+#endif
+}
+
 /**
  * @brief Load the value at @ref data and check it is equal to @ref prev. Then, add @ref value to it.
  *

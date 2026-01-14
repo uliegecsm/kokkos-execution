@@ -44,13 +44,7 @@ public:
 
     using value_t = typename view_s_t::value_type;
 
-#if defined(KOKKOS_ENABLE_CUDA)
-    static constexpr bool on_device = std::same_as<execution_space, Kokkos::Cuda>;
-#elif defined(KOKKOS_ENABLE_HIP)
-    static constexpr bool on_device = std::same_as<execution_space, Kokkos::HIP>;
-#else
-    static constexpr bool on_device = false;
-#endif
+    static constexpr bool on_device = ::tests::utils::on_device<execution_space>();
 };
 
 //! @test Transition from @ref Kokkos::Experimental::ExecutionSpaceContext to @c stdexec::inline_scheduler.
