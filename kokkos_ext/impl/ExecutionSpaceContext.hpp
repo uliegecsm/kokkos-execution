@@ -75,7 +75,12 @@ struct ExecutionSpaceSchedulerEnv
     Exec exec;
 };
 
-//! Scheduler for a @c Kokkos execution space.
+/**
+ * @brief Scheduler for a @c Kokkos execution space.
+ *
+ * Note that storing a @c Kokkos execution space instance and moving it around
+ * generally implies a shared pointer copy, see https://github.com/kokkos/kokkos/pull/8807.
+ */
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
 struct ExecutionSpaceScheduler
 {
