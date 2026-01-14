@@ -6,7 +6,7 @@
  * Traits of the scheduler of @c Kokkos::Experimental::ExecutionSpaceContext
  * -------------------------------------------------------------------------
  *
- * This group of tests check that @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler is a proper scheduler.
+ * This group of tests check that @ref Kokkos::Experimental::details::execution_space::Scheduler is a proper scheduler.
  *
  * The tests can be found in @ref tests/kokkos_ext/execution_space/test_scheduler.cpp.
  * 
@@ -20,10 +20,9 @@ namespace tests::kokkos_ext {
 
 using execution_space_scheduler_t =
     decltype(std::declval<const Kokkos::Experimental::ExecutionSpaceContext<execution_space>&>().get_scheduler());
-using execution_space_env_t =
-    Kokkos::Experimental::details::execution_space::ExecutionSpaceSchedulerEnv<execution_space>;
+using execution_space_env_t = Kokkos::Experimental::details::execution_space::SchedulerEnv<execution_space>;
 
-//! @test @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler verifies @c stdexec::scheduler.
+//! @test @ref Kokkos::Experimental::details::execution_space::Scheduler verifies @c stdexec::scheduler.
 constexpr bool test_is_a_scheduler() {
     static_assert(stdexec::scheduler<execution_space_scheduler_t>);
 
@@ -39,7 +38,7 @@ constexpr bool test_is_a_scheduler() {
 }
 static_assert(test_is_a_scheduler());
 
-//! @test Check @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler queries.
+//! @test Check @ref Kokkos::Experimental::details::execution_space::Scheduler queries.
 constexpr bool test_scheduler_queries() {
     static_assert(std::same_as<
                   stdexec::__query_result_t<
@@ -61,8 +60,8 @@ constexpr bool test_scheduler_queries() {
 static_assert(test_scheduler_queries());
 
 /**
- * @test Check that the @c stdexec::get_env query on @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceScheduler::Sender returns
- *       @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceSchedulerEnv.
+ * @test Check that the @c stdexec::get_env query on @ref Kokkos::Experimental::details::execution_space::Scheduler::Sender returns
+ *       @ref Kokkos::Experimental::details::execution_space::SchedulerEnv.
  */
 constexpr bool test_scheduler_sender_get_env() {
     static_assert(
@@ -72,7 +71,7 @@ constexpr bool test_scheduler_sender_get_env() {
 }
 static_assert(test_scheduler_sender_get_env());
 
-//! @test Check queries of @ref Kokkos::Experimental::details::execution_space::ExecutionSpaceSchedulerEnv.
+//! @test Check queries of @ref Kokkos::Experimental::details::execution_space::SchedulerEnv.
 constexpr bool test_environment_queries() {
     static_assert(
         std::same_as<
