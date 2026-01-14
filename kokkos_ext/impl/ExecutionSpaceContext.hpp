@@ -62,15 +62,13 @@ struct Domain : public stdexec::default_domain
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
 struct ExecutionSpaceSchedulerEnv
 {
-    [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
-        return ExecutionSpaceScheduler{exec};
+    [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> ExecutionSpaceScheduler<Exec> {
+        return {exec};
     }
 
     [[nodiscard]] constexpr auto query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
         return {};
     }
-
-    bool operator==(const ExecutionSpaceSchedulerEnv&) const noexcept = default;
 
     Exec exec;
 };
@@ -111,12 +109,12 @@ struct ExecutionSpaceScheduler
             return {std::forward<Rcvr>(rcvr)};
         }
 
-        auto& get_env() const noexcept { return env; }
+        const auto& get_env() const noexcept { return env; }
 
         ExecutionSpaceSchedulerEnv<Exec> env;
     };
 
-    ::stdexec::sender auto schedule() const noexcept { return Sender{.env = env}; }
+    ::stdexec::sender auto schedule() const noexcept { return Sender{exec}; }
 
     [[nodiscard]] constexpr auto
     query(stdexec::get_completion_domain_t<::stdexec::set_value_t>) const noexcept -> Domain {
@@ -125,17 +123,13 @@ struct ExecutionSpaceScheduler
 
     [[nodiscard]] constexpr auto
     query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> ExecutionSpaceScheduler {
-        return ExecutionSpaceScheduler{env};
+        return {exec};
     }
 
     bool operator==(const ExecutionSpaceScheduler&) const noexcept = default;
 
-    ExecutionSpaceSchedulerEnv<Exec> env;
+    Exec exec;
 };
-
-//! Deduction guide for @ref ExecutionSpaceScheduler.
-template <typename Exec>
-ExecutionSpaceScheduler(Exec&&) -> ExecutionSpaceScheduler<std::remove_cvref_t<Exec>>;
 
 } // namespace details::execution_space
 
