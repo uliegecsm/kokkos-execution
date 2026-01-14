@@ -12,6 +12,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "tests/CallbackMatchers.hpp"
 #include "tests/Utils.hpp"
+#include "tests/kokkos_ext/Helpers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
 #include "tests/utils/LoadCheckAdd.hpp"
@@ -25,7 +26,7 @@ PRAGMA_DIAGNOSTIC_POP
  * This group of tests check that @ref Kokkos::Experimental::ExecutionSpaceContext can be used in
  * conjunction with other schedulers like @c exec::static_thread_pool.
  *
- * The tests can be found in @ref kokkos_ext/execution_space/test_inter_op.cpp.
+ * The tests can be found in @ref tests/kokkos_ext/execution_space/test_inter_op.cpp.
  */
 
 using execution_space = Kokkos::DefaultExecutionSpace;

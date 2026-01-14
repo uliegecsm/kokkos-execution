@@ -20,6 +20,15 @@ struct MyDummyFunctor
     }
 };
 
+//! Get the dispatch label from @p Exec and @p label.
+template <Kokkos::ExecutionSpace Exec, typename Label>
+constexpr std::string dispatch_label(const Exec&, Label&& label) {
+    return std::string(Kokkos::Impl::TypeInfo<Exec>::name()).append(": ").append(std::forward<Label>(label));
+}
+
+//! Add a @c then using @ref tests::ThenFunctor that may throw.
+#define ADD_THEN ::stdexec::then(ThenFunctor<std::remove_cvref_t<decltype(data)>, true>{.data = data})
+
 } // namespace tests::kokkos_ext
 
 #endif // GRAPH_DISPATCHING_TESTS_KOKKOS_EXT_HELPERS_HPP

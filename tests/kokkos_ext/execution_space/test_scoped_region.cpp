@@ -4,6 +4,7 @@
 #include "kokkos_ext/impl/execution_space/scoped_region.hpp"
 
 #include "tests/CallbackMatchers.hpp"
+#include "tests/kokkos_ext/Helpers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
 
@@ -16,7 +17,7 @@
  * This group of tests check that @ref Kokkos::Experimental::ExecutionSpaceContext properly defines
  * a custom algorithm @c scoped_region.
  *
- * The tests can be found in @ref kokkos_ext/execution_space/test_scoped_region.cpp.
+ * The tests can be found in @ref tests/kokkos_ext/execution_space/test_scoped_region.cpp.
  */
 
 using execution_space = Kokkos::DefaultExecutionSpace;

@@ -2,6 +2,7 @@
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
 #include "tests/CallbackMatchers.hpp"
+#include "tests/kokkos_ext/Helpers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
 
@@ -14,7 +15,7 @@
  * This group of tests check that @ref Kokkos::Experimental::ExecutionSpaceContext properly customizes
  * @c bulk.
  *
- * The tests can be found in @ref kokkos_ext/execution_space/test_bulk.cpp.
+ * The tests can be found in @ref tests/kokkos_ext/execution_space/test_bulk.cpp.
  */
 
 using execution_space = Kokkos::DefaultExecutionSpace;

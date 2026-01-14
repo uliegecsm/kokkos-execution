@@ -1,6 +1,7 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 
 #include "tests/CallbackMatchers.hpp"
+#include "tests/kokkos_ext/Helpers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/utils/ThrowsWhenCopied.hpp"
 
@@ -13,7 +14,7 @@
  * This group of tests check that @ref Kokkos::Experimental::ExecutionSpaceContext properly customizes
  * @c sync_wait.
  *
- * The tests can be found in @ref kokkos_ext/execution_space/test_sync_wait.cpp.
+ * The tests can be found in @ref tests/kokkos_ext/execution_space/test_sync_wait.cpp.
  */
 
 using execution_space = Kokkos::DefaultExecutionSpace;

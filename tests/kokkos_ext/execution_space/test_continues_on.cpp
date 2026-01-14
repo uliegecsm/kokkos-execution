@@ -3,6 +3,7 @@
 
 #include "tests/CallbackMatchers.hpp"
 #include "tests/Utils.hpp"
+#include "tests/kokkos_ext/Helpers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
 

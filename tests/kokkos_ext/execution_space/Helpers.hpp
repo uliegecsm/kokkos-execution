@@ -43,15 +43,6 @@ public:
 
 } // namespace impl
 
-//! Add a @c then using @ref tests::ThenFunctor that may throw.
-#define ADD_THEN ::stdexec::then(ThenFunctor<std::remove_cvref_t<decltype(data)>, true>{.data = data})
-
-//! Get the dispatch label from @p Exec and @p label.
-template <Kokkos::utils::concepts::ExecutionSpace Exec, typename Label>
-constexpr std::string dispatch_label(const Exec&, Label&& label) {
-    return std::string(Kokkos::Impl::TypeInfo<Exec>::name()).append(": ").append(std::forward<Label>(label));
-}
-
 template<typename T1, typename T2>
 constexpr bool are_same_instances(const T1& lhs, const T2& rhs) {
     if constexpr (std::same_as<T1, T2>) {
