@@ -105,16 +105,16 @@ struct Scheduler
         using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
 
         template <stdexec::receiver_of<completion_signatures> Rcvr>
-        OpState<std::remove_cvref_t<Rcvr>> connect(Rcvr&& rcvr) noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Rcvr>, Rcvr&&>) {
+        [[nodiscard]] OpState<std::remove_cvref_t<Rcvr>> connect(Rcvr&& rcvr) noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Rcvr>, Rcvr&&>) {
             return {std::forward<Rcvr>(rcvr)};
         }
 
-        const auto& get_env() const noexcept { return env; }
+        [[nodiscard]] constexpr auto get_env() const noexcept -> const SchedulerEnv<Exec>& { return env; }
 
         SchedulerEnv<Exec> env;
     };
 
-    stdexec::sender auto schedule() const noexcept { return Sender{exec}; }
+    [[nodiscard]] Sender schedule() const noexcept { return {exec}; }
 
     [[nodiscard]] constexpr auto
     query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
@@ -126,7 +126,7 @@ struct Scheduler
         return {exec};
     }
 
-    bool operator==(const Scheduler&) const noexcept = default;
+    [[nodiscard]] friend bool operator==(const Scheduler&, const Scheduler&) noexcept = default;
 
     Exec exec;
 };
