@@ -39,6 +39,7 @@ struct ThrowsWhenCopied {
     ThrowsWhenCopied& operator=(const ThrowsWhenCopied&) = default;
     ThrowsWhenCopied(ThrowsWhenCopied&&) = default;
     ThrowsWhenCopied& operator=(ThrowsWhenCopied&&) = default;
+    ~ThrowsWhenCopied() = default;
 
     ThrowsWhenCopied(const ThrowsWhenCopied&) {
         throw std::runtime_error("ThrowsWhenCopied: Throwing in copy constructor!");

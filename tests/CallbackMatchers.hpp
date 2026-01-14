@@ -25,6 +25,7 @@
         )                                                  \
     )
 
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
 #define MATCHER_FOR_BEGIN_FENCE(_exec_, _label_) ABeginFenceEvent         (MATCHER_FOR_NAME(BeginFence,          _label_), MATCHER_FOR_DEV_ID(BeginFence,          _exec_))
 #define MATCHER_FOR_BEGIN_PFOR( _exec_, _label_) ABeginParallelForEvent   (MATCHER_FOR_NAME(BeginParallelFor,    _label_), MATCHER_FOR_DEV_ID(BeginParallelFor,    _exec_))
 #define MATCHER_FOR_BEGIN_PRED( _exec_, _label_) ABeginParallelReduceEvent(MATCHER_FOR_NAME(BeginParallelReduce, _label_), MATCHER_FOR_DEV_ID(BeginParallelReduce, _exec_))
@@ -34,5 +35,6 @@
 #define MATCHER_FOR_BEGIN_DEEP_COPY(_dst_, _src_) \
     ABeginDeepCopyEvent(Kokkos::utils::callbacks::PartialMatcher<Kokkos::utils::callbacks::BeginDeepCopyEvent>{}( \
         Kokkos::utils::callbacks::BeginDeepCopyEvent{.dst = KOKKOS_IMPL_STRIP_PARENS(_dst_), .src = KOKKOS_IMPL_STRIP_PARENS(_src_)}))
+// NOLINTEND(cppcoreguidelines-macro-usage)
 
 #endif // GRAPH_DISPATCHING_TESTS_CALLBACKMATCHERS_HPP

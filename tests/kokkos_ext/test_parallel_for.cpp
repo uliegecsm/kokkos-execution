@@ -28,6 +28,7 @@ decltype(auto) my_function(Sender&& sender, const ViewType& data)
 {
     using policy_t = Kokkos::RangePolicy<typename std::remove_reference_t<Sender>::execution_space>;
 
+    // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
     #define MY_FUNCTION_CORE(...)                                                        \
         return std::forward<Sender>(sender) | Kokkos::Experimental::graph::parallel_for( \
             __VA_ARGS__ __VA_OPT__(,)                                                    \
@@ -62,7 +63,7 @@ using ParallelForTestTypes = ::testing::Types<
 
 TYPED_TEST_SUITE(ParallelForTest, ParallelForTestTypes);
 
-//! Avoid any global fence, as it could hide potential issues.
+//! Avoid any global fence, as it could hide potential issues. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_DATA_CONTENT(__exec__)                                     \
     typename TestFixture::view_t::value_type result = 0;                 \
     Kokkos::deep_copy(__exec__, result, Kokkos::subview(this->data, 0)); \
