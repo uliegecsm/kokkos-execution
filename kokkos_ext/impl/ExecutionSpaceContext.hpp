@@ -32,7 +32,7 @@ namespace details::execution_space
 
 struct Domain : public stdexec::default_domain
 {
-    template <typename Tag, ::stdexec::sender Sndr, typename... Args>
+    template <typename Tag, stdexec::sender Sndr, typename... Args>
         requires stdexec::__callable<apply_sender_for<Tag>, Sndr, Args...>
     static auto apply_sender(Tag, Sndr&& sndr, Args&&... args) {
 #if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
@@ -47,7 +47,7 @@ struct Domain : public stdexec::default_domain
             Sndr,
             transform_sender_for<stdexec::tag_of_t<Sndr>, Env>
         >
-    static auto transform_sender(::stdexec::set_value_t, Sndr&& sndr, const Env& env_) {
+    static auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env& env_) {
 #if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": transform_sender for tag " << Kokkos::Impl::TypeInfo<stdexec::tag_of_t<Sndr>>::name();
 #endif
@@ -60,9 +60,9 @@ struct Domain : public stdexec::default_domain
 
 //! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
-struct ExecutionSpaceSchedulerEnv
+struct SchedulerEnv
 {
-    [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> ExecutionSpaceScheduler<Exec> {
+    [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> Scheduler<Exec> {
         return {exec};
     }
 
@@ -80,7 +80,7 @@ struct ExecutionSpaceSchedulerEnv
  * generally implies a shared pointer copy, see https://github.com/kokkos/kokkos/pull/8807.
  */
 template <typename Exec> requires Kokkos::is_execution_space_v<Exec>
-struct ExecutionSpaceScheduler
+struct Scheduler
 {
     //! As per https://eel.is/c++draft/exec.sched#1.
     using scheduler_concept = stdexec::scheduler_t;
@@ -102,7 +102,7 @@ struct ExecutionSpaceScheduler
     {
         using sender_concept = stdexec::sender_t;
 
-        using completion_signatures = ::stdexec::completion_signatures<::stdexec::set_value_t()>;
+        using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
 
         template <stdexec::receiver_of<completion_signatures> Rcvr>
         OpState<std::remove_cvref_t<Rcvr>> connect(Rcvr&& rcvr) noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Rcvr>, Rcvr&&>) {
@@ -111,22 +111,22 @@ struct ExecutionSpaceScheduler
 
         const auto& get_env() const noexcept { return env; }
 
-        ExecutionSpaceSchedulerEnv<Exec> env;
+        SchedulerEnv<Exec> env;
     };
 
-    ::stdexec::sender auto schedule() const noexcept { return Sender{exec}; }
+    stdexec::sender auto schedule() const noexcept { return Sender{exec}; }
 
     [[nodiscard]] constexpr auto
-    query(stdexec::get_completion_domain_t<::stdexec::set_value_t>) const noexcept -> Domain {
+    query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
         return {};
     }
 
     [[nodiscard]] constexpr auto
-    query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> ExecutionSpaceScheduler {
+    query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> Scheduler {
         return {exec};
     }
 
-    bool operator==(const ExecutionSpaceScheduler&) const noexcept = default;
+    bool operator==(const Scheduler&) const noexcept = default;
 
     Exec exec;
 };
@@ -145,7 +145,7 @@ struct ExecutionSpaceContext
 {
     Exec exec;
 
-    auto get_scheduler() const noexcept -> details::execution_space::ExecutionSpaceScheduler<Exec> {
+    auto get_scheduler() const noexcept -> details::execution_space::Scheduler<Exec> {
         return {exec};
     }
 };
