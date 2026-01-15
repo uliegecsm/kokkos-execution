@@ -32,18 +32,6 @@ public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
 };
 
-template <typename ViewType>
-struct BulkFunctor
-{
-    ViewType data;
-
-    template <std::integral T>
-    KOKKOS_FUNCTION
-    void operator()(const T index) const {
-        Kokkos::atomic_add(data.data(), index);
-    }
-};
-
 //! @test Check that @ref Kokkos::Experimental::ExecutionSpaceContext does its duty well when used with @c bulk.
 TEST_F(BulkTest, bulk)
 {

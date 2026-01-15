@@ -1,6 +1,8 @@
 #ifndef GRAPH_DISPATCHING_TESTS_KOKKOS_EXT_HELPERS_HPP
 #define GRAPH_DISPATCHING_TESTS_KOKKOS_EXT_HELPERS_HPP
 
+#include "Kokkos_Core.hpp"
+
 namespace tests::kokkos_ext
 {
 
@@ -17,6 +19,18 @@ struct MyDummyFunctor
     KOKKOS_FUNCTION
     void operator()(const T index, R& current) const {
         current += data(index);
+    }
+};
+
+template <typename ViewType>
+struct BulkFunctor
+{
+    ViewType data;
+
+    template <std::integral T>
+    KOKKOS_FUNCTION
+    void operator()(const T index) const {
+        Kokkos::atomic_add(data.data(), index);
     }
 };
 
