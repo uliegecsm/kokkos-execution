@@ -32,7 +32,6 @@ class ScopedRegionTest : public impl::ExecutionSpaceContextTest<execution_space>
 {
 public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent, PushRegionEvent, PopRegionEvent>;
-    using variant_t           = std::variant    <BeginFenceEvent, BeginParallelForEvent, PushRegionEvent, PopRegionEvent>;
 };
 
 /**

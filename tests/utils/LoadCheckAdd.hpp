@@ -30,13 +30,15 @@ struct LoadCheckAddFunctor {
     KOKKOS_FUNCTION
     void operator()() const {
         if constexpr (OnDevice) {
-            KOKKOS_IF_ON_HOST(Kokkos::abort("Bulk: you should not be running on host.");)
+            KOKKOS_IF_ON_HOST(Kokkos::abort("You should not be running on host.");)
         } else {
-            KOKKOS_IF_ON_DEVICE(Kokkos::abort("Bulk: you should not be running on device.");)
+            KOKKOS_IF_ON_DEVICE(Kokkos::abort("You should not be running on device.");)
         }
 
-        if (*data != prev)
-            Kokkos::abort("Unexpected value.");
+        if (*data != prev) {
+            KOKKOS_IF_ON_HOST(Kokkos::abort("Unexpected value on host.");)
+            KOKKOS_IF_ON_DEVICE(Kokkos::abort("Unexpected value on device.");)
+        }
         *data += value;
     }
 };

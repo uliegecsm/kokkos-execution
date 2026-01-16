@@ -41,7 +41,6 @@ class InterOpTest : public impl::ExecutionSpaceContextTest<execution_space>,
 {
 public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
-    using variant_t           = std::variant    <BeginFenceEvent, BeginParallelForEvent>;
 
     using value_t = typename view_s_t::value_type;
 
@@ -65,9 +64,6 @@ TEST_F(InterOpTest, transition_to_inline_scheduler)
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
-    for (const auto& recorded_event : recorded_events) {
-        std::visit([] (const auto& arg) { std::cout << "- " << arg << std::endl; }, recorded_event);
-    }
 
     EXPECT_THAT(recorded_events, ::testing::ElementsAre(
         MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
