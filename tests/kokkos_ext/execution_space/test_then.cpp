@@ -117,9 +117,9 @@ TEST_F(ThenTest, then_starts_on)
     >);
 
     //! Until it is connected, the completion signatures are *dependent* (they are not fully known yet).
-    static_assert(std::same_as<std::invoke_result_t<
-        ::stdexec::get_completion_signatures_t, starts_on_t>,
-        ::stdexec::_ERROR_<::stdexec::dependent_sender_error, ::stdexec::__errs::_WITH_SENDER_<::stdexec::__basic_sender<::stdexec::__starts_on_ns::starts_on_t, Kokkos::Experimental::details::execution_space::Scheduler<execution_space>, ::stdexec::__basic_sender<::stdexec::__then::then_t, tests::ThenFunctor<Kokkos::View<int, Kokkos::SharedSpace>>, ::stdexec::__basic_sender<::stdexec::__then::then_t, tests::ThenFunctor<Kokkos::View<int, Kokkos::SharedSpace>>, ::stdexec::__basic_sender<::stdexec::__just::just_t, ::stdexec::__tup::__tuple<>>>>>>>
+    static_assert(std::derived_from<
+        std::invoke_result_t<::stdexec::get_completion_signatures_t, starts_on_t>,
+        ::stdexec::dependent_sender_error
     >);
 
     static_assert(std::same_as<std::invoke_result_t<
