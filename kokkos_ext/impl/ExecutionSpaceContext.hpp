@@ -18,6 +18,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos_ext/impl/execution_space/bulk.hpp"
 #include "kokkos_ext/impl/execution_space/continues_on.hpp"
+#include "kokkos_ext/impl/execution_space/get_exec.hpp"
 #include "kokkos_ext/impl/execution_space/schedule_from.hpp"
 #include "kokkos_ext/impl/execution_space/sync_wait.hpp"
 #include "kokkos_ext/impl/execution_space/then.hpp"
@@ -65,6 +66,10 @@ struct SchedulerEnv
 
     [[nodiscard]] constexpr auto query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
         return {};
+    }
+
+    [[nodiscard]] constexpr auto query(get_exec_t) const noexcept -> const Exec& {
+        return exec;
     }
 
     Exec exec;
