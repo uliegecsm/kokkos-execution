@@ -89,7 +89,8 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     >);
 
     //! The default implementation of @c continuous_on has set the completion scheduler to @c sch_B.
-    ASSERT_EQ(Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(schs_A_then_con_B)), exec_A);
+    ASSERT_EQ(
+        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(schs_A_then_con_B)).get(), exec_A);
     ASSERT_EQ(
         ::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(schs_A_then_con_B)), sch_B);
 
@@ -154,7 +155,8 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
     ASSERT_EQ(
-        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr.rcvr.rcvr)), exec_B);
+        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr.rcvr.rcvr)).get(),
+        exec_B);
 
     //! The @ref Kokkos::Experimental::details::execution_space::get_exec_t query is forwarded from downstream to upstream.
     using sfrom_con_B_then_rcvr_t = Kokkos::Experimental::details::execution_space::ScheduleFromReceiver<
@@ -166,7 +168,8 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   ::stdexec::env_of_t<sfrom_con_B_then_rcvr_t>,
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
-    ASSERT_EQ(Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr.rcvr)), exec_B);
+    ASSERT_EQ(
+        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr.rcvr)).get(), exec_B);
 
     using then_sfrom_con_B_then_rcvr_t = Kokkos::Experimental::details::execution_space::ThenReceiver<
         sfrom_con_B_then_rcvr_t,
@@ -178,7 +181,8 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   ::stdexec::env_of_t<then_sfrom_con_B_then_rcvr_t>,
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
-    ASSERT_EQ(Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr)), exec_B);
+    ASSERT_EQ(
+        Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr)).get(), exec_B);
 
     static_assert(std::same_as<
                   decltype(op_state),
