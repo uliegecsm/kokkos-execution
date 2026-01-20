@@ -12,6 +12,8 @@ struct apply_sender_for;
 template <class Tag, class Env>
 struct transform_sender_for;
 
+struct Domain;
+
 template <Kokkos::ExecutionSpace Exec>
 struct State;
 
