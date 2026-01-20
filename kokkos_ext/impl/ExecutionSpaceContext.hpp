@@ -75,8 +75,8 @@ struct SchedulerEnv
         return {};
     }
 
-    [[nodiscard]] constexpr auto query(get_exec_t) const noexcept -> const Exec& {
-        return state->exec;
+    [[nodiscard]] constexpr auto query(get_exec_t) const noexcept -> ExecutionSpaceRef<Exec> {
+        return ExecutionSpaceRef{state->exec};
     }
 
     State<Exec>* state;
