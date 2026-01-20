@@ -13,6 +13,9 @@ template <class Tag, class Env>
 struct transform_sender_for;
 
 template <Kokkos::ExecutionSpace Exec>
+struct State;
+
+template <Kokkos::ExecutionSpace Exec>
 struct SchedulerEnv;
 
 template <Kokkos::ExecutionSpace Exec>

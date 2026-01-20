@@ -56,12 +56,19 @@ struct Domain : public stdexec::default_domain
     }
 };
 
+template <Kokkos::ExecutionSpace Exec>
+struct State {
+    Exec exec;
+};
+
 //! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
 template <Kokkos::ExecutionSpace Exec>
 struct SchedulerEnv
 {
+    using execution_space = Exec;
+
     [[nodiscard]] constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> Scheduler<Exec> {
-        return {exec};
+        return {state};
     }
 
     [[nodiscard]] constexpr auto query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
@@ -69,10 +76,10 @@ struct SchedulerEnv
     }
 
     [[nodiscard]] constexpr auto query(get_exec_t) const noexcept -> const Exec& {
-        return exec;
+        return state->exec;
     }
 
-    Exec exec;
+    State<Exec>* state;
 };
 
 /**
@@ -86,6 +93,8 @@ struct Scheduler
 {
     //! As per https://eel.is/c++draft/exec.sched#1.
     using scheduler_concept = stdexec::scheduler_t;
+
+    using execution_space = Exec;
 
     template <stdexec::receiver Rcvr>
     struct OpState
@@ -116,7 +125,7 @@ struct Scheduler
         SchedulerEnv<Exec> env;
     };
 
-    [[nodiscard]] Sender schedule() const noexcept { return {exec}; }
+    [[nodiscard]] Sender schedule() const noexcept { return {state}; }
 
     [[nodiscard]] constexpr auto
     query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
@@ -125,12 +134,12 @@ struct Scheduler
 
     [[nodiscard]] constexpr auto
     query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> Scheduler {
-        return {exec};
+        return {state};
     }
 
     [[nodiscard]] friend bool operator==(const Scheduler&, const Scheduler&) noexcept = default;
 
-    Exec exec;
+    State<Exec>* state;
 };
 
 } // namespace details::execution_space
@@ -139,16 +148,22 @@ struct Scheduler
  * @brief Execution context using a @c Kokkos execution space under the hood.
  *
  * For instance, if @p Exec is @c Kokkos::Cuda, the following holds true:
- *  1. The execution context will be the @c Cuda stream stored by the @c Kokkos::Cuda instance @ref exec.
+ *  1. The execution context will be the @c Cuda stream stored by the @c Kokkos::Cuda instance in @ref Kokkos::Experimental::details::execution_space::State.
  *  2. The execution resource is the GPU the stream is attached to.
  */
 template <Kokkos::ExecutionSpace Exec>
 struct ExecutionSpaceContext
 {
-    Exec exec;
+    using state_t = details::execution_space::State<Exec>;
+
+    state_t m_state;
+
+    explicit ExecutionSpaceContext(Exec exec) // NOLINT(performance-unnecessary-value-param)
+        : m_state{std::move(exec)} {
+    }
 
     auto get_scheduler() const noexcept -> details::execution_space::Scheduler<Exec> {
-        return {exec};
+        return {const_cast<state_t*>(&m_state)};
     }
 };
 
