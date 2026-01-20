@@ -21,25 +21,24 @@
 
 using execution_space = Kokkos::DefaultExecutionSpace;
 
-namespace tests::kokkos_ext
-{
+namespace tests::kokkos_ext {
 
 using namespace Kokkos::utils::callbacks;
 
-class ThenTest : public impl::ExecutionSpaceContextTest<execution_space>,
-                 public Kokkos::utils::tests::scoped::callbacks::Manager
-{
-public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
-    using variant_t           = std::variant    <BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
+class ThenTest
+    : public impl::ExecutionSpaceContextTest<execution_space>
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
+    using recorder_listener_t =
+        RecorderListener<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
+    using variant_t = std::variant<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
 };
 
 /**
  * @test Check that @ref Kokkos::Experimental::ExecutionSpaceContext does its duty well when used with @c then
  *       within a chain started with @c stdexec::schedule.
  */
-TEST_F(ThenTest, then_schedule)
-{
+TEST_F(ThenTest, then_schedule) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
@@ -49,31 +48,24 @@ TEST_F(ThenTest, then_schedule)
     using chain_t = decltype(chain);
 
     //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::Domain domain.
+    static_assert(std::same_as<::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>, ::stdexec::default_domain>);
     static_assert(std::same_as<
-        ::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>,
-        ::stdexec::default_domain
-    >);
-    static_assert(std::same_as<
-        ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
-        Kokkos::Experimental::details::execution_space::Domain
+                  ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
+                  Kokkos::Experimental::details::execution_space::Domain
     >);
 
     //! It has a completion scheduler for the value channel.
     static_assert(std::same_as<
-        decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
-        scheduler_t
+                  decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
+                  scheduler_t
     >);
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)] () mutable {
-            ::stdexec::sync_wait(std::move(chain));
-        }),
+        recorder_listener_t::record([chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); }),
         ::testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
-        )
-    );
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 2);
 }
@@ -82,8 +74,7 @@ TEST_F(ThenTest, then_schedule)
  * @test Similar to @ref tests::kokkos_ext::ThenTest_then_schedule_Test, but the chain is scheduled
  *       with a @c starts_on.
  */
-TEST_F(ThenTest, then_starts_on)
-{
+TEST_F(ThenTest, then_starts_on) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
@@ -97,11 +88,15 @@ TEST_F(ThenTest, then_starts_on)
     using chain_t = decltype(chain);
 
     static_assert(!tests::stdexec::has_completion_scheduler_for<chain_t, ::stdexec::set_value_t>);
-    static_assert(tests::stdexec::has_completion_signatures<chain_t, ::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>);
+    static_assert(tests::stdexec::has_completion_signatures<
+                  chain_t,
+                  ::stdexec::set_value_t(),
+                  ::stdexec::set_error_t(std::exception_ptr)
+    >);
 
     static_assert(std::same_as<
-        ::stdexec::__completion_domain_of_t<::stdexec::set_value_t, chain_t>,
-        ::stdexec::indeterminate_domain<>
+                  ::stdexec::__completion_domain_of_t<::stdexec::set_value_t, chain_t>,
+                  ::stdexec::indeterminate_domain<>
     >);
 
     //! Call @c starts_on.
@@ -112,46 +107,45 @@ TEST_F(ThenTest, then_starts_on)
     //! It has a completion scheduler for the value channel.
     static_assert(tests::stdexec::has_completion_scheduler_for<starts_on_t, ::stdexec::set_value_t>);
     static_assert(std::same_as<
-        decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(starts_on))),
-        scheduler_t
+                  decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(starts_on))),
+                  scheduler_t
     >);
 
     //! Until it is connected, the completion signatures are *dependent* (they are not fully known yet).
     static_assert(std::derived_from<
-        std::invoke_result_t<::stdexec::get_completion_signatures_t, starts_on_t>,
-        ::stdexec::dependent_sender_error
+                  std::invoke_result_t<::stdexec::get_completion_signatures_t, starts_on_t>,
+                  ::stdexec::dependent_sender_error
     >);
 
-    static_assert(std::same_as<std::invoke_result_t<
-        ::stdexec::get_completion_signatures_t, starts_on_t, ::stdexec::env<>>,
-        ::stdexec::completion_signatures<::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>
+    static_assert(std::same_as<
+                  std::invoke_result_t<::stdexec::get_completion_signatures_t, starts_on_t, ::stdexec::env<>>,
+                  ::stdexec::completion_signatures<::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>
     >);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record([starts_on = std::move(starts_on)] () mutable { ::stdexec::sync_wait(std::move(starts_on)); }),
+        recorder_listener_t::record(
+            [starts_on = std::move(starts_on)]() mutable { ::stdexec::sync_wait(std::move(starts_on)); }),
         ::testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
-    ));
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 2);
 }
 
 //! @test If an exception is thrown while dispatching a @c Kokkos parallel region, it is properly caught and propagated.
-TEST_F(ThenTest, error_propagates)
-{
+TEST_F(ThenTest, error_propagates) {
     const context_t esc{exec};
 
     ::stdexec::sender auto sndr = ::stdexec::schedule(esc.get_scheduler())
-        | ::stdexec::then(::tests::utils::ThrowsWhenCopied{});
+                                | ::stdexec::then(::tests::utils::ThrowsWhenCopied{});
 
     ASSERT_THAT(
         ::tests::utils::MutableMoveToSyncWait{.sndr = std::move(sndr)},
-        ::testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("ThrowsWhenCopied: Throwing in copy constructor!"))
-    );
+        ::testing::ThrowsMessage<std::runtime_error>(
+            testing::HasSubstr("ThrowsWhenCopied: Throwing in copy constructor!")));
 }
 
 /**
@@ -159,10 +153,9 @@ TEST_F(ThenTest, error_propagates)
  *
  * This test ensures that the deallocation happens after the kernels are finished.
  */
-TEST_F(ThenTest, then_lifetime)
-{
+TEST_F(ThenTest, then_lifetime) {
     //! Create the chain in a scope.
-    auto create_chain_in_scope = [&](){
+    auto create_chain_in_scope = [&]() {
         const view_s_t data(Kokkos::view_alloc("data - shared space", exec));
 
         const context_t esc{exec};
@@ -171,25 +164,22 @@ TEST_F(ThenTest, then_lifetime)
     };
 
     //! Run the whole test in a lambda.
-    auto run_test = [&](){
+    auto run_test = [&]() {
         auto chain = create_chain_in_scope();
 
         using chain_t = decltype(chain);
 
         //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::Domain domain.
+        static_assert(std::same_as<::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>, ::stdexec::default_domain>);
         static_assert(std::same_as<
-            ::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>,
-            ::stdexec::default_domain
-        >);
-        static_assert(std::same_as<
-            ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
-            Kokkos::Experimental::details::execution_space::Domain
+                      ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
+                      Kokkos::Experimental::details::execution_space::Domain
         >);
 
         //! It has a completion scheduler for the value channel.
         static_assert(std::same_as<
-            decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
-            scheduler_t
+                      decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
+                      scheduler_t
         >);
 
         ::stdexec::sync_wait(std::move(chain));
@@ -202,25 +192,15 @@ TEST_F(ThenTest, then_lifetime)
                 ::testing::Field(
                     &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
                     ::testing::Field(
-                        &Kokkos::utils::callbacks::AllocDescriptor::name,
-                        ::testing::StrEq("data - shared space")
-                    )
-                )
-            ),
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+                        &Kokkos::utils::callbacks::AllocDescriptor::name, ::testing::StrEq("data - shared space")))),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")),
             Kokkos::utils::callbacks::ADeallocateDataEvent(
                 ::testing::Field(
                     &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
                     ::testing::Field(
-                        &Kokkos::utils::callbacks::AllocDescriptor::name,
-                        ::testing::StrEq("data - shared space")
-                    )
-                )
-            )
-        )
-    );
+                        &Kokkos::utils::callbacks::AllocDescriptor::name, ::testing::StrEq("data - shared space"))))));
 }
 
 } // namespace tests::kokkos_ext

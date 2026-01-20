@@ -31,15 +31,14 @@ PRAGMA_DIAGNOSTIC_POP
 
 using execution_space = Kokkos::DefaultExecutionSpace;
 
-namespace tests::kokkos_ext
-{
+namespace tests::kokkos_ext {
 
 using namespace Kokkos::utils::callbacks;
 
-class InterOpTest : public impl::ExecutionSpaceContextTest<execution_space>,
-                    public Kokkos::utils::tests::scoped::callbacks::Manager
-{
-public:
+class InterOpTest
+    : public impl::ExecutionSpaceContextTest<execution_space>
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
 
     using value_t = typename view_s_t::value_type;
@@ -48,8 +47,7 @@ public:
 };
 
 //! @test Transition from @ref Kokkos::Experimental::ExecutionSpaceContext to @c stdexec::inline_scheduler.
-TEST_F(InterOpTest, transition_to_inline_scheduler)
-{
+TEST_F(InterOpTest, transition_to_inline_scheduler) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
@@ -57,25 +55,28 @@ TEST_F(InterOpTest, transition_to_inline_scheduler)
     SHOW_EXEC_SPACE_ID(exec)
 
     auto chain = ::stdexec::schedule(esc.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 0, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(::stdexec::inline_scheduler{})
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 4, .value = 4, .data = data.data()});
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 0, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(::stdexec::inline_scheduler{})
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 4, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
 
-    EXPECT_THAT(recorded_events, ::testing::ElementsAre(
-        MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))
-    ));
+    EXPECT_THAT(
+        recorded_events,
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 8);
 }
 
 //! @test Transition from @c stdexec::inline_scheduler to @ref Kokkos::Experimental::ExecutionSpaceContext.
-TEST_F(InterOpTest, transition_from_inline_scheduler)
-{
+TEST_F(InterOpTest, transition_from_inline_scheduler) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
     const context_t esc{exec};
@@ -83,25 +84,28 @@ TEST_F(InterOpTest, transition_from_inline_scheduler)
     SHOW_EXEC_SPACE_ID(exec)
 
     auto chain = ::stdexec::schedule(::stdexec::inline_scheduler{})
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(esc.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()});
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(esc.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
 
-    EXPECT_THAT(recorded_events, ::testing::ElementsAre(
-        MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
-    ));
+    EXPECT_THAT(
+        recorded_events,
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 8);
 }
 
 //! @test Transition from @c stdexec::inline_scheduler to @ref Kokkos::Experimental::ExecutionSpaceContext and back.
-TEST_F(InterOpTest, transition_from_inline_scheduler_and_back)
-{
+TEST_F(InterOpTest, transition_from_inline_scheduler_and_back) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
     const context_t esc{exec};
@@ -109,27 +113,31 @@ TEST_F(InterOpTest, transition_from_inline_scheduler_and_back)
     SHOW_EXEC_SPACE_ID(exec)
 
     auto chain = ::stdexec::schedule(::stdexec::inline_scheduler{})
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(esc.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(::stdexec::inline_scheduler{})
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 8, .value = 4, .data = data.data()});
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(esc.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(::stdexec::inline_scheduler{})
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 8, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
 
-    EXPECT_THAT(recorded_events, ::testing::ElementsAre(
-        MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))
-    ));
+    EXPECT_THAT(
+        recorded_events,
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 12);
 }
 
 //! @test Transition from @ref Kokkos::Experimental::ExecutionSpaceContext to @c exec::static_thread_pool.
-TEST_F(InterOpTest, transition_to_static_thread_pool)
-{
+TEST_F(InterOpTest, transition_to_static_thread_pool) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
@@ -139,25 +147,28 @@ TEST_F(InterOpTest, transition_to_static_thread_pool)
     SHOW_EXEC_SPACE_ID(exec)
 
     auto chain = ::stdexec::schedule(esc.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 0, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(pool.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 4, .value = 4, .data = data.data()});
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 0, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(pool.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 4, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
 
-    EXPECT_THAT(recorded_events, ::testing::ElementsAre(
-        MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))
-    ));
+    EXPECT_THAT(
+        recorded_events,
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 8);
 }
 
 //! @test Transition from @c exec::static_thread_pool to @ref Kokkos::Experimental::ExecutionSpaceContext.
-TEST_F(InterOpTest, transition_from_static_thread_pool)
-{
+TEST_F(InterOpTest, transition_from_static_thread_pool) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
     const context_t esc{exec};
@@ -167,25 +178,28 @@ TEST_F(InterOpTest, transition_from_static_thread_pool)
     SHOW_EXEC_SPACE_ID(exec)
 
     auto chain = ::stdexec::schedule(pool.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(esc.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()});
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(esc.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
 
-    EXPECT_THAT(recorded_events, ::testing::ElementsAre(
-        MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
-    ));
+    EXPECT_THAT(
+        recorded_events,
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 8);
 }
 
 //! @test Transition from @c exec::static_thread_pool to @ref Kokkos::Experimental::ExecutionSpaceContext and back.
-TEST_F(InterOpTest, transition_from_static_thread_pool_and_back)
-{
+TEST_F(InterOpTest, transition_from_static_thread_pool_and_back) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
     const context_t esc{exec};
@@ -195,20 +209,25 @@ TEST_F(InterOpTest, transition_from_static_thread_pool_and_back)
     SHOW_EXEC_SPACE_ID(exec)
 
     auto chain = ::stdexec::schedule(pool.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(esc.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()})
-        | ::stdexec::continues_on(pool.get_scheduler())
-        | ::stdexec::then(tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 8, .value = 4, .data = data.data()});
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 0, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(esc.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(pool.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 8, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
 
-    EXPECT_THAT(recorded_events, ::testing::ElementsAre(
-        MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-        MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))
-    ));
+    EXPECT_THAT(
+        recorded_events,
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 12);
 }

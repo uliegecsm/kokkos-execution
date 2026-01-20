@@ -20,21 +20,19 @@
 
 using execution_space = Kokkos::DefaultExecutionSpace;
 
-namespace tests::kokkos_ext
-{
+namespace tests::kokkos_ext {
 
 using namespace Kokkos::utils::callbacks;
 
-class BulkTest : public impl::ExecutionSpaceContextTest<execution_space>,
-                 public Kokkos::utils::tests::scoped::callbacks::Manager
-{
-public:
+class BulkTest
+    : public impl::ExecutionSpaceContextTest<execution_space>
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
 };
 
 //! @test Check that @ref Kokkos::Experimental::ExecutionSpaceContext does its duty well when used with @c bulk.
-TEST_F(BulkTest, bulk)
-{
+TEST_F(BulkTest, bulk) {
     constexpr size_t size = 10;
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -42,35 +40,28 @@ TEST_F(BulkTest, bulk)
     const context_t esc{exec};
 
     auto chain = ::stdexec::schedule(esc.get_scheduler())
-        | ::stdexec::bulk(::stdexec::par, size, BulkFunctor{.data = data});
+               | ::stdexec::bulk(::stdexec::par, size, BulkFunctor{.data = data});
 
     using chain_t = decltype(chain);
 
     //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Experimental::details::execution_space::Domain domain.
+    static_assert(std::same_as<::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>, ::stdexec::default_domain>);
     static_assert(std::same_as<
-        ::stdexec::__domain_of_t<::stdexec::env_of_t<chain_t>>,
-        ::stdexec::default_domain
-    >);
-    static_assert(std::same_as<
-        ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
-        Kokkos::Experimental::details::execution_space::Domain
+                  ::stdexec::__detail::__completing_domain_t<::stdexec::set_value_t, chain_t>,
+                  Kokkos::Experimental::details::execution_space::Domain
     >);
 
     //! It has a completion scheduler for the value channel.
     static_assert(std::same_as<
-        decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
-        scheduler_t
+                  decltype(::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(chain))),
+                  scheduler_t
     >);
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)] () mutable {
-            ::stdexec::sync_wait(std::move(chain));
-        }),
+        recorder_listener_t::record([chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); }),
         ::testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "bulk")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
-        )
-    );
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), size / 2 * (size - 1));
 }

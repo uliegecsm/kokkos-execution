@@ -22,16 +22,16 @@
 
 using execution_space = Kokkos::DefaultExecutionSpace;
 
-namespace tests::kokkos_ext
-{
+namespace tests::kokkos_ext {
 
 using namespace Kokkos::utils::callbacks;
 
-class ScopedRegionTest : public impl::ExecutionSpaceContextTest<execution_space>,
-                         public Kokkos::utils::tests::scoped::callbacks::Manager
-{
-public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent, PushRegionEvent, PopRegionEvent>;
+class ScopedRegionTest
+    : public impl::ExecutionSpaceContextTest<execution_space>
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
+    using recorder_listener_t =
+        RecorderListener<BeginFenceEvent, BeginParallelForEvent, PushRegionEvent, PopRegionEvent>;
 };
 
 /**
@@ -39,27 +39,24 @@ public:
  *
  * The push/pop events and the preceding fences must be placed appropriately.
  */
-TEST_F(ScopedRegionTest, many)
-{
+TEST_F(ScopedRegionTest, many) {
     const view_s_t data(Kokkos::view_alloc("data - shared space", exec));
 
     const context_t esc{exec};
 
     auto chain = ::stdexec::schedule(esc.get_scheduler())
-        | Kokkos::Profiling::scoped_region("the name of my nice scoped region", ADD_THEN | ADD_THEN);
+               | Kokkos::Profiling::scoped_region("the name of my nice scoped region", ADD_THEN | ADD_THEN);
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)] () mutable { ::stdexec::sync_wait(std::move(chain)); }),
+        recorder_listener_t::record([chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); }),
         ::testing::ElementsAre(
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
             MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR (exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
-            MATCHER_FOR_POP_REGION (),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))
-        )
-    );
+            MATCHER_FOR_POP_REGION(),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 }
 
 } // namespace tests::kokkos_ext

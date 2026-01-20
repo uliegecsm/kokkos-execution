@@ -19,8 +19,7 @@
 
 using execution_space = Kokkos::DefaultExecutionSpace;
 
-namespace tests::kokkos_ext
-{
+namespace tests::kokkos_ext {
 
 using ExecutionSpaceContextTest = impl::ExecutionSpaceContextTest<execution_space>;
 
@@ -29,8 +28,7 @@ using ExecutionSpaceContextTest = impl::ExecutionSpaceContextTest<execution_spac
  *
  * Improperly customized @c sync_wait should result in a missing synchronization.
  */
-TEST_F(ExecutionSpaceContextTest, sync_wait)
-{
+TEST_F(ExecutionSpaceContextTest, sync_wait) {
     const context_t esc{exec};
 
     auto chain = ::stdexec::schedule(esc.get_scheduler());
@@ -38,29 +36,26 @@ TEST_F(ExecutionSpaceContextTest, sync_wait)
     Kokkos::utils::callbacks::Manager::initialize();
 
     ASSERT_THAT(
-        Kokkos::utils::callbacks::RecorderListener<Kokkos::utils::callbacks::BeginFenceEvent>::record([chain = std::move(chain)] () mutable {
-            const auto value = ::stdexec::sync_wait(std::move(chain));
-            static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
-            ASSERT_TRUE(value.has_value());
-        }),
-        ::testing::ElementsAre(MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")))
-    );
+        Kokkos::utils::callbacks::RecorderListener<Kokkos::utils::callbacks::BeginFenceEvent>::record(
+            [chain = std::move(chain)]() mutable {
+                const auto value = ::stdexec::sync_wait(std::move(chain));
+                static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
+                ASSERT_TRUE(value.has_value());
+            }),
+        ::testing::ElementsAre(MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     Kokkos::utils::callbacks::Manager::finalize();
 }
 
 //! @test Check that @ref Kokkos::Experimental::details::execution_space::SyncWait properly rethrows if needed.
-TEST_F(ExecutionSpaceContextTest, rethrows)
-{
+TEST_F(ExecutionSpaceContextTest, rethrows) {
     const context_t esc{exec};
 
-    auto chain = ::stdexec::schedule(esc.get_scheduler())
-        | ::stdexec::then(::tests::utils::ThrowsWhenCopied{});
+    auto chain = ::stdexec::schedule(esc.get_scheduler()) | ::stdexec::then(::tests::utils::ThrowsWhenCopied{});
 
     ASSERT_THAT(
         ::tests::utils::MutableMoveToSyncWait{.sndr = std::move(chain)},
-        testing::ThrowsMessage<std::runtime_error>(testing::StrEq("ThrowsWhenCopied: Throwing in copy constructor!"))
-    );
+        testing::ThrowsMessage<std::runtime_error>(testing::StrEq("ThrowsWhenCopied: Throwing in copy constructor!")));
 }
 
 } // namespace tests::kokkos_ext
