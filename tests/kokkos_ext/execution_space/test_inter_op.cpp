@@ -64,7 +64,9 @@ TEST_F(InterOpTest, transition_to_inline_scheduler) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
+        [chain = std::move(chain)]() mutable {      // NOLINT(performance-move-const-arg)
+            ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+        });
 
     EXPECT_THAT(
         recorded_events,
@@ -93,7 +95,9 @@ TEST_F(InterOpTest, transition_from_inline_scheduler) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
+        [chain = std::move(chain)]() mutable {      // NOLINT(performance-move-const-arg)
+            ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+        });
 
     EXPECT_THAT(
         recorded_events,
@@ -125,7 +129,9 @@ TEST_F(InterOpTest, transition_from_inline_scheduler_and_back) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
+        [chain = std::move(chain)]() mutable {      // NOLINT(performance-move-const-arg)
+            ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+        });
 
     EXPECT_THAT(
         recorded_events,
@@ -156,7 +162,9 @@ TEST_F(InterOpTest, transition_to_static_thread_pool) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
+        [chain = std::move(chain)]() mutable {      // NOLINT(performance-move-const-arg)
+            ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+        });
 
     EXPECT_THAT(
         recorded_events,
@@ -187,7 +195,9 @@ TEST_F(InterOpTest, transition_from_static_thread_pool) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
+        [chain = std::move(chain)]() mutable {      // NOLINT(performance-move-const-arg)
+            ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+        });
 
     EXPECT_THAT(
         recorded_events,
@@ -221,7 +231,9 @@ TEST_F(InterOpTest, transition_from_static_thread_pool_and_back) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); });
+        [chain = std::move(chain)]() mutable {      // NOLINT(performance-move-const-arg)
+            ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+        });
 
     EXPECT_THAT(
         recorded_events,

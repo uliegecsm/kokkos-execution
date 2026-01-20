@@ -37,8 +37,8 @@ TEST_F(ExecutionSpaceContextTest, sync_wait) {
 
     ASSERT_THAT(
         Kokkos::utils::callbacks::RecorderListener<Kokkos::utils::callbacks::BeginFenceEvent>::record(
-            [chain = std::move(chain)]() mutable {
-                const auto value = ::stdexec::sync_wait(std::move(chain));
+            [chain = std::move(chain)]() mutable {                         // NOLINT(performance-move-const-arg)
+                const auto value = ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
                 static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
                 ASSERT_TRUE(value.has_value());
             }),

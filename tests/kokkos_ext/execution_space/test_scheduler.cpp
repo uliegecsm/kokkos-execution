@@ -20,6 +20,7 @@ using execution_space = Kokkos::DefaultExecutionSpace;
 
 namespace tests::kokkos_ext {
 
+using execution_space_context_t = Kokkos::Experimental::ExecutionSpaceContext<execution_space>;
 using execution_space_scheduler_t = Kokkos::Experimental::details::execution_space::Scheduler<execution_space>;
 using execution_space_scheduler_env_t = Kokkos::Experimental::details::execution_space::SchedulerEnv<execution_space>;
 using execution_space_schedule_sender_t = typename execution_space_scheduler_t::Sender;
@@ -51,7 +52,8 @@ static_assert(test_scheduler_concept());
  * See https://eel.is/c++draft/exec.sched#5.
  */
 TEST(Scheduler, round_trip_property) {
-    const execution_space_scheduler_t sch{execution_space{}};
+    const execution_space_context_t ctx{execution_space{}};
+    const execution_space_scheduler_t sch = ctx.get_scheduler();
     ASSERT_EQ(stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(stdexec::schedule(sch))), sch);
 }
 

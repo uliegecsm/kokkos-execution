@@ -154,11 +154,12 @@ TEST_F(ThenTest, error_propagates) {
  * This test ensures that the deallocation happens after the kernels are finished.
  */
 TEST_F(ThenTest, then_lifetime) {
+    //! The context must be kept alive until the chain has completed.
+    const context_t esc{exec};
+
     //! Create the chain in a scope.
     auto create_chain_in_scope = [&]() {
         const view_s_t data(Kokkos::view_alloc("data - shared space", exec));
-
-        const context_t esc{exec};
 
         return ::stdexec::schedule(esc.get_scheduler()) | ADD_THEN | ADD_THEN;
     };

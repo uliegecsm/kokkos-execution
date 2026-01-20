@@ -72,7 +72,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
 
-    auto schs_A_then = std::move(schs_A) | ::stdexec::then(DummyFunctor<'A'>{});
+    auto schs_A_then = std::move(schs_A) | ::stdexec::then(DummyFunctor<'A'>{}); // NOLINT(performance-move-const-arg)
 
     static_assert(::stdexec::__queryable_with<
                   decltype(::stdexec::get_env(schs_A_then)),
@@ -80,7 +80,8 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     >);
 
     const auto sch_B = esc_B.get_scheduler();
-    auto schs_A_then_con_B = std::move(schs_A_then) | ::stdexec::continues_on(sch_B);
+    auto schs_A_then_con_B = std::move(schs_A_then) // NOLINT(performance-move-const-arg)
+                           | ::stdexec::continues_on(sch_B);
 
     static_assert(::stdexec::__queryable_with<
                   decltype(::stdexec::get_env(schs_A_then_con_B)),
@@ -92,7 +93,8 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     ASSERT_EQ(
         ::stdexec::get_completion_scheduler<::stdexec::set_value_t>(::stdexec::get_env(schs_A_then_con_B)), sch_B);
 
-    auto schs_A_then_con_B_then = std::move(schs_A_then_con_B) | ::stdexec::then(DummyFunctor<'B'>{});
+    auto schs_A_then_con_B_then = std::move(schs_A_then_con_B) // NOLINT(performance-move-const-arg)
+                                | ::stdexec::then(DummyFunctor<'B'>{});
 
     static_assert(::stdexec::__queryable_with<
                   decltype(::stdexec::get_env(schs_A_then_con_B_then)),
@@ -120,7 +122,8 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   >
     >);
 
-    auto op_state = ::stdexec::connect(std::move(schs_A_then_con_B_then), DummyReceiver{});
+    auto op_state =
+        ::stdexec::connect(std::move(schs_A_then_con_B_then), DummyReceiver{}); // NOLINT(performance-move-const-arg)
 
     /**
      * The environment of the receiver created by the customization of the most downstream @c then
