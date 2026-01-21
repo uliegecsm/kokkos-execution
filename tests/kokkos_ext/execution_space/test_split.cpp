@@ -30,7 +30,6 @@ class SplitTest
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
-    using variant_t = std::variant<BeginFenceEvent, BeginParallelForEvent>;
 };
 
 //! @test Use @c stdexec::split and @c stdexec::sync_wait right after.
