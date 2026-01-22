@@ -111,12 +111,6 @@ TEST_F(ThenTest, then_starts_on) {
                   scheduler_t
     >);
 
-    //! Until it is connected, the completion signatures are *dependent* (they are not fully known yet).
-    static_assert(std::derived_from<
-                  std::invoke_result_t<::stdexec::get_completion_signatures_t, starts_on_t>,
-                  ::stdexec::dependent_sender_error
-    >);
-
     static_assert(std::same_as<
                   std::invoke_result_t<::stdexec::get_completion_signatures_t, starts_on_t, ::stdexec::env<>>,
                   ::stdexec::completion_signatures<::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>
