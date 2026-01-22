@@ -44,20 +44,6 @@ struct DummyFunctor {
     }
 };
 
-struct DummyReceiver {
-    using receiver_concept = ::stdexec::receiver_t;
-
-    void set_value() && noexcept {
-    }
-
-    template <typename Error>
-    void set_error(Error&&) && noexcept {
-    }
-
-    void set_stopped() && noexcept {
-    }
-};
-
 //! @test Check that the @ref Kokkos::Experimental::details::execution_space::get_exec_t query is forwarded as expected.
 TEST_F(ContinuesOnTest, queryable_get_exec) {
     const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
@@ -123,15 +109,15 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   >
     >);
 
-    auto op_state =
-        ::stdexec::connect(std::move(schs_A_then_con_B_then), DummyReceiver{}); // NOLINT(performance-move-const-arg)
+    auto op_state = ::stdexec::connect(
+        std::move(schs_A_then_con_B_then), tests::stdexec::SinkReceiver{}); // NOLINT(performance-move-const-arg)
 
     /**
      * The environment of the receiver created by the customization of the most downstream @c then
      * is queryable with @ref Kokkos::Experimental::details::execution_space::get_exec_t.
      */
     using then_rcvr_t = Kokkos::Experimental::details::execution_space::ThenReceiver<
-        tests::kokkos_ext::DummyReceiver,
+        tests::stdexec::SinkReceiver,
         tests::kokkos_ext::DummyFunctor<'B'>,
         Kokkos::Experimental::details::execution_space::Scheduler<execution_space>
     >;
