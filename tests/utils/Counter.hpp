@@ -42,7 +42,7 @@ struct Counter {
         return *this;
     }
 
-    void operator()() const {
+    void operator()() const noexcept {
     }
 
     static void reset() {
