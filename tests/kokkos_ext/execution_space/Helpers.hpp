@@ -11,7 +11,6 @@
 #include "plog/Log.h"
 #endif
 
-#include "kokkos-utils/concepts/ExecutionSpace.hpp"
 #include "kokkos-utils/tests/scoped/ExecutionSpace.hpp"
 
 #include "kokkos_ext/impl/ExecutionSpaceContext.hpp"
