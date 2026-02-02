@@ -47,8 +47,7 @@ TEST_F(RepeatEffectUntilTest, works) {
 
     const context_t esc{exec};
 
-    auto chain = ::stdexec::schedule(esc.get_scheduler()) | ADD_THEN
-               | ::stdexec::bulk(::stdexec::par, 2, BulkFunctor{.data = data});
+    auto chain = ::stdexec::schedule(esc.get_scheduler()) | ADD_THEN | ADD_BULK(2);
 
     ASSERT_THAT(
         recorder_listener_t::record([chain = std::move(chain)]() mutable {

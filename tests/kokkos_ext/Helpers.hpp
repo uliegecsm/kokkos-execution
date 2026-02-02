@@ -43,6 +43,9 @@ constexpr std::string dispatch_label(const Exec&, Label&& label) {
 //! Add a @c then using @ref tests::ThenFunctor that may throw.
 #define ADD_THEN ::stdexec::then(ThenFunctor<std::remove_cvref_t<decltype(data)>, true>{.data = data})
 
+//! Add a @c bulk using @ref tests::kokkos_ext::BulkFunctor. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ADD_BULK(_size_) ::stdexec::bulk(::stdexec::par, _size_, BulkFunctor<std::remove_cvref_t<decltype(data)>>{.data = data})
+
 } // namespace tests::kokkos_ext
 
 #endif // GRAPH_DISPATCHING_TESTS_KOKKOS_EXT_HELPERS_HPP
