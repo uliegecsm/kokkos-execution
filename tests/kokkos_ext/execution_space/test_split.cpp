@@ -48,16 +48,16 @@ TEST_F(SplitTest, split_and_sync_wait) {
  *       @c stdexec::set_value of the "end of the branch receiver".
  */
 TEST_F(SplitTest, within) {
-    const view_sa_t data(Kokkos::view_alloc(exec, "data - shared space"));
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     ::exec::static_thread_pool pool{4};
     const context_t esc{exec};
 
     ::stdexec::sender auto fork = ::stdexec::schedule(pool.get_scheduler()) | ::stdexec::split();
 
-    auto branch_a = fork | ::stdexec::continues_on(esc.get_scheduler()) | ADD_THEN | ADD_THEN;
-    auto branch_b = fork | ::stdexec::continues_on(pool.get_scheduler()) | ADD_THEN;
-    auto branch_c = std::move(fork) | ::stdexec::continues_on(esc.get_scheduler()) | ADD_THEN | ADD_THEN;
+    auto branch_a = fork | ::stdexec::continues_on(esc.get_scheduler()) | ADD_THEN_ATOMIC | ADD_THEN_ATOMIC;
+    auto branch_b = fork | ::stdexec::continues_on(pool.get_scheduler()) | ADD_THEN_ATOMIC;
+    auto branch_c = std::move(fork) | ::stdexec::continues_on(esc.get_scheduler()) | ADD_THEN_ATOMIC | ADD_THEN_ATOMIC;
 
     auto chain = ::stdexec::when_all(std::move(branch_a), std::move(branch_b), std::move(branch_c))
                | ::stdexec::then([&data]() {

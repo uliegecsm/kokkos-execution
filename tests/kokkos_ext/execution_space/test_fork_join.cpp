@@ -46,7 +46,7 @@ class ForkJoinTest
 
 //! @test Use @c exec::fork_join to produce a diamond-like topology.
 TEST_F(ForkJoinTest, diamond) {
-    const view_sa_t data(Kokkos::view_alloc("data - shared space"));
+    const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
     ::exec::static_thread_pool pool{4};
     const context_t esc{exec};
@@ -55,8 +55,9 @@ TEST_F(ForkJoinTest, diamond) {
         ::stdexec::schedule(pool.get_scheduler())
         | ::stdexec::then(::tests::utils::LoadCheckAddFunctor<int, false>{.prev = 0, .value = 4, .data = data.data()})
         | ::exec::fork_join(
-            ::stdexec::continues_on(esc.get_scheduler()) | ::tests::stdexec::check_scheduler<scheduler_t>() | ADD_THEN,
-            ::stdexec::continues_on(pool.get_scheduler()) | ADD_THEN)
+            ::stdexec::continues_on(esc.get_scheduler()) | ::tests::stdexec::check_scheduler<scheduler_t>()
+                | ADD_THEN_ATOMIC,
+            ::stdexec::continues_on(pool.get_scheduler()) | ADD_THEN_ATOMIC)
         | ::stdexec::continues_on(esc.get_scheduler())
         | ::stdexec::then(
             ::tests::utils::LoadCheckAddFunctor<int, on_device>{.prev = 6, .value = 3, .data = data.data()})
