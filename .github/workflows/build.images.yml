@@ -61,6 +61,7 @@ jobs:
         uses: tj-actions/changed-files@v47
         with:
           files: |
+            .github/workflows/build.images.yml
             docker/dockerfile.builder
 
       - id: build-builder
@@ -82,6 +83,7 @@ jobs:
         uses: tj-actions/changed-files@v47
         with:
           files: |
+            .github/workflows/build.images.yml
             docker/dockerfile
 
       - id: build-images
