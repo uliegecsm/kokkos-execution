@@ -1,0 +1,184 @@
+name: Build Docker images
+
+description: Build Docker images used by the CI.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force-rebuild:
+        description: 'Force re-build of all Docker images.'
+        required: false
+        type: bool
+        default: false
+  schedule:
+    # At 06:00 on Sunday.
+    - cron:  '0 6 * * 6'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  set-vars:
+    runs-on: [self-hosted, linux, docker, amd64]
+    outputs:
+      CI_BUILDER: ${{ steps.common.outputs.CI_BUILDER }}
+      CI_IMAGE: ${{ steps.common.outputs.CI_IMAGE }}
+    steps:
+      - id  : common
+        run : |
+          echo "CI_BUILDER=${{ env.REGISTRY }}/${{ github.repository }}/docker:builder" >> $GITHUB_OUTPUT
+          echo "CI_IMAGE=${{ env.REGISTRY }}/${{ github.repository }}/kokkos-execution" >> $GITHUB_OUTPUT
+
+  setup-skips:
+    runs-on: [self-hosted, linux, docker, amd64]
+    container:
+      image: alpine/git:2.52.0@sha256:3b7890cb947afd3f71adab55aa6b549ad0f8ddc4b9ed28b027563d73d49d8e11
+    outputs:
+      build-builder: ${{ steps.build-builder.outputs.build-builder }}
+      build-images: ${{ steps.build-images.outputs.build-images }}
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: build-builder-changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            docker/dockerfile.builder
+
+      - id: build-builder
+        env:
+          ANY_CHANGED: ${{ steps.build-builder-changed-files.outputs.any_changed == 'true' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs['force-rebuild'] }}
+        run: |
+          if [ "$ANY_CHANGED" = "true" ] || [ "$FORCE" = "true" ]; then
+              BUILD_BUILDER=true
+          else
+              BUILD_BUILDER=false
+          fi
+          echo "BUILD_BUILDER set to ${BUILD_BUILDER} because:"
+          echo "    - any changed: ${ANY_CHANGED}"
+          echo "    - force      : ${FORCE}"
+          echo "build-builder=${BUILD_BUILDER}" >> $GITHUB_OUTPUT
+
+      - id: build-images-changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            docker/dockerfile
+
+      - id: build-images
+        env:
+          ANY_CHANGED: ${{ steps.build-images-changed-files.outputs.any_changed == 'true' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs['force-rebuild'] }}
+        run: |
+          if [ "$ANY_CHANGED" = "true" ] || [ "$FORCE" = "true" ]; then
+              BUILD_IMAGES=true
+          else
+              BUILD_IMAGES=false
+          fi
+          echo "BUILD_IMAGES set to ${BUILD_IMAGES} because:"
+          echo "    - any changed: ${ANY_CHANGED}"
+          echo "    - force      : ${FORCE}"
+          echo "build-images=${BUILD_IMAGES}" >> $GITHUB_OUTPUT
+
+  build-builder:
+    needs: [set-vars, setup-skips]
+    if: ${{ ! failure() && ! cancelled() && needs.setup-skips.outputs.build-builder == 'true' }}
+    runs-on: [self-hosted, linux, docker, amd64]
+    container:
+      image: docker:latest
+    steps:
+      # This should only sparsely checkout 'docker/dockerfile.docker', but we're hitting
+      # the issue https://github.com/actions/checkout/issues/1992.
+      - uses: actions/checkout@v6
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          file: docker/dockerfile.builder
+          tags: ${{ needs.set-vars.outputs.CI_BUILDER }}
+          cache-from: type=registry,ref=${{ needs.set-vars.outputs.CI_BUILDER }}
+          cache-to: type=inline
+          labels: "org.opencontainers.image.source=${{ github.repositoryUrl }}"
+
+  build-images:
+    needs: [set-vars, setup-skips, build-builder]
+    if: ${{ ! failure() && ! cancelled() && needs.setup-skips.outputs.build-images == 'true' }}
+    runs-on: ${{ fromJSON(matrix.runs-on || '["self-hosted", "linux", "docker", "amd64"]') }}
+    container:
+      image: ${{ needs.set-vars.outputs.CI_BUILDER }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend        : OpenMP
+            compiler_family: gcc
+            base_image     : ubuntu:24.04
+            platforms      : linux/amd64
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id : compute-tag-suffix
+        run: |
+          # We don't use multi-platform build for ARM64 because it's too slow. Instead, we use a native
+          # runner and append '-arm64' to the image tag.
+          TAG_SUFFIX=${{ matrix.kokkos_archs && '-' || '' }}${{ join(matrix.kokkos_archs, '-')}}${{ runner.arch == 'ARM64' && '-arm64' || '' }}
+          TAG_SUFFIX=$(echo ${TAG_SUFFIX} | tr '[:upper:]' '[:lower:]')
+          echo "Computed image tag suffix: ${TAG_SUFFIX}."
+          echo "TAG_SUFFIX=${TAG_SUFFIX}" >> $GITHUB_OUTPUT
+
+      - id : compute-tag
+        run: |
+          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ matrix.backend }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6.13.0
+        with:
+            context: .
+            platforms: ${{ matrix.platforms }}
+            push: ${{ github.ref == 'refs/heads/main' }}
+            file: docker/dockerfile
+            tags: ${{ steps.compute-tag.outputs.tag }}
+            cache-from: type=registry,ref=${{ steps.compute-tag.outputs.tag }}
+            cache-to: type=inline
+            build-args: |
+                BASE_IMAGE=${{ matrix.base_image }}
+                BACKEND=${{ matrix.backend }}
+                COMPILER_FAMILY=${{ matrix.compiler_family }}
+                KOKKOS_ARCHS=${{ matrix.kokkos_archs && join(fromJSON(matrix.kokkos_archs), ',') || '' }}
+            labels: "org.opencontainers.image.source=${{ github.repositoryUrl }}"
