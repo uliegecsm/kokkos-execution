@@ -143,6 +143,10 @@ jobs:
             compiler_family: gcc
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
+          - backend        : OpenMP
+            compiler_family: clang
+            base_image     : ubuntu:24.04
+            platforms      : linux/amd64
     steps:
       - uses: actions/checkout@v6
 
