@@ -25,6 +25,34 @@ FROM requirements-python AS requirements-compiler-gcc
 
 RUN apt-helpers install-packages --clean --update --packages gcc g++
 
+FROM requirements-python AS requirements-compiler-clang
+
+ARG CLANG_VERSION=21
+
+RUN <<EOF
+    set -ex
+
+    apt-helpers install-packages --update --packages wget lsb-release gpg software-properties-common
+
+    wget https://apt.llvm.org/llvm.sh
+    chmod +x llvm.sh
+    ./llvm.sh ${CLANG_VERSION}
+    rm llvm.sh
+
+    apt-helpers install-packages --clean \
+        --update --packages              \
+        clang-${CLANG_VERSION}           \
+        clang-tidy-${CLANG_VERSION}      \
+        clang-format-${CLANG_VERSION}    \
+        libomp-${CLANG_VERSION}-dev
+
+    update-alternatives-helpers --prefix /usr/bin --level 10 \
+        --display --for-each-of                              \
+        clang=clang-${CLANG_VERSION}                         \
+        clang++=clang++-${CLANG_VERSION}                     \
+        clang-tidy=clang-tidy-${CLANG_VERSION}
+EOF
+
 FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-cmake
 
 ARG TARGETARCH
