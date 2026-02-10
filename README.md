@@ -1,2 +1,3 @@
 # kokkos-execution
-Customization of std::execution for Kokkos
+
+Customization of `std::execution` for `Kokkos`.
