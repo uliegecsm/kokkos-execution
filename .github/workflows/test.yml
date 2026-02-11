@@ -36,8 +36,25 @@ jobs:
   clang-format:
     needs: [build-images]
     uses: ./.github/workflows/clang.format.yml
-    permissions:
-      contents: read
-      packages: read
     with:
       CI_IMAGE: ${{ needs.build-images.outputs.CI_IMAGE }}
+
+  build-and-test:
+    needs: [build-images, clang-format]
+    runs-on: ${{ fromJSON(matrix.runs-on || '["self-hosted", "linux", "docker", "amd64"]') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend        : OpenMP
+            compiler_family: gcc
+          - backend        : OpenMP
+            compiler_family: clang
+    container:
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ matrix.backend }}
+    steps:
+      - uses: actions/checkout@v6
+      - run: |
+          cmake -S . -B build-${{ matrix.compiler_family }}-${{ matrix.backend }}
+      - run: |
+          cmake --build build-${{ matrix.compiler_family }}-${{ matrix.backend }} -j4
