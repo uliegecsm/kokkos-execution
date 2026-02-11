@@ -1,0 +1,26 @@
+on:
+  workflow_call:
+    outputs:
+      CI_BUILDER:
+        value: ${{ jobs.set-vars.outputs.CI_BUILDER }}
+      CI_IMAGE:
+        value: ${{ jobs.set-vars.outputs.CI_IMAGE }}
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  set-vars:
+    runs-on: [self-hosted, linux, docker, amd64]
+    outputs:
+      CI_BUILDER: ${{ steps.common.outputs.CI_BUILDER }}
+      CI_IMAGE: ${{ steps.common.outputs.CI_IMAGE }}
+    steps:
+      - id: common
+        run: |
+          echo "CI_BUILDER=${{ env.REGISTRY }}/${{ github.repository }}/docker:builder" >> $GITHUB_OUTPUT
+          echo "CI_IMAGE=${{ env.REGISTRY }}/${{ github.repository }}/kokkos-execution" >> $GITHUB_OUTPUT

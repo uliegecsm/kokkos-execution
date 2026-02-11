@@ -3,45 +3,27 @@ name: Build Docker images
 description: Build Docker images used by the CI.
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       force-rebuild:
         description: 'Force re-build of all Docker images.'
         required: false
-        type: bool
+        type: boolean
         default: false
-  schedule:
-    # At 06:00 on Sunday.
-    - cron:  '0 6 * * 6'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  workflow_call:
 
 permissions:
   contents: read
   packages: write
+  pull-requests: read
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
   set-vars:
-    runs-on: [self-hosted, linux, docker, amd64]
-    outputs:
-      CI_BUILDER: ${{ steps.common.outputs.CI_BUILDER }}
-      CI_IMAGE: ${{ steps.common.outputs.CI_IMAGE }}
-    steps:
-      - id  : common
-        run : |
-          echo "CI_BUILDER=${{ env.REGISTRY }}/${{ github.repository }}/docker:builder" >> $GITHUB_OUTPUT
-          echo "CI_IMAGE=${{ env.REGISTRY }}/${{ github.repository }}/kokkos-execution" >> $GITHUB_OUTPUT
+    uses: ./.github/workflows/set-vars.yml
+    secrets: inherit
 
   setup-skips:
     runs-on: [self-hosted, linux, docker, amd64]
