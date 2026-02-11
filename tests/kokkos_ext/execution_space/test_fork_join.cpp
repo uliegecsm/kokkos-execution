@@ -76,4 +76,32 @@ TEST_F(ForkJoinTest, diamond) {
     ASSERT_EQ(data(), 14);
 }
 
+/**
+ * @test Use @c exec::fork_join after a @c stdexec::continues_on.
+ *
+ * Inspired by https://github.com/NVIDIA/stdexec/issues/1823.
+ */
+TEST_F(ForkJoinTest, continues_on) {
+    const view_s_t data(Kokkos::view_alloc("data - shared space"));
+
+    const context_t esc{exec};
+
+    auto sndr =
+        ::stdexec::just() | ::stdexec::continues_on(esc.get_scheduler())
+        | ::exec::fork_join(
+            ::stdexec::continues_on(esc.get_scheduler())
+            | ::stdexec::then(
+                ::tests::utils::LoadCheckAddFunctor<int, on_device>{.prev = 0, .value = 3, .data = data.data()}));
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    ASSERT_THAT(
+        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { ::stdexec::sync_wait(std::move(sndr)); }),
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 3);
+}
+
 } // namespace tests::kokkos_ext
