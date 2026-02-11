@@ -50,7 +50,8 @@ RUN <<EOF
         --display --for-each-of                              \
         clang=clang-${CLANG_VERSION}                         \
         clang++=clang++-${CLANG_VERSION}                     \
-        clang-tidy=clang-tidy-${CLANG_VERSION}
+        clang-tidy=clang-tidy-${CLANG_VERSION}               \
+        clang-format=clang-format-${CLANG_VERSION}
 EOF
 
 FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-system
