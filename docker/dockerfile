@@ -53,7 +53,16 @@ RUN <<EOF
         clang-tidy=clang-tidy-${CLANG_VERSION}
 EOF
 
-FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-cmake
+FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-system
+
+RUN --mount=target=/requirements,type=bind,source=requirements <<EOF
+    set -ex
+
+    apt-helpers install-packages --clean --update \
+        --requirement /requirements/requirements.system.txt
+EOF
+
+FROM requirements-system AS requirements-cmake
 
 ARG TARGETARCH
 ARG CMAKE_VERSION=4.2.1
@@ -70,8 +79,6 @@ RUN <<EOF
     fi
 
     INSTALLER=cmake-${CMAKE_VERSION}-linux-${SUFFIX}.sh
-
-    apt-helpers install-packages --clean --update --packages wget
 
     wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${INSTALLER}
 
