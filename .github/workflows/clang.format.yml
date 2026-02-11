@@ -1,0 +1,18 @@
+on:
+  workflow_call:
+    inputs:
+      CI_IMAGE:
+        required: true
+        type: string
+
+jobs:
+  clang-format:
+    permissions:
+      contents: read
+      packages: read
+    runs-on: [self-hosted, linux, docker, amd64]
+    container:
+      image: ${{ inputs.CI_IMAGE }}:clang-OpenMP
+    steps:
+      - uses: actions/checkout@v6
+      - run: bash clang-format.sh
