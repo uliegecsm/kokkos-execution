@@ -1,0 +1,34 @@
+name: Run tests
+
+description: Build and test.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # At 06:00 on Sunday.
+    - cron:  '0 6 * * 0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-images:
+    uses: ./.github/workflows/build.images.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: read
