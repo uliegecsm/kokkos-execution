@@ -11,14 +11,14 @@ on:
         type: boolean
         default: false
   workflow_call:
+    outputs:
+      CI_IMAGE:
+        value: ${{ jobs.set-vars.outputs.CI_IMAGE }}
 
 permissions:
   contents: read
   packages: write
   pull-requests: read
-
-env:
-  REGISTRY: ghcr.io
 
 jobs:
   set-vars:
@@ -96,7 +96,7 @@ jobs:
 
       - uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ needs.set-vars.outputs.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -136,7 +136,7 @@ jobs:
 
       - uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ needs.set-vars.outputs.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
