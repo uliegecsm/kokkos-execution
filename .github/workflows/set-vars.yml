@@ -1,22 +1,24 @@
 on:
   workflow_call:
     outputs:
+      REGISTRY:
+        value: ${{ jobs.set-vars.outputs.REGISTRY }}
       CI_BUILDER:
         value: ${{ jobs.set-vars.outputs.CI_BUILDER }}
       CI_IMAGE:
         value: ${{ jobs.set-vars.outputs.CI_IMAGE }}
-
-permissions:
-  contents: read
-  packages: read
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
   set-vars:
+    permissions:
+      contents: read
+      packages: read
     runs-on: [self-hosted, linux, docker, amd64]
     outputs:
+      REGISTRY: ${{ env.REGISTRY }}
       CI_BUILDER: ${{ steps.common.outputs.CI_BUILDER }}
       CI_IMAGE: ${{ steps.common.outputs.CI_IMAGE }}
     steps:
