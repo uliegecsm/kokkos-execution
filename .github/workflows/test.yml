@@ -32,3 +32,12 @@ jobs:
       contents: read
       packages: write
       pull-requests: read
+
+  clang-format:
+    needs: [build-images]
+    uses: ./.github/workflows/clang.format.yml
+    permissions:
+      contents: read
+      packages: read
+    with:
+      CI_IMAGE: ${{ needs.build-images.outputs.CI_IMAGE }}
