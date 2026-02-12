@@ -110,14 +110,16 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     >);
 
     auto op_state = ::stdexec::connect(
-        std::move(schs_A_then_con_B_then), tests::stdexec::SinkReceiver{}); // NOLINT(performance-move-const-arg)
+        std::move(schs_A_then_con_B_then), // NOLINT(performance-move-const-arg)
+        Kokkos::Experimental::details::execution_space::SyncWaitReceiver<execution_space>{
+            .state = std::addressof(esc_B.m_state), .runloop_state = nullptr});
 
     /**
      * The environment of the receiver created by the customization of the most downstream @c then
      * is queryable with @ref Kokkos::Experimental::details::execution_space::get_exec_t.
      */
     using then_rcvr_t = Kokkos::Experimental::details::execution_space::ThenReceiver<
-        tests::stdexec::SinkReceiver,
+        Kokkos::Experimental::details::execution_space::SyncWaitReceiver<execution_space>,
         tests::kokkos_ext::DummyFunctor<'B'>,
         Kokkos::Experimental::details::execution_space::Scheduler<execution_space>
     >;
@@ -131,10 +133,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
      * Our customization of @c continuous_on places @c exec_B in the environment
      * to let upstream know where downstream executes.
      */
-    using con_B_then_rcvr_t = Kokkos::Experimental::details::execution_space::ContinuesOnReceiver<
-        Kokkos::Experimental::details::execution_space::Scheduler<execution_space>,
-        then_rcvr_t
-    >;
+    using con_B_then_rcvr_t = Kokkos::Experimental::details::execution_space::ContinuesOnReceiver<then_rcvr_t>;
     static_assert(std::same_as<decltype(op_state.rcvr.rcvr.rcvr), con_B_then_rcvr_t>);
     static_assert(::stdexec::__queryable_with<
                   ::stdexec::env_of_t<con_B_then_rcvr_t>,
