@@ -7,6 +7,7 @@ else()
     set(LAUNCHER_ARGS)
 endif()
 
+add_one_test(NAME env                 LAUNCHER ${LAUNCHER_ARGS} ENABLE ${GRAPH_DISPATCHING_ENABLE_STDEXEC_TESTS})
 add_one_test(NAME graph_scheduler_old LAUNCHER ${LAUNCHER_ARGS})
 add_one_test(NAME parallel_for        LAUNCHER ${LAUNCHER_ARGS})
 add_one_test(NAME parallel_reduce     LAUNCHER ${LAUNCHER_ARGS})

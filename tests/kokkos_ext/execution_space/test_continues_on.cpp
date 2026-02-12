@@ -166,6 +166,34 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   ::stdexec::env_of_t<then_sfrom_con_B_then_rcvr_t>,
                   Kokkos::Experimental::details::execution_space::get_exec_t
     >);
+    static_assert(std::same_as<
+                  ::stdexec::env_of_t<then_sfrom_con_B_then_rcvr_t>,
+                  ::stdexec::__env::env<
+                      ::stdexec::__env::prop<
+                          Kokkos::Experimental::details::execution_space::get_exec_t,
+                          Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
+                      >,
+                      ::stdexec::__env::__fwd<::stdexec::__env::env<
+                          ::stdexec::__env::prop<
+                              Kokkos::Experimental::details::execution_space::get_exec_t,
+                              Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
+                          >,
+                          ::stdexec::__env::__fwd<::stdexec::__env::env<
+                              ::stdexec::__env::prop<
+                                  Kokkos::Experimental::details::execution_space::get_exec_t,
+                                  Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
+                              >,
+                              ::stdexec::__env::__fwd<::stdexec::__env::env<
+                                  ::stdexec::__env::prop<
+                                      Kokkos::Experimental::details::execution_space::get_exec_t,
+                                      Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
+                                  >,
+                                  ::stdexec::__env::__fwd<Kokkos::Experimental::details::impl::env>
+                              >>
+                          >>
+                      >>
+                  >
+    >);
     ASSERT_EQ(
         Kokkos::Experimental::details::execution_space::get_exec(::stdexec::get_env(op_state.rcvr)).get(), exec_A);
 
