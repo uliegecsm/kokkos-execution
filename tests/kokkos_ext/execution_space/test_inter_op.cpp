@@ -244,4 +244,42 @@ TEST_F(InterOpTest, transition_from_static_thread_pool_and_back) {
     ASSERT_EQ(data(), 12);
 }
 
+//! @test Transition from @ref Kokkos::Experimental::ExecutionSpaceContext to @c exec::static_thread_pool and back.
+TEST_F(InterOpTest, transition_to_static_thread_pool_and_back) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec};
+
+    ::exec::static_thread_pool pool{1};
+
+    SHOW_EXEC_SPACE_ID(exec)
+
+    auto chain = ::stdexec::schedule(esc.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 0, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(pool.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, false>{.prev = 4, .value = 4, .data = data.data()})
+               | ::stdexec::continues_on(esc.get_scheduler())
+               | ::stdexec::then(
+                     tests::utils::LoadCheckAddFunctor<value_t, on_device>{.prev = 8, .value = 4, .data = data.data()});
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable {      // NOLINT(performance-move-const-arg)
+            ::stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+        });
+
+    EXPECT_THAT(
+        recorded_events,
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 12);
+}
+
 } // namespace tests::kokkos_ext
