@@ -5,7 +5,7 @@ RUN <<EOF
 
     apt update
 
-    apt install --yes --no-install-recommends curl ca-certificates
+    apt install --yes --no-install-recommends jq curl ca-certificates
 
     curl -sSL https://get.docker.com/ | sh
 
