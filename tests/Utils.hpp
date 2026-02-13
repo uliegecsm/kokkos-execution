@@ -95,12 +95,12 @@ constexpr bool check_continues_on()
     static_assert(std::same_as<
         ::stdexec::__detail::__demangle_t<sndr_t>,
         ::stdexec::__basic_sender<
-            ::stdexec::__trnsfr::continues_on_t,
+            ::stdexec::continues_on_t,
             Schd,
             ::stdexec::__basic_sender<
-                ::stdexec::__schfr::schedule_from_t,
+                ::stdexec::schedule_from_t,
                 ::stdexec::__,
-                ::stdexec::__basic_sender<::stdexec::__just::just_t, ::stdexec::__tup::__tuple<>>>>
+                ::stdexec::__basic_sender<::stdexec::just_t, ::stdexec::__tup::__tuple<>>>>
     >);
 
     //! Diagnose any issue that could make the resulting sender invalid.

@@ -48,9 +48,9 @@ TEST(forwarding, queryable) {
 
         static_assert(std::same_as<
                       decltype(fwd_env),
-                      ::stdexec::__env::__fwd<::stdexec::__env::env<
-                          ::stdexec::__env::prop<tests::kokkos_ext::PropA, int>,
-                          ::stdexec::__env::prop<tests::kokkos_ext::FwdPropC, int>
+                      ::stdexec::__env::__fwd<::stdexec::env<
+                          ::stdexec::prop<tests::kokkos_ext::PropA, int>,
+                          ::stdexec::prop<tests::kokkos_ext::FwdPropC, int>
                       >&>
         >);
 

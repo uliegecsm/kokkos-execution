@@ -91,16 +91,16 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     static_assert(std::same_as<
                   ::stdexec::__detail::__demangle_t<decltype(schs_A_then_con_B_then)>,
                   ::stdexec::__basic_sender<
-                      ::stdexec::__then::then_t,
+                      ::stdexec::then_t,
                       tests::kokkos_ext::DummyFunctor<'B'>,
                       ::stdexec::__basic_sender<
-                          ::stdexec::__trnsfr::continues_on_t,
+                          ::stdexec::continues_on_t,
                           Kokkos::Experimental::details::execution_space::Scheduler<execution_space>,
                           ::stdexec::__basic_sender<
-                              ::stdexec::__schfr::schedule_from_t,
+                              ::stdexec::schedule_from_t,
                               ::stdexec::__,
                               ::stdexec::__basic_sender<
-                                  ::stdexec::__then::then_t,
+                                  ::stdexec::then_t,
                                   tests::kokkos_ext::DummyFunctor<'A'>,
                                   Kokkos::Experimental::details::execution_space::Scheduler<execution_space>::Sender
                               >
@@ -168,23 +168,23 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     >);
     static_assert(std::same_as<
                   ::stdexec::env_of_t<then_sfrom_con_B_then_rcvr_t>,
-                  ::stdexec::__env::env<
-                      ::stdexec::__env::prop<
+                  ::stdexec::env<
+                      ::stdexec::prop<
                           Kokkos::Experimental::details::execution_space::get_exec_t,
                           Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
                       >,
-                      ::stdexec::__env::__fwd<::stdexec::__env::env<
-                          ::stdexec::__env::prop<
+                      ::stdexec::__env::__fwd<::stdexec::env<
+                          ::stdexec::prop<
                               Kokkos::Experimental::details::execution_space::get_exec_t,
                               Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
                           >,
-                          ::stdexec::__env::__fwd<::stdexec::__env::env<
-                              ::stdexec::__env::prop<
+                          ::stdexec::__env::__fwd<::stdexec::env<
+                              ::stdexec::prop<
                                   Kokkos::Experimental::details::execution_space::get_exec_t,
                                   Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
                               >,
-                              ::stdexec::__env::__fwd<::stdexec::__env::env<
-                                  ::stdexec::__env::prop<
+                              ::stdexec::__env::__fwd<::stdexec::env<
+                                  ::stdexec::prop<
                                       Kokkos::Experimental::details::execution_space::get_exec_t,
                                       Kokkos::Experimental::details::execution_space::ExecutionSpaceRef<execution_space>
                                   >,

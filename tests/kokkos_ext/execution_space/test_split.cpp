@@ -1,3 +1,13 @@
+#include "tests/IgnoreWarnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wsign-compare")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
+#include "exec/split.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
@@ -10,11 +20,11 @@
 /**
  * @addtogroup unittests
  *
- * Both @c stdexec::split and @c stdexec::when_all are supported by @c Kokkos::Experimental::ExecutionSpaceContext
+ * Both @c exec::split and @c stdexec::when_all are supported by @c Kokkos::Experimental::ExecutionSpaceContext
  * ---------------------------------------------------------------------------------------------------------------
  *
  * This group of tests check that @ref Kokkos::Experimental::ExecutionSpaceContext properly works with both
- * @c stdexec::split and @c stdexec::when_all.
+ * @c exec::split and @c stdexec::when_all.
  *
  * The tests can be found in @ref tests/kokkos_ext/execution_space/test_split.cpp.
  */
@@ -32,11 +42,11 @@ class SplitTest
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
 };
 
-//! @test Use @c stdexec::split and @c stdexec::sync_wait right after.
+//! @test Use @c exec::split and @c stdexec::sync_wait right after.
 TEST_F(SplitTest, split_and_sync_wait) {
     const context_t esc{exec};
 
-    ::stdexec::sender auto chain = ::stdexec::schedule(esc.get_scheduler()) | ::stdexec::split();
+    ::stdexec::sender auto chain = ::stdexec::schedule(esc.get_scheduler()) | ::exec::split();
 
     ASSERT_THAT(
         recorder_listener_t::record([chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); }),
@@ -53,7 +63,7 @@ TEST_F(SplitTest, within) {
     ::exec::static_thread_pool pool{4};
     const context_t esc{exec};
 
-    ::stdexec::sender auto fork = ::stdexec::schedule(pool.get_scheduler()) | ::stdexec::split();
+    ::stdexec::sender auto fork = ::stdexec::schedule(pool.get_scheduler()) | ::exec::split();
 
     auto branch_a = fork | ::stdexec::continues_on(esc.get_scheduler()) | ADD_THEN_ATOMIC | ADD_THEN_ATOMIC;
     auto branch_b = fork | ::stdexec::continues_on(pool.get_scheduler()) | ADD_THEN_ATOMIC;
