@@ -62,32 +62,76 @@ TEST(forwarding, queryable) {
 }
 
 //! @test Set the value of a @c stdexec::prop in an empty @c stdexec::env.
-TEST(replace, set_prop_in_env) {
+TEST(upsert, set_prop_in_empty_env) {
     constexpr auto new_env = ::exec::upsert_in_env(prop_a, ::stdexec::env<>{}, 42);
+
+    static_assert(std::same_as<decltype(new_env), const ::stdexec::env<::stdexec::prop<PropA, int>, ::stdexec::env<>>>);
 
     constexpr auto value = prop_a(new_env);
 
     static_assert(value == 42);
 }
 
-//! @test Replace the value of a @c stdexec::prop in an @c stdexec::env containing a single @c stdexec::prop.
-TEST(replace, replace_prop_in_env_with_single_prop) {
-    constexpr auto env = ::stdexec::env{
-        ::stdexec::prop{prop_a, 123},
-    };
+//! @test Replace the value of a single @c stdexec::prop.
+TEST(upsert, replace_prop_in_single_prop) {
+    static_assert([]() {
+        auto env = ::stdexec::prop{prop_a, 123};
 
-    constexpr auto new_env = ::exec::upsert_in_env(prop_a, env, 42.);
+        auto new_env = ::exec::upsert_in_env(prop_a, env, 42.);
 
-    constexpr auto value = prop_a(new_env);
+        auto value = prop_a(new_env);
 
-    static_assert(value == 42.);
+        static_assert(std::same_as<decltype(new_env), ::stdexec::prop<tests::kokkos_ext::PropA, double>>);
+
+        return value == 42.;
+    }());
 }
 
-//! @test Add the value of a @c stdexec::prop in an @c stdexec::env containing another @c stdexec::prop.
-TEST(replace, replace_prop_in_env_with_another_prop) {
+//! @test Replace the value of a @c stdexec::prop in a @c stdexec::env containing a single @c stdexec::prop.
+TEST(upsert, replace_prop_in_env_with_single_prop) {
+    static_assert([]() {
+        auto env = ::stdexec::env{
+            ::stdexec::prop{prop_a, 123},
+        };
+
+        auto new_env = ::exec::upsert_in_env(prop_a, env, 42.);
+
+        auto value = prop_a(new_env);
+
+        static_assert(
+            std::same_as<decltype(new_env), ::stdexec::env<::stdexec::prop<tests::kokkos_ext::PropA, double>>>);
+
+        return value == 42.;
+    }());
+}
+
+//! @test Add the value of a @c stdexec::prop to another @c stdexec::prop.
+TEST(upsert, add_prop_to_another_prop) {
+    static_assert([]() {
+        auto env = ::stdexec::prop{prop_b, 123};
+
+        auto new_env = ::exec::upsert_in_env(prop_a, env, 42.);
+
+        static_assert(std::same_as<
+                      decltype(new_env),
+                      ::stdexec::env<
+                          ::stdexec::prop<tests::kokkos_ext::PropA, double>,
+                          ::stdexec::prop<tests::kokkos_ext::PropB, int>
+                      >
+        >);
+
+        auto value = prop_a(new_env);
+
+        return value == 42.;
+    }());
+}
+
+//! @test Replace the value of a @c stdexec::prop in a @c stdexec::env containing two @c stdexec::prop.
+TEST(upsert, replace_prop_in_env_with_two_props) {
     static_assert([]() {
         auto env = ::stdexec::env{
             ::stdexec::prop{prop_b, 123},
+            ::stdexec::prop{prop_a, 123},
         };
 
         auto new_env = ::exec::upsert_in_env(prop_a, env, 42.);
@@ -106,24 +150,8 @@ TEST(replace, replace_prop_in_env_with_another_prop) {
     }());
 }
 
-//! @test Replace the value of a @c stdexec::prop in an @c stdexec::env containing many @c stdexec::prop.
-TEST(replace, replace_prop_in_env_with_many_props) {
-    static_assert([]() {
-        auto env = ::stdexec::env{
-            ::stdexec::prop{prop_b, 123},
-            ::stdexec::prop{prop_a, 123},
-        };
-
-        auto new_env = ::exec::upsert_in_env(prop_a, env, 42.);
-
-        auto value = prop_a(new_env);
-
-        return value == 42.;
-    }());
-}
-
-//! @test Replace the value of a @c stdexec::prop in a forwarding @c stdexec::env containing many @c stdexec::prop.
-TEST(replace, replace_prop_in_forwarding_env_with_many_props) {
+//! @test Replace the value of a @c stdexec::prop in a forwarding @c stdexec::env containing two @c stdexec::prop.
+TEST(upsert, replace_prop_in_forwarding_env_with_two_props) {
     static_assert([]() {
         auto env = ::stdexec::__fwd_env(
             ::stdexec::env{
@@ -133,9 +161,115 @@ TEST(replace, replace_prop_in_forwarding_env_with_many_props) {
 
         auto new_env = ::exec::upsert_in_env(fwd_prop_c, env, 42.);
 
+        static_assert(std::same_as<
+                      decltype(new_env),
+                      ::stdexec::__env::__fwd<::stdexec::env<
+                          ::stdexec::prop<tests::kokkos_ext::FwdPropD, int>,
+                          ::stdexec::prop<tests::kokkos_ext::FwdPropC, double>
+                      >>
+        >);
+
         auto value = fwd_prop_c(new_env);
 
         return value == 42.;
+    }());
+}
+
+/**
+ * @test Add a new @c stdexec::prop to a @c stdexec::env containing multiple @c stdexec::prop.
+ *
+ * The resulting new environment must be queryable for this added new @c stdexec::prop.
+ */
+TEST(upsert, add_prop_to_env_with_multiple_props) {
+    static_assert([]() {
+        auto env = ::stdexec::env{
+            ::stdexec::prop{    prop_b, 123},
+            ::stdexec::prop{fwd_prop_c, 456},
+        };
+
+        auto new_env = ::exec::upsert_in_env(prop_a, env, 42.);
+
+        static_assert(std::same_as<
+                      decltype(new_env),
+                      ::stdexec::env<
+                          ::stdexec::prop<tests::kokkos_ext::PropA, double>,
+                          ::stdexec::env<
+                              ::stdexec::prop<tests::kokkos_ext::PropB, int>,
+                              ::stdexec::prop<tests::kokkos_ext::FwdPropC, int>
+                          >
+                      >
+        >);
+
+        return prop_a(new_env) == 42.;
+    }());
+}
+
+//! @test Add a forwarding @c stdexec::prop to a forwarding @c stdexec::env.
+TEST(upsert, add_fwd_prop_to_forwarding_env) {
+    static_assert([]() {
+        auto env = ::stdexec::__fwd_env(
+            ::stdexec::env{
+                ::stdexec::prop{fwd_prop_d, 123},
+        });
+
+        auto new_env = ::exec::upsert_in_env(fwd_prop_c, env, 42.);
+
+        static_assert(std::same_as<
+                      decltype(new_env),
+                      ::stdexec::env<
+                          ::stdexec::prop<tests::kokkos_ext::FwdPropC, double>,
+                          ::stdexec::__env::__fwd<stdexec::env<stdexec::prop<tests::kokkos_ext::FwdPropD, int>>>
+                      >
+        >);
+
+        return fwd_prop_c(new_env) == 42.;
+    }());
+}
+
+//! @test Upsert with a move-only type.
+TEST(upsert, upsert_with_move_only) {
+    static_assert([]() {
+        auto env = ::stdexec::prop{prop_a, 123};
+
+        struct MoveOnly : public ::stdexec::__move_only {
+            int value;
+            constexpr explicit MoveOnly(int value_)
+                : value(value_) {
+            }
+        };
+
+        auto new_env = ::exec::upsert_in_env(prop_b, env, MoveOnly(42));
+
+        static_assert(std::same_as<
+                      decltype(new_env),
+                      ::stdexec::env<
+                          ::stdexec::prop<tests::kokkos_ext::PropB, MoveOnly>,
+                          ::stdexec::prop<tests::kokkos_ext::PropA, int>
+                      >
+        >);
+
+        return prop_b(new_env).value == 42;
+    }());
+}
+
+/**
+ * @test Chain multiple upserts of the same property.
+ *
+ * The type of the environment never changes, only the query result value is updated.
+ */
+TEST(upsert, chain_multiple_upserts) {
+    static_assert([]() {
+        auto env = ::stdexec::env{
+            ::stdexec::prop{prop_a, 1.},
+        };
+
+        auto new_env = ::exec::upsert_in_env(
+            prop_a, ::exec::upsert_in_env(prop_a, ::exec::upsert_in_env(prop_a, env, 2.), 3.), 4.);
+
+        static_assert(
+            std::same_as<decltype(new_env), ::stdexec::env<::stdexec::prop<tests::kokkos_ext::PropA, double>>>);
+
+        return prop_a(new_env) == 4.;
     }());
 }
 
