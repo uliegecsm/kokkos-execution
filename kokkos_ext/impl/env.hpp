@@ -31,59 +31,68 @@ struct domain_queryable_env_t {
 namespace exec {
 namespace impl {
 struct upsert_in_env_fn {
-    //! The environment is empty. Fill it.
-    template <typename Tag, typename Value>
-    constexpr auto operator()(Tag tag, stdexec::env<>, Value&& value) const noexcept {
+
+    template <typename>
+    struct EnvOneOf;
+
+    template <typename Env1, typename Env2>
+    struct EnvOneOf<stdexec::env<Env1, Env2>> {
+        using type = Env1;
+    };
+
+    template <typename Env>
+    using env1_of_t = typename EnvOneOf<std::remove_cvref_t<Env>>::type;
+
+    //! Handle the case of a @c stdexec::prop without wrapping it into an @c stdexec::env.
+    template <typename Tag, typename PropValue, typename Value>
+    constexpr auto operator()(Tag tag, stdexec::prop<Tag, PropValue>, Value&& value) const {
+        return stdexec::prop{tag, std::forward<Value>(value)};
+    }
+
+    //! The environment does not contain the required property.
+    template <typename Tag, typename Env, typename Value>
+    requires(!stdexec::__queryable_with<std::remove_cvref_t<Env>, Tag>)
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
         return stdexec::env{
-            stdexec::prop{tag, std::forward<Value>(value)}
+            stdexec::prop{tag, std::forward<Value>(value)},
+            std::forward<Env>(env)
         };
     }
 
     //! The environment contains the required property, possibly with a value mismatch.
     template <typename Tag, typename PropValue, typename Value>
-    constexpr auto operator()(Tag tag, stdexec::env<stdexec::prop<Tag, PropValue>>, Value&& value) const noexcept {
+    constexpr auto operator()(Tag tag, stdexec::env<stdexec::prop<Tag, PropValue>>, Value&& value) const {
         return stdexec::env{
             stdexec::prop{tag, std::forward<Value>(value)}
         };
     }
 
-    //! The environment does not contain the required property.
-    template <typename Tag, typename OtherTag, typename OtherPropValue, typename Value>
-    requires(!std::same_as<Tag, OtherTag>)
-    constexpr auto operator()(Tag tag, const stdexec::env<stdexec::prop<OtherTag, OtherPropValue>>& env, Value&& value)
-        const noexcept {
-        return stdexec::env{
-            stdexec::prop{OtherTag{},      env.query(OtherTag{})},
-            stdexec::prop{       tag, std::forward<Value>(value)}
-        };
-    }
-
     //! Multiple properties are carried, the first one matches.
-    template <typename Tag, typename PropValue, typename Env2, typename Value>
-    constexpr auto
-        operator()(Tag tag, stdexec::env<stdexec::prop<Tag, PropValue>, Env2> env, Value&& value) const noexcept {
+    template <typename Tag, typename Env, typename Value>
+    requires(stdexec::__queryable_with<env1_of_t<std::remove_cvref_t<Env>>, Tag>)
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
         return stdexec::env{
             stdexec::prop{tag, std::forward<Value>(value)},
-            env.env2_
+            std::forward<Env>(env).env2_
         };
     }
 
     //! Multiple properties are carried, but the first one doesn't match.
-    template <typename Tag, typename PropTag, typename PropValue, typename Env2, typename Value>
-    requires(!std::same_as<Tag, PropTag>)
-    constexpr auto
-        operator()(Tag tag, stdexec::env<stdexec::prop<PropTag, PropValue>, Env2> env, Value&& value) const noexcept {
+    template <typename Tag, typename Env, typename Value>
+    requires(
+        stdexec::__queryable_with<std::remove_cvref_t<Env>, Tag>
+        && !stdexec::__queryable_with<env1_of_t<std::remove_cvref_t<Env>>, Tag>)
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
         return stdexec::env{
-            stdexec::prop{PropTag{}, env.query(PropTag{})},
-            this->operator()(tag, stdexec::env<Env2>{env.env2_},
-            std::forward<Value>(value))
-        };
+            stdexec::__forward_like<Env>(static_cast<stdexec::__env_base_t<env1_of_t<std::remove_cvref_t<Env>>>&>(env)),
+            this->operator()(tag, std::forward<Env>(env).env2_, std::forward<Value>(value))};
     }
 
     //! Unwrap forwarding environment and delegate to the appropriate overload.
     template <typename Tag, typename Env, typename Value>
-    constexpr auto operator()(Tag tag, stdexec::__env::__fwd<Env> env, Value&& value) const noexcept {
-        return stdexec::__env::__fwd{this->operator()(tag, env.__env_, std::forward<Value>(value))};
+    requires(stdexec::__queryable_with<Env &&, Tag> && stdexec::__env::__is_fwd_env<Env>)
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
+        return stdexec::__env::__fwd{this->operator()(tag, std::forward<Env>(env).__env_, std::forward<Value>(value))};
     }
 };
 } // namespace impl
