@@ -4,7 +4,8 @@ ARG COMPILER_FAMILY=not-given
 # Install Python3 (with the trickery for virtual environment).
 FROM ${BASE_IMAGE} AS requirements-python
 
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION
+ARG SYSTEM_HELPERS_VERSION
 ENV VIRTUAL_ENV=/opt/venv-${PYTHON_VERSION}
 ENV PATH=${VIRTUAL_ENV}/bin:${PATH}
 
@@ -16,7 +17,7 @@ RUN <<EOF
 
     printf "import re, sys\nif re.match(r'Python ${PYTHON_VERSION}.[0-9]+', '$(python3 --version)') is None: raise RuntimeError(f'Your Python version {sys.version} does not match ${PYTHON_VERSION}.')" | python3
 
-    python3 -m pip install system-helpers>=0.0.3
+    python3 -m pip install system-helpers==${SYSTEM_HELPERS_VERSION}
 
     apt-helpers clean
 EOF
@@ -27,7 +28,7 @@ RUN apt-helpers install-packages --clean --update --packages gcc g++
 
 FROM requirements-python AS requirements-compiler-clang
 
-ARG CLANG_VERSION=21
+ARG CLANG_VERSION
 
 RUN <<EOF
     set -ex
@@ -66,7 +67,7 @@ EOF
 FROM requirements-system AS requirements-cmake
 
 ARG TARGETARCH
-ARG CMAKE_VERSION=4.2.1
+ARG CMAKE_VERSION
 
 RUN <<EOF
     set -ex
@@ -91,3 +92,81 @@ RUN <<EOF
 EOF
 
 ENV PATH=/opt/cmake-${CMAKE_VERSION}/bin:${PATH}
+
+# Compile Doxygen.
+FROM requirements-cmake AS doxygen-compile
+
+ARG DOXYGEN_VERSION
+
+ADD https://github.com/doxygen/doxygen/archive/refs/tags/Release_${DOXYGEN_VERSION//./_}.tar.gz /tmp/
+
+RUN <<EOF
+    set -ex
+
+    cd /tmp
+
+    tar -xvf Release_$(echo ${DOXYGEN_VERSION} | tr . _).tar.gz
+
+    apt-helpers install-packages --clean --update --packages flex bison
+
+    cd doxygen-Release_$(echo ${DOXYGEN_VERSION} | tr . _)
+
+    cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/opt/doxygen-${DOXYGEN_VERSION}
+
+    cmake --build build -j4 --target install
+EOF
+
+# Fetch https://github.com/NVIDIA/stdexec sources.
+FROM requirements-cmake AS nvidia-stdexec
+
+ARG NVIDIA_STDEXEC_REF
+
+RUN <<EOF
+    set -ex
+
+    git clone --branch main --shallow-since=2025-06-01 https://github.com/NVIDIA/stdexec /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
+
+    cd /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
+
+    git checkout ${NVIDIA_STDEXEC_REF}
+EOF
+
+# Compile Google Test.
+FROM requirements-cmake AS google-test-compile
+
+ARG GOOGLETEST_VERSION
+
+ADD https://github.com/google/googletest/archive/refs/tags/v${GOOGLETEST_VERSION}.tar.gz /tmp/
+
+RUN <<EOF
+    set -ex
+
+    cd /tmp
+
+    tar -xzf v${GOOGLETEST_VERSION}.tar.gz
+
+    cd googletest-${GOOGLETEST_VERSION}
+
+    cmake -S . -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/opt/google-test-${GOOGLETEST_VERSION}
+
+    cmake --build build -j4
+
+    cmake --build build --target install
+EOF
+
+# Build the final image from previous stages.
+FROM requirements-cmake AS final
+
+ARG DOXYGEN_VERSION
+ARG NVIDIA_STDEXEC_REF
+ARG GOOGLETEST_VERSION
+
+COPY --from=doxygen-compile     /opt/doxygen-${DOXYGEN_VERSION}           /opt/doxygen-${DOXYGEN_VERSION}
+COPY --from=nvidia-stdexec      /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF} /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
+COPY --from=google-test-compile /opt/google-test-${GOOGLETEST_VERSION}    /opt/google-test-${GOOGLETEST_VERSION}
+
+ENV Doxygen_ROOT=/opt/doxygen-${DOXYGEN_VERSION}
+ENV Stdexec_ROOT=/opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
+ENV GTest_ROOT=/opt/google-test-${GOOGLETEST_VERSION}
