@@ -46,26 +46,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - backend        : OpenMP
+          - kokkos_backends: [OpenMP]
             compiler_family: gnu
-          - backend        : OpenMP
+          - kokkos_backends: [OpenMP]
             compiler_family: clang
-          - backend        : Cuda
-            compiler_family: gnu-nvidia
+          - kokkos_backends: [OpenMP, Cuda]
+            compiler_family: clang
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix     : -volta70
-          - backend        : HIP
+          - kokkos_backends: [OpenMP, Cuda]
+            compiler_family: gnu-nvidia
+            runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'blackwell120', 'gpu:0']"
+            tag_suffix     : -blackwell120
+          - kokkos_backends: [OpenMP, HIP]
             compiler_family: rocm
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'amd_gfx1201', 'gpu:0']"
             docker_run_args: --device /dev/kfd --device /dev/dri
             tag_suffix     : -zen5-amd_gfx1201
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ matrix.backend }}${{ matrix.tag_suffix }}
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     steps:
       - uses: actions/checkout@v6
       - run: |
-          cmake -S . -B build-${{ matrix.compiler_family }}-${{ matrix.backend }}
+          cmake -S . -B build-${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }}
       - run: |
-          cmake --build build-${{ matrix.compiler_family }}-${{ matrix.backend }} -j4
+          cmake --build build-${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
