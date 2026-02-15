@@ -54,8 +54,15 @@ jobs:
             compiler_family: gcc
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix     : -volta70
+          - backend        : HIP
+            compiler_family: rocm
+            runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'amd_gfx1201', 'gpu:0']"
+            docker_run_args: --device /dev/kfd --device /dev/dri
+            tag_suffix     : -zen5-amd_gfx1201
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ matrix.backend }}${{ matrix.tag_suffix }}
+      # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.
+      options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     steps:
       - uses: actions/checkout@v6
       - run: |

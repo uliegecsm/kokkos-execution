@@ -26,6 +26,8 @@ FROM requirements-python AS requirements-compiler-gcc
 
 RUN apt-helpers install-packages --clean --update --packages gcc g++
 
+FROM requirements-python AS requirements-compiler-rocm
+
 FROM requirements-python AS requirements-compiler-clang
 
 ARG CLANG_VERSION
