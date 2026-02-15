@@ -34,6 +34,26 @@ class ThenTest
     using variant_t = std::variant<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
 };
 
+//! @test Check traits of sender returned by @c then when customized for @c Kokkos::Experimental::details::execution_space::Domain.
+consteval bool test_sndr_traits() {
+    //! Schedule sender.
+    using schd_sndr_t = typename ThenTest::schedule_sender_t;
+
+    //! Then sender.
+    using functor_t = ThenFunctor<ThenTest::view_s_t, true>;
+    using then_sndr_t = ::stdexec::transform_sender_result_t<
+        decltype(::stdexec::then(std::declval<schd_sndr_t>(), std::declval<functor_t>())),
+        ::stdexec::env<>
+    >;
+
+    //! The policy used in the parallel for created by the @c then sender has the expected launch bounds.
+    using policy_t = typename then_sndr_t::closure_t::policy_t;
+    static_assert(std::same_as<typename policy_t::launch_bounds, Kokkos::LaunchBounds<1>>);
+
+    return true;
+}
+static_assert(test_sndr_traits());
+
 /**
  * @test Check that @ref Kokkos::Experimental::ExecutionSpaceContext does its duty well when used with @c then
  *       within a chain started with @c stdexec::schedule.

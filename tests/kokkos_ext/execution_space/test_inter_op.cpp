@@ -41,8 +41,6 @@ class InterOpTest
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
 
-    using value_t = typename view_s_t::value_type;
-
     static constexpr bool on_device = ::tests::utils::on_device<execution_space>();
 };
 
