@@ -51,7 +51,7 @@ TEST(forwarding, queryable) {
                       ::stdexec::__env::__fwd<::stdexec::env<
                           ::stdexec::prop<tests::kokkos_ext::PropA, int>,
                           ::stdexec::prop<tests::kokkos_ext::FwdPropC, int>
-                      >&>
+                      > &>
         >);
 
         static_assert(!stdexec::__queryable_with<decltype(fwd_env), PropA>);
@@ -271,6 +271,45 @@ TEST(upsert, chain_multiple_upserts) {
 
         return prop_a(new_env) == 4.;
     }());
+}
+
+/**
+ * @test Check a workflow whereby an environment is gotten by @c const reference, a property is joined, and the property
+ *       is upserted with a new value.
+ *
+ * Check that the gotten environment is stored by reference, so that a change in it is reflected in the upserted environment.
+ */
+TEST(upsert, ref_join_upsert) {
+    double fwd_prop_c_value = 42.;
+
+    auto env = ::stdexec::prop{fwd_prop_c, std::ref(fwd_prop_c_value)};
+    auto env_ref_join = ::stdexec::__env::__join(::stdexec::prop{prop_b, 2}, ::stdexec::__fwd_env(env));
+    const auto env_ref_join_upsert = ::exec::upsert_in_env(prop_b, env_ref_join, 3.);
+
+    static_assert(std::same_as<
+                  decltype(env_ref_join),
+                  ::stdexec::env<
+                      ::stdexec::prop<tests::kokkos_ext::PropB, int>,
+                      ::stdexec::__env::__fwd<::stdexec::prop<tests::kokkos_ext::FwdPropC, double &> &>
+                  >
+    >);
+
+    static_assert(std::same_as<
+                  std::remove_const_t<decltype(env_ref_join_upsert)>,
+                  ::stdexec::env<
+                      ::stdexec::prop<tests::kokkos_ext::PropB, double>,
+                      ::stdexec::__env::__fwd<::stdexec::prop<tests::kokkos_ext::FwdPropC, double &> &>
+                  >
+    >);
+
+    ASSERT_EQ(prop_b(env_ref_join_upsert), 3.);
+    ASSERT_EQ(fwd_prop_c(env_ref_join_upsert), 42.);
+
+    fwd_prop_c_value = 666.;
+    ASSERT_EQ(fwd_prop_c(env_ref_join_upsert), 666.);
+
+    env.__value = 3.14;
+    ASSERT_EQ(fwd_prop_c(env_ref_join_upsert), 3.14);
 }
 
 } // namespace tests::kokkos_ext
