@@ -22,9 +22,12 @@ RUN <<EOF
     apt-helpers clean
 EOF
 
-FROM requirements-python AS requirements-compiler-gcc
+FROM requirements-python AS requirements-compiler-gnu-base
 
 RUN apt-helpers install-packages --clean --update --packages gcc g++
+
+FROM requirements-compiler-gnu-base AS requirements-compiler-gnu
+FROM requirements-compiler-gnu-base AS requirements-compiler-gnu-nvidia
 
 FROM requirements-python AS requirements-compiler-rocm
 
