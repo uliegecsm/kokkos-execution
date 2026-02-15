@@ -124,7 +124,7 @@ jobs:
       matrix:
         include:
           - backend        : OpenMP
-            compiler_family: gcc
+            compiler_family: gnu
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
           - backend        : OpenMP
@@ -132,7 +132,7 @@ jobs:
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
           - backend        : Cuda
-            compiler_family: gcc
+            compiler_family: gnu-nvidia
             base_image     : nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
             platforms      : linux/amd64
             kokkos_archs   : [VOLTA70]

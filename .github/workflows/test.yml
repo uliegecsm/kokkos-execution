@@ -47,11 +47,11 @@ jobs:
       matrix:
         include:
           - backend        : OpenMP
-            compiler_family: gcc
+            compiler_family: gnu
           - backend        : OpenMP
             compiler_family: clang
           - backend        : Cuda
-            compiler_family: gcc
+            compiler_family: gnu-nvidia
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix     : -volta70
           - backend        : HIP
