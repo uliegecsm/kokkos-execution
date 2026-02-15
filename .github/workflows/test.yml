@@ -50,8 +50,12 @@ jobs:
             compiler_family: gcc
           - backend        : OpenMP
             compiler_family: clang
+          - backend        : Cuda
+            compiler_family: gcc
+            runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
+            tag_suffix     : -volta70
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ matrix.backend }}
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ matrix.backend }}${{ matrix.tag_suffix }}
     steps:
       - uses: actions/checkout@v6
       - run: |

@@ -131,6 +131,11 @@ jobs:
             compiler_family: clang
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
+          - backend        : Cuda
+            compiler_family: gcc
+            base_image     : nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
+            platforms      : linux/amd64
+            kokkos_archs   : [VOLTA70]
     steps:
       - uses: actions/checkout@v6
 
@@ -183,7 +188,7 @@ jobs:
                 COMPILER_FAMILY=${{ matrix.compiler_family }}
                 DOXYGEN_VERSION=${{ env.DOXYGEN_VERSION }}
                 GOOGLETEST_VERSION=${{ env.GOOGLETEST_VERSION }}
-                KOKKOS_ARCHS=${{ matrix.kokkos_archs && join(fromJSON(matrix.kokkos_archs), ',') || '' }}
+                KOKKOS_ARCHS=${{ matrix.kokkos_archs && join(matrix.kokkos_archs, ',') || '' }}
                 NVIDIA_STDEXEC_REF=${{ env.NVIDIA_STDEXEC_REF }}
                 PYTHON_VERSION=${{ env.PYTHON_VERSION }}
                 SYSTEM_HELPERS_VERSION=${{ env.SYSTEM_HELPERS_VERSION }}
