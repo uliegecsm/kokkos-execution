@@ -3,6 +3,12 @@
 
 #include "Kokkos_Concepts.hpp"
 
+namespace Kokkos::Experimental {
+
+struct parallel_for_t;
+
+} // namespace Kokkos::Experimental
+
 namespace Kokkos::Experimental::details::execution_space
 {
 

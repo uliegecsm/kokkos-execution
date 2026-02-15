@@ -21,6 +21,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos_ext/impl/execution_space/continues_on.hpp"
 #include "kokkos_ext/impl/execution_space/domain.hpp"
 #include "kokkos_ext/impl/execution_space/get_exec.hpp"
+#include "kokkos_ext/impl/execution_space/parallel_for.hpp"
 #include "kokkos_ext/impl/execution_space/schedule_from.hpp"
 #include "kokkos_ext/impl/execution_space/sync_wait.hpp"
 #include "kokkos_ext/impl/execution_space/then.hpp"
