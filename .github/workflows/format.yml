@@ -17,3 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: bash clang-format.sh
+
+  cmake:
+    runs-on: [self-hosted, linux, docker, amd64]
+    container:
+      image: ${{ inputs.CI_IMAGE }}:clang-OpenMP
+    steps:
+      - uses: actions/checkout@v6
+      - run: |
+          cmake-format --config-files=.cmake-format.py \
+            --log-level=debug \
+            --check \
+            $(git ls-files CMakeLists.txt)
