@@ -33,14 +33,14 @@ jobs:
       packages: write
       pull-requests: read
 
-  clang-format:
+  format:
     needs: [build-images]
-    uses: ./.github/workflows/clang.format.yml
+    uses: ./.github/workflows/format.yml
     with:
       CI_IMAGE: ${{ needs.build-images.outputs.CI_IMAGE }}
 
   build-and-test:
-    needs: [build-images, clang-format]
+    needs: [build-images, format]
     runs-on: ${{ fromJSON(matrix.runs-on || '["self-hosted", "linux", "docker", "amd64"]') }}
     strategy:
       fail-fast: false

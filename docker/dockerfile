@@ -5,11 +5,10 @@ ARG COMPILER_FAMILY=not-given
 FROM ${BASE_IMAGE} AS requirements-python
 
 ARG PYTHON_VERSION
-ARG SYSTEM_HELPERS_VERSION
 ENV VIRTUAL_ENV=/opt/venv-${PYTHON_VERSION}
 ENV PATH=${VIRTUAL_ENV}/bin:${PATH}
 
-RUN <<EOF
+RUN --mount=target=/requirements/requirements.python.txt,type=bind,source=requirements/requirements.python.txt <<EOF
     set -ex
     apt update
     apt --yes --no-install-recommends install python3 python3-pip python3-venv git
@@ -17,7 +16,7 @@ RUN <<EOF
 
     printf "import re, sys\nif re.match(r'Python ${PYTHON_VERSION}.[0-9]+', '$(python3 --version)') is None: raise RuntimeError(f'Your Python version {sys.version} does not match ${PYTHON_VERSION}.')" | python3
 
-    python3 -m pip install system-helpers==${SYSTEM_HELPERS_VERSION}
+    python3 -m pip install -r /requirements/requirements.python.txt
 
     apt-helpers clean
 EOF
@@ -62,7 +61,7 @@ EOF
 
 FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-system
 
-RUN --mount=target=/requirements,type=bind,source=requirements <<EOF
+RUN --mount=target=/requirements/requirements.system.txt,type=bind,source=requirements/requirements.system.txt <<EOF
     set -ex
 
     apt-helpers install-packages --clean --update \
