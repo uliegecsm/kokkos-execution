@@ -18,6 +18,5 @@
         "nvidia" : {
             "stdexec" : "15ab912275ea1d0e658dd56b93970397285f704a"
         }
-    },
-    "system-helpers" : "0.0.3"
+    }
 }
