@@ -1,22 +1,20 @@
 {
-    "clang" : "21",
-    "cmake" : "4.2.1",
-    "python" : "3.12",
-    "github" : {
-        "doxygen" : "1.15.0",
-        "googletest" : "1.17.0",
-        "kokkos" : {
-            "value"  : "5.0.99",
-            "branch" : "develop",
-            "sha"    : "1f5f4b6d82c07939f036263e4651d27a543c2049",
-            "url"    : "kokkos"
+    "clang": "21",
+    "cmake": "4.2.1",
+    "python": "3.12",
+    "github": {
+        "doxygen": "1.15.0",
+        "googletest": "1.17.0",
+        "kokkos": {
+            "sha": "1f5f4b6d82c07939f036263e4651d27a543c2049",
+            "username": "kokkos"
         },
-        "kokkos-utils" : {
-            "branch" : "develop",
-            "sha"    : "80c94b76be72f74c151272c554cb9f0c97e54a13"
+        "kokkos-utils": {
+            "branch": "develop",
+            "sha": "80c94b76be72f74c151272c554cb9f0c97e54a13"
         },
-        "nvidia" : {
-            "stdexec" : "15ab912275ea1d0e658dd56b93970397285f704a"
+        "nvidia": {
+            "stdexec": "15ab912275ea1d0e658dd56b93970397285f704a"
         }
     }
 }

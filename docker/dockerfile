@@ -30,6 +30,8 @@ FROM requirements-compiler-gnu-base AS requirements-compiler-gnu-nvidia
 
 FROM requirements-python AS requirements-compiler-rocm
 
+ENV PATH=/opt/rocm/bin:${PATH}
+
 FROM requirements-python AS requirements-compiler-clang
 
 ARG CLANG_VERSION
@@ -160,17 +162,51 @@ RUN <<EOF
     cmake --build build --target install
 EOF
 
+# Build Kokkos.
+FROM requirements-cmake AS kokkos-compile
+
+ARG COMPILER_FAMILY
+ARG KOKKOS_ARCHS
+ARG KOKKOS_BACKENDS
+ARG KOKKOS_SHA
+ARG KOKKOS_USERNAME
+
+ADD https://github.com/${KOKKOS_USERNAME}/kokkos/archive/${KOKKOS_SHA}.tar.gz /tmp/
+
+RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kokkos.json <<EOF
+    set -ex
+
+    cd /tmp
+
+    tar -xzf ${KOKKOS_SHA}.tar.gz
+
+    cd kokkos-${KOKKOS_SHA}
+
+    cp /cmake/presets/kokkos.json CMakePresets.json
+
+    KOKKOS_PRESET=${COMPILER_FAMILY}-$(echo ${KOKKOS_BACKENDS} | tr ',' '-')
+
+    cmake -S . --preset=${KOKKOS_PRESET} \
+        $([ -n "$KOKKOS_ARCHS" ] && echo $KOKKOS_ARCHS | tr ',' '\n' | sed 's/^/-DKokkos_ARCH_/; s/$/=ON/') \
+        -DCMAKE_INSTALL_PREFIX=/opt/kokkos-${KOKKOS_SHA}
+
+    cmake --build --preset=${KOKKOS_PRESET} -j4 --target install
+EOF
+
 # Build the final image from previous stages.
 FROM requirements-cmake AS final
 
 ARG DOXYGEN_VERSION
-ARG NVIDIA_STDEXEC_REF
 ARG GOOGLETEST_VERSION
+ARG KOKKOS_SHA
+ARG NVIDIA_STDEXEC_REF
 
 COPY --from=doxygen-compile     /opt/doxygen-${DOXYGEN_VERSION}           /opt/doxygen-${DOXYGEN_VERSION}
-COPY --from=nvidia-stdexec      /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF} /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
 COPY --from=google-test-compile /opt/google-test-${GOOGLETEST_VERSION}    /opt/google-test-${GOOGLETEST_VERSION}
+COPY --from=kokkos-compile      /opt/kokkos-${KOKKOS_SHA}                 /opt/kokkos-${KOKKOS_SHA}
+COPY --from=nvidia-stdexec      /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF} /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
 
 ENV Doxygen_ROOT=/opt/doxygen-${DOXYGEN_VERSION}
-ENV Stdexec_ROOT=/opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
 ENV GTest_ROOT=/opt/google-test-${GOOGLETEST_VERSION}
+ENV Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}
+ENV Stdexec_ROOT=/opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
