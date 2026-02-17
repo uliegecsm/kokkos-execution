@@ -5,9 +5,9 @@
 
 #include "tests/IgnoreWarnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
 #include "exec/static_thread_pool.hpp"
 PRAGMA_DIAGNOSTIC_POP
@@ -104,7 +104,11 @@ constexpr bool check_continues_on()
     >);
 
     //! Diagnose any issue that could make the resulting sender invalid.
-    ::stdexec::__diagnose_sender_concept_failure<sndr_t>();
+    if constexpr (::stdexec::sender_in<sndr_t>) {
+        ::stdexec::__diagnose_sender_concept_failure<sndr_t>();
+    } else {
+        ::stdexec::__diagnose_sender_concept_failure<sndr_t, ::stdexec::env<>>();
+    }
 
     //! Check the completing domain;
     static_assert(std::same_as<
@@ -117,10 +121,18 @@ constexpr bool check_continues_on()
     >);
 
     //! It must advertise a valid completion scheduler.
-    static_assert(std::same_as<
-        ::stdexec::__completion_scheduler_of_t<::stdexec::set_value_t, sndr_t>,
-        Schd
-    >);
+    if constexpr (::stdexec::__minvocable_q<::stdexec::__completion_scheduler_of_t, ::stdexec::set_value_t, sndr_t>) {
+        static_assert(std::same_as<
+            ::stdexec::__completion_scheduler_of_t<::stdexec::set_value_t, sndr_t>,
+            Schd
+        >);
+    //! Handle the case of dependent senders.
+    } else {
+        static_assert(std::same_as<
+            ::stdexec::__completion_scheduler_of_t<::stdexec::set_value_t, sndr_t, ::stdexec::env<>>,
+            Schd
+        >);
+    }
 
     return true;
 }

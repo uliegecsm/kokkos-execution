@@ -1,9 +1,8 @@
 #include "tests/IgnoreWarnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wsign-compare")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wsign-compare")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
 #include "exec/split.hpp"
 PRAGMA_DIAGNOSTIC_POP

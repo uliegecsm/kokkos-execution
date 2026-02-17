@@ -90,8 +90,7 @@ TEST_F(ThenTest, then_starts_on) {
     static_assert(!tests::stdexec::has_completion_scheduler_for<chain_t, ::stdexec::set_value_t>);
     static_assert(tests::stdexec::has_completion_signatures<
                   chain_t,
-                  ::stdexec::set_value_t(),
-                  ::stdexec::set_error_t(std::exception_ptr)
+                  ::stdexec::__mset<::stdexec::set_value_t(), ::stdexec::set_error_t(std::exception_ptr)>
     >);
 
     static_assert(std::same_as<
