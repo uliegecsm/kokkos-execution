@@ -3,10 +3,10 @@
 
 #include "tests/IgnoreWarnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
+PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
 #include <stdexec/execution.hpp>
 PRAGMA_DIAGNOSTIC_POP
@@ -73,7 +73,7 @@ struct upsert_in_env_fn {
     constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
         return stdexec::env{
             stdexec::prop{tag, std::forward<Value>(value)},
-            std::forward<Env>(env).env2_
+            std::forward<Env>(env).__env2_
         };
     }
 
@@ -84,8 +84,8 @@ struct upsert_in_env_fn {
         && !stdexec::__queryable_with<env1_of_t<std::remove_cvref_t<Env>>, Tag>)
     constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
         return stdexec::env{
-            stdexec::__forward_like<Env>(static_cast<stdexec::__env_base_t<env1_of_t<std::remove_cvref_t<Env>>>&>(env)),
-            this->operator()(tag, std::forward<Env>(env).env2_, std::forward<Value>(value))};
+            std::forward<Env>(env).__env1_,
+            this->operator()(tag, std::forward<Env>(env).__env2_, std::forward<Value>(value))};
     }
 
     //! Unwrap forwarding environment and delegate to the appropriate overload.
