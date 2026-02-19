@@ -15,7 +15,7 @@ namespace Kokkos::Experimental::details::execution_space
 template <class Tag>
 struct apply_sender_for;
 
-template <class Tag, class Env>
+template <class Tag>
 struct transform_sender_for;
 
 struct Domain;
