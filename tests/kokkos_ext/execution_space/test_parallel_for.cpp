@@ -120,13 +120,12 @@ consteval bool test_sndr_decomposition() {
     static_assert(std::same_as<::stdexec::__child_of<pfor_sndr_t>, schd_sndr_t>);
 
     //! Is transformable via @c Kokkos::Experimental::details::execution_space::transform_sender_for.
-    static_assert(::stdexec::__applicable<
-                  Kokkos::Experimental::details::execution_space::transform_sender_for<
-                      ::stdexec::tag_of_t<pfor_sndr_t>,
-                      ::stdexec::env<>
-                  >,
-                  pfor_sndr_t
-    >);
+    static_assert(
+        ::stdexec::__applicable<
+            Kokkos::Experimental::details::execution_space::transform_sender_for<::stdexec::tag_of_t<pfor_sndr_t>>,
+            pfor_sndr_t,
+            const ::stdexec::env<>&
+        >);
 
     return true;
 }
