@@ -10,7 +10,6 @@
             "username": "kokkos"
         },
         "kokkos-utils": {
-            "branch": "develop",
             "sha": "80c94b76be72f74c151272c554cb9f0c97e54a13"
         },
         "nvidia": {
