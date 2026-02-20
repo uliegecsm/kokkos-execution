@@ -75,17 +75,17 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                                 | ::stdexec::then(DummyFunctor<'B'>{});
 
     static_assert(std::same_as<
-                  ::stdexec::__detail::__demangle_t<decltype(schs_A_then_con_B_then)>,
-                  ::stdexec::__basic_sender<
+                  ::stdexec::__demangle_t<decltype(schs_A_then_con_B_then)>,
+                  ::tests::stdexec::basic_sender<
                       ::stdexec::then_t,
                       tests::kokkos_ext::DummyFunctor<'B'>,
-                      ::stdexec::__basic_sender<
+                      ::tests::stdexec::basic_sender<
                           ::stdexec::continues_on_t,
                           Kokkos::Experimental::details::execution_space::Scheduler<execution_space>,
-                          ::stdexec::__basic_sender<
+                          ::tests::stdexec::basic_sender<
                               ::stdexec::schedule_from_t,
                               ::stdexec::__,
-                              ::stdexec::__basic_sender<
+                              ::tests::stdexec::basic_sender<
                                   ::stdexec::then_t,
                                   tests::kokkos_ext::DummyFunctor<'A'>,
                                   Kokkos::Experimental::details::execution_space::Scheduler<execution_space>::Sender

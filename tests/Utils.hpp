@@ -12,6 +12,8 @@ PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
 #include "exec/static_thread_pool.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
+#include "tests/stdexec/Utils.hpp"
+
 namespace utils
 {
 
@@ -93,14 +95,14 @@ constexpr bool check_continues_on()
 
     //! Check the complete "demangled" sender type.
     static_assert(std::same_as<
-        ::stdexec::__detail::__demangle_t<sndr_t>,
-        ::stdexec::__basic_sender<
+        ::stdexec::__demangle_t<sndr_t>,
+        ::tests::stdexec::basic_sender<
             ::stdexec::continues_on_t,
             Schd,
-            ::stdexec::__basic_sender<
+            ::tests::stdexec::basic_sender<
                 ::stdexec::schedule_from_t,
                 ::stdexec::__,
-                ::stdexec::__basic_sender<::stdexec::just_t, ::stdexec::__tup::__tuple<>>>>
+                ::tests::stdexec::basic_sender<::stdexec::just_t, ::stdexec::__tup::__tuple<>>>>
     >);
 
     //! Diagnose any issue that could make the resulting sender invalid.
