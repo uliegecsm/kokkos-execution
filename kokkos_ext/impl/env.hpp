@@ -28,7 +28,7 @@ struct domain_queryable_env_t {
 };
 } // namespace Kokkos::Experimental::details::impl
 
-namespace exec {
+namespace experimental::execution {
 namespace impl {
 struct upsert_in_env_fn {
 
@@ -103,6 +103,6 @@ using upsert_in_env_t = std::invoke_result_t<impl::upsert_in_env_fn, Tag, Env, V
 
 inline constexpr impl::upsert_in_env_fn upsert_in_env{};
 
-} // namespace exec
+} // namespace experimental::execution
 
 #endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_ENV_HPP
