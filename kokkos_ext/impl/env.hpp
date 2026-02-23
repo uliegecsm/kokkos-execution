@@ -91,9 +91,29 @@ struct upsert_in_env_fn {
 
     //! Unwrap forwarding environment and delegate to the appropriate overload.
     template <typename Tag, typename Env, typename Value>
-    requires(stdexec::__queryable_with<Env &&, Tag> && stdexec::__env::__is_fwd_env<Env>)
+    requires(
+        stdexec::__queryable_with<Env &&, Tag> && stdexec::__env::__is_fwd_env<Env>
+        && requires(
+            upsert_in_env_fn const & self,
+            Tag tag,
+            Env&& env,
+            Value&& value) { self(tag, std::forward<Env>(env).__env_, std::forward<Value>(value)); })
     constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
         return stdexec::__env::__fwd{this->operator()(tag, std::forward<Env>(env).__env_, std::forward<Value>(value))};
+    }
+};
+
+struct upsert_in_env_or_join_fn {
+    template <typename Tag, typename Env, typename Value>
+    requires(std::is_invocable_v<upsert_in_env_fn, Tag, Env &&, Value &&>)
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
+        return upsert_in_env_fn{}.operator()(tag, std::forward<Env>(env), std::forward<Value>(value));
+    }
+
+    template <typename Tag, typename Env, typename Value>
+    requires(!std::is_invocable_v<upsert_in_env_fn, Tag, Env &&, Value &&>)
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
+        return stdexec::__env::__join(stdexec::prop{tag, std::forward<Value>(value)}, std::forward<Env>(env));
     }
 };
 } // namespace impl
@@ -102,6 +122,11 @@ template <typename Tag, typename Env, typename Value>
 using upsert_in_env_t = std::invoke_result_t<impl::upsert_in_env_fn, Tag, Env, Value>;
 
 inline constexpr impl::upsert_in_env_fn upsert_in_env{};
+
+template <typename Tag, typename Env, typename Value>
+using upsert_in_env_or_join_t = std::invoke_result_t<impl::upsert_in_env_or_join_fn, Tag, Env, Value>;
+
+inline constexpr impl::upsert_in_env_or_join_fn upsert_in_env_or_join{};
 
 } // namespace experimental::execution
 
