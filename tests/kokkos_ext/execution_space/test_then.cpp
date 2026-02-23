@@ -153,17 +153,39 @@ TEST_F(ThenTest, then_starts_on) {
     ASSERT_EQ(data(), 2);
 }
 
-//! @test If an exception is thrown while dispatching a @c Kokkos parallel region, it is properly caught and propagated.
+/**
+ * @test If an exception is thrown while dispatching a @c Kokkos parallel region, it is properly caught
+ *       and propagated in the error channel.
+ *
+ * Any parallel region successfully launched before the one that fails completes correctly because it will be
+ * synchronized. Any sender downstream will not launch its parallel region.
+ */
 TEST_F(ThenTest, error_propagates) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
     const context_t esc{exec};
 
-    ::stdexec::sender auto sndr = ::stdexec::schedule(esc.get_scheduler())
-                                | ::stdexec::then(::tests::utils::ThrowsWhenCopied{});
+    ::stdexec::sender auto sndr = ::stdexec::schedule(esc.get_scheduler()) | ADD_THEN
+                                | ::stdexec::then(::tests::utils::ThrowsWhenCopied{})
+                                | ::stdexec::then(KOKKOS_LAMBDA() {
+                                      Kokkos::abort("The value channel should be used at this point.");
+                                  });
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        ::tests::utils::MutableMoveToSyncWait{.sndr = std::move(sndr)},
-        ::testing::ThrowsMessage<std::runtime_error>(
-            testing::HasSubstr("ThrowsWhenCopied: Throwing in copy constructor!")));
+        recorder_listener_t::record([sndr = std::move(sndr)]() mutable {
+            ASSERT_THAT(
+                ::tests::utils::MutableMoveToSyncWait{.sndr = std::move(sndr)},
+                ::testing::ThrowsMessage<std::runtime_error>(
+                    testing::HasSubstr("ThrowsWhenCopied: Throwing in copy constructor!")));
+        }),
+        ::testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 1);
 }
 
 /**
