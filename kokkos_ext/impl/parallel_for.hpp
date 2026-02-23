@@ -78,10 +78,10 @@ struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Func
     GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_ADD(ParallelForSender, stdexec::set_error_t(std::exception_ptr))
 
     template <stdexec::receiver Rcvr>
-    constexpr auto connect(Rcvr&&) && = delete;
+    constexpr auto connect(Rcvr) && = delete;
 
     template <stdexec::receiver Rcvr>
-    constexpr auto connect(Rcvr&&) const & = delete;
+    constexpr auto connect(Rcvr) const & = delete;
 
     static constexpr size_t idx_sndr = 2;
     GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Sndr, stdexec::__get<idx_sndr>(static_cast<const base_t&>(*this)))
