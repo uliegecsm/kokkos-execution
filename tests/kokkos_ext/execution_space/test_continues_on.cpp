@@ -406,6 +406,19 @@ TEST_F(ContinuesOnTest, just_stopped) {
 
     auto chain = ::stdexec::just_stopped() | ::stdexec::continues_on(esc.get_scheduler()) | ADD_THEN;
 
+    static_assert(
+        ::tests::stdexec::has_completion_signatures<decltype(chain), ::stdexec::__mset<::stdexec::set_stopped_t()>>);
+
+    static_assert(::tests::stdexec::has_completion_signatures<
+                  decltype(chain),
+                  ::stdexec::__mset<
+                      ::stdexec::set_stopped_t(),
+                      ::stdexec::set_value_t(),
+                      ::stdexec::set_error_t(std::exception_ptr)
+                  >,
+                  ::stdexec::env<>
+    >);
+
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
