@@ -45,14 +45,14 @@ struct upsert_in_env_fn {
 
     //! Handle the case of a @c stdexec::prop without wrapping it into an @c stdexec::env.
     template <typename Tag, typename PropValue, typename Value>
-    constexpr auto operator()(Tag tag, stdexec::prop<Tag, PropValue>, Value&& value) const {
+    constexpr auto operator()(Tag tag, stdexec::prop<Tag, PropValue>, Value&& value) const noexcept {
         return stdexec::prop{tag, std::forward<Value>(value)};
     }
 
     //! The environment does not contain the required property.
     template <typename Tag, typename Env, typename Value>
     requires(!stdexec::__queryable_with<std::remove_cvref_t<Env>, Tag>)
-    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
         return stdexec::env{
             stdexec::prop{tag, std::forward<Value>(value)},
             std::forward<Env>(env)
@@ -61,7 +61,7 @@ struct upsert_in_env_fn {
 
     //! The environment contains the required property, possibly with a value mismatch.
     template <typename Tag, typename PropValue, typename Value>
-    constexpr auto operator()(Tag tag, stdexec::env<stdexec::prop<Tag, PropValue>>, Value&& value) const {
+    constexpr auto operator()(Tag tag, stdexec::env<stdexec::prop<Tag, PropValue>>, Value&& value) const noexcept {
         return stdexec::env{
             stdexec::prop{tag, std::forward<Value>(value)}
         };
@@ -70,7 +70,7 @@ struct upsert_in_env_fn {
     //! Multiple properties are carried, the first one matches.
     template <typename Tag, typename Env, typename Value>
     requires(stdexec::__queryable_with<env1_of_t<std::remove_cvref_t<Env>>, Tag>)
-    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
         return stdexec::env{
             stdexec::prop{tag, std::forward<Value>(value)},
             std::forward<Env>(env).__env2_
@@ -82,7 +82,7 @@ struct upsert_in_env_fn {
     requires(
         stdexec::__queryable_with<std::remove_cvref_t<Env>, Tag>
         && !stdexec::__queryable_with<env1_of_t<std::remove_cvref_t<Env>>, Tag>)
-    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
         return stdexec::env{
             std::forward<Env>(env).__env1_,
             this->operator()(
@@ -92,7 +92,7 @@ struct upsert_in_env_fn {
     //! Unwrap forwarding environment and delegate to the appropriate overload.
     template <typename Tag, typename Env, typename Value>
     requires(stdexec::__queryable_with<Env &&, Tag> && stdexec::__env::__is_fwd_env<Env>)
-    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const {
+    constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
         return stdexec::__env::__fwd{this->operator()(tag, std::forward<Env>(env).__env_, std::forward<Value>(value))};
     }
 };
