@@ -2,6 +2,7 @@
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
 #include "tests/CallbackMatchers.hpp"
+#include "tests/Functors.hpp"
 #include "tests/kokkos_ext/Helpers.hpp"
 #include "tests/kokkos_ext/execution_space/Helpers.hpp"
 #include "tests/stdexec/Utils.hpp"
@@ -243,5 +244,40 @@ TEST_F(ThenTest, then_lifetime) {
                     ::testing::Field(
                         &Kokkos::utils::callbacks::AllocDescriptor::name, ::testing::StrEq("data - shared space"))))));
 }
+
+//! @test Check @c noexcept specification of sender transformation.
+consteval bool test_sndr_no_throw_transformable() {
+    using sndr_then_t =
+        decltype(::stdexec::schedule(std::declval<typename ThenTest::scheduler_t>()) | ::stdexec::then(ThenNoOp<false, false, false>{}));
+
+    static_assert(std::same_as<
+                  ::stdexec::__demangle_t<sndr_then_t>,
+                  ::tests::stdexec::basic_sender<
+                      ::stdexec::then_t,
+                      ThenNoOp<false, false, false>,
+                      typename ThenTest::schedule_sender_t
+                  >
+    >);
+
+    static_assert(::stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Experimental::details::execution_space::Domain,
+                  ::stdexec::set_value_t,
+                  sndr_then_t&&,
+                  ::stdexec::env<>
+    >);
+
+    using sndr_then_maythrow_on_move_t =
+        decltype(::stdexec::schedule(std::declval<typename ThenTest::scheduler_t>()) | ::stdexec::then(ThenNoOp<false, false, true>{}));
+
+    static_assert(!::stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Experimental::details::execution_space::Domain,
+                  ::stdexec::set_value_t,
+                  sndr_then_maythrow_on_move_t&&,
+                  ::stdexec::env<>
+    >);
+
+    return true;
+}
+static_assert(test_sndr_no_throw_transformable());
 
 } // namespace tests::kokkos_ext
