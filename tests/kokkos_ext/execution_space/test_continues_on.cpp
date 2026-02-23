@@ -107,7 +107,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     auto op_state = ::stdexec::connect(
         std::move(schs_A_then_con_B_then_con_h_then), // NOLINT(performance-move-const-arg)
         Kokkos::Experimental::details::execution_space::SyncWaitReceiver<host_execution_space>{
-            .state = std::addressof(esc_h.m_state), .runloop_state = nullptr});
+            .state = std::addressof(esc_h.m_state), .runloop_state = nullptr, .result = nullptr});
 
     //! Helper to check that an environment is as expected.
     constexpr auto check_env = []<typename T, Kokkos::ExecutionSpace Exec>() constexpr -> bool {

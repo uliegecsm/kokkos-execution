@@ -56,6 +56,8 @@ TEST_F(BulkTest, bulk) {
                   scheduler_t
     >);
 
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
     ASSERT_THAT(
         recorder_listener_t::record([chain = std::move(chain)]() mutable { ::stdexec::sync_wait(std::move(chain)); }),
         ::testing::ElementsAre(
