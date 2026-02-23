@@ -141,7 +141,9 @@ consteval bool test_closure_traits() {
     //! Models the @ref Kokkos::Experimental::details::execution_space::Closure concept.
     static_assert(Kokkos::Experimental::details::execution_space::Closure<closure_t>);
 
-    return std::is_nothrow_move_constructible_v<closure_t> == ExpectNoThrowMoveConstructible;
+    static_assert(std::is_nothrow_move_constructible_v<closure_t> == ExpectNoThrowMoveConstructible);
+
+    return true;
 }
 static_assert(test_closure_traits<typename ParallelForTest::view_s_t, false>());
 static_assert(test_closure_traits<std::span<int>, true>());

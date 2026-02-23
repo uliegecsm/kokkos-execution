@@ -417,4 +417,52 @@ TEST_F(ContinuesOnTest, just_stopped) {
     ASSERT_EQ(data(), 0) << "It should not execute on 'set_error'.";
 }
 
+//! @test Check @c noexcept specification of sender transformation.
+consteval bool test_sndr_no_throw_transformable() {
+    using sndr_continues_on_t =
+        decltype(::stdexec::just() | ::stdexec::continues_on(std::declval<typename ContinuesOnTest::scheduler_t>()));
+
+    static_assert(std::same_as<
+                  ::stdexec::__demangle_t<sndr_continues_on_t>,
+                  ::tests::stdexec::basic_sender<
+                      ::stdexec::continues_on_t,
+                      typename ContinuesOnTest::scheduler_t,
+                      ::tests::stdexec::basic_sender<
+                          ::stdexec::schedule_from_t,
+                          ::stdexec::__,
+                          ::tests::stdexec::basic_sender<::stdexec::just_t, ::stdexec::__tuple<>>
+                      >
+                  >
+    >);
+
+    static_assert(::stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Experimental::details::execution_space::Domain,
+                  ::stdexec::set_value_t,
+                  sndr_continues_on_t&&,
+                  ::stdexec::env<>
+    >);
+
+    using sndr_schedule_from_t = decltype(::stdexec::schedule_from(
+        ::stdexec::schedule(std::declval<typename ContinuesOnTest::scheduler_t>())));
+
+    static_assert(std::same_as<
+                  ::stdexec::__demangle_t<sndr_schedule_from_t>,
+                  ::tests::stdexec::basic_sender<
+                      ::stdexec::schedule_from_t,
+                      ::stdexec::__,
+                      typename ContinuesOnTest::schedule_sender_t
+                  >
+    >);
+
+    static_assert(::stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Experimental::details::execution_space::Domain,
+                  ::stdexec::set_value_t,
+                  sndr_schedule_from_t&&,
+                  ::stdexec::env<>
+    >);
+
+    return true;
+}
+static_assert(test_sndr_no_throw_transformable());
+
 } // namespace tests::kokkos_ext
