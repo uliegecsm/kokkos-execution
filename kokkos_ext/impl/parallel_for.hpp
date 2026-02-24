@@ -58,17 +58,6 @@ struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Func
 
     using base_t = stdexec::__tuple<parallel_for_t, ParallelForData<Functor, ExecPolicy>, Sndr>;
 
-    /**
-     * Needed because @c stdexec determines the tag from this type.
-     *
-     * See also https://github.com/NVIDIA/stdexec/issues/1818.
-     */
-    using __desc_t = stdexec::__desc< // NOLINT(bugprone-reserved-identifier)
-        parallel_for_t,
-        ParallelForData<Functor, ExecPolicy>,
-        Sndr
-    >;
-
     ParallelForSender(
         ParallelForData<Functor, ExecPolicy> data,
         Sndr&& sndr) // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
