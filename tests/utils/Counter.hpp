@@ -16,19 +16,19 @@ struct Counter {
 
     unsigned int id;
 
-    Counter()
+    Counter() noexcept
         : id(default_constructions.fetch_add(1, std::memory_order_relaxed)) {
     }
 
-    ~Counter() {
+    ~Counter() noexcept {
         destructions.fetch_add(1, std::memory_order_relaxed);
     }
 
-    Counter(const Counter&)
+    Counter(const Counter&) noexcept
         : id(copy_constructions.fetch_add(1, std::memory_order_relaxed)) {
     }
 
-    Counter& operator=(const Counter&) {
+    Counter& operator=(const Counter&) noexcept {
         copy_assignments.fetch_add(1, std::memory_order_relaxed);
         return *this;
     }
