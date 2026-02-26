@@ -3,7 +3,7 @@ PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
-#include "exec/static_thread_pool.hpp"
+#include "exec/single_thread_context.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
@@ -47,7 +47,7 @@ TEST_F(LetValueTest, scoped_allocation) {
 
     const context_t esc{exec};
 
-    ::exec::static_thread_pool pool{1};
+    ::exec::single_thread_context stc{};
 
     using view_of_5_t = Kokkos::View<value_t[5], typename execution_space::memory_space>;
 
@@ -72,7 +72,7 @@ TEST_F(LetValueTest, scoped_allocation) {
     //! Use the scratch view to make some meaningful computation.
     auto run = std::move(allocate) // NOLINT(performance-move-const-arg)
              | ::stdexec::let_value(
-                   [&esc, &data, &pool](
+                   [&esc, &data, &stc](
                        Kokkos::utils::concepts::ViewOfRank<1> auto const & scratch) noexcept -> ::stdexec::sender auto {
                        return ::stdexec::schedule(esc.get_scheduler())
                             | ::stdexec::bulk(
@@ -82,7 +82,7 @@ TEST_F(LetValueTest, scoped_allocation) {
                                       scratch(index) = index;
                                       Kokkos::atomic_add(data.data(), scratch(index));
                                   })
-                            | ::stdexec::continues_on(pool.get_scheduler())
+                            | ::stdexec::continues_on(stc.get_scheduler())
                             | ::stdexec::then([scratch]() mutable -> Kokkos::utils::concepts::ViewOfRank<1> auto {
                                   return std::move(scratch);
                               });
