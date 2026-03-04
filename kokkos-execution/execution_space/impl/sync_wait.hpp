@@ -3,7 +3,7 @@
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
 #include "kokkos-execution/execution_space/impl/get_exec.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
 
@@ -15,7 +15,7 @@ struct SyncWaitReceiver {
     using receiver_concept = stdexec::receiver_t;
 
     State<Exec> const * state;
-    Kokkos::Experimental::impl::State* runloop_state;
+    Kokkos::Execution::impl::State* runloop_state;
     std::optional<std::tuple<Values...>>* result;
 
     template <typename... Args>

@@ -1,7 +1,7 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_ENV_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_ENV_HPP
+#ifndef KOKKOS_EXECUTION_IMPL_ENV_HPP
+#define KOKKOS_EXECUTION_IMPL_ENV_HPP
 
-#include "tests/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
@@ -12,13 +12,14 @@ PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
 PRAGMA_DIAGNOSTIC_POP
 
 //! Retrieve the environment of @p _obj_ (with forwarding). // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(_type_, _obj_)                                                 \
+#define KOKKOS_EXECUTION_FORWARDING_GET_ENV(_type_, _obj_)                                                             \
     [[nodiscard]]                                                                                                      \
     constexpr auto get_env() const noexcept -> ::stdexec::__fwd_env_t<::stdexec::env_of_t<_type_>> {                   \
         return ::stdexec::__fwd_env(::stdexec::get_env(_obj_));                                                        \
     }
 
-namespace Kokkos::Experimental::details::impl {
+namespace Kokkos::Execution::impl {
+
 //! An environment whose sole query is @c stdexec::get_domain_t.
 template <typename Domain>
 struct domain_queryable_env_t {
@@ -26,10 +27,7 @@ struct domain_queryable_env_t {
         return {};
     }
 };
-} // namespace Kokkos::Experimental::details::impl
 
-namespace experimental::execution {
-namespace impl {
 struct upsert_in_env_fn {
 
     template <typename>
@@ -116,18 +114,17 @@ struct upsert_in_env_or_join_fn {
         return stdexec::__env::__join(stdexec::prop{tag, std::forward<Value>(value)}, std::forward<Env>(env));
     }
 };
-} // namespace impl
 
 template <typename Tag, typename Env, typename Value>
-using upsert_in_env_t = std::invoke_result_t<impl::upsert_in_env_fn, Tag, Env, Value>;
+using upsert_in_env_t = std::invoke_result_t<upsert_in_env_fn, Tag, Env, Value>;
 
-inline constexpr impl::upsert_in_env_fn upsert_in_env{};
+inline constexpr upsert_in_env_fn upsert_in_env{};
 
 template <typename Tag, typename Env, typename Value>
 using upsert_in_env_or_join_t = std::invoke_result_t<impl::upsert_in_env_or_join_fn, Tag, Env, Value>;
 
-inline constexpr impl::upsert_in_env_or_join_fn upsert_in_env_or_join{};
+inline constexpr upsert_in_env_or_join_fn upsert_in_env_or_join{};
 
-} // namespace experimental::execution
+} // namespace Kokkos::Execution::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_ENV_HPP
+#endif // KOKKOS_EXECUTION_IMPL_ENV_HPP

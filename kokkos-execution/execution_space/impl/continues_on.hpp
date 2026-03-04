@@ -3,7 +3,7 @@
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
 #include "kokkos-execution/execution_space/impl/get_exec.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"

@@ -1,9 +1,9 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_COMPLETION_SIGNATURES_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_COMPLETION_SIGNATURES_HPP
+#ifndef KOKKOS_EXECUTION_IMPL_COMPLETION_SIGNATURES_HPP
+#define KOKKOS_EXECUTION_IMPL_COMPLETION_SIGNATURES_HPP
 
 #include "stdexec/execution.hpp"
 
-namespace Kokkos::Experimental::details::impl {
+namespace Kokkos::Execution::impl {
 
 /**
  * @brief Completion signatures of @c _sndr_type_.
@@ -14,7 +14,7 @@ namespace Kokkos::Experimental::details::impl {
  *  - https://github.com/NVIDIA/stdexec/commit/a0d95e90fc188f4f73328c4274551434edba3165
  *  - @cite P3557R3.
  */ // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_ADD(_sndr_type_, ...)                                                  \
+#define KOKKOS_EXECUTION_COMPL_SIGS_ADD(_sndr_type_, ...)                                                              \
     template <::stdexec::__decays_to<_sndr_type_> Self, typename... Env>                                               \
     static consteval auto get_completion_signatures() {                                                                \
         using child_completions_t =                                                                                    \
@@ -32,12 +32,12 @@ namespace Kokkos::Experimental::details::impl {
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_KEEP(_sndr_type_)                                                      \
+#define KOKKOS_EXECUTION_COMPL_SIGS_KEEP(_sndr_type_)                                                                  \
     template <::stdexec::__decays_to<_sndr_type_> Self, typename... Env>                                               \
     static consteval auto get_completion_signatures() {                                                                \
         return ::stdexec::__completion_signatures_of_t<::stdexec::__copy_cvref_t<Self, Sndr>, Env...>{};               \
     }
 
-} // namespace Kokkos::Experimental::details::impl
+} // namespace Kokkos::Execution::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_COMPLETION_SIGNATURES_HPP
+#endif // KOKKOS_EXECUTION_IMPL_COMPLETION_SIGNATURES_HPP

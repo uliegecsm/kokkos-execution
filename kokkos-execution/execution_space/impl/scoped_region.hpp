@@ -3,7 +3,7 @@
 
 #include <format>
 
-#include "kokkos-execution/utils/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
@@ -13,7 +13,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "impl/Kokkos_Profiling.hpp"
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
@@ -27,6 +27,7 @@ PRAGMA_DIAGNOSTIC_POP
  */
 
 namespace Kokkos::Execution::execution_space::impl {
+
 //! Kind of region action.
 enum class Kind : std::uint8_t {
     PUSH,

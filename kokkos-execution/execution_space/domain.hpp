@@ -1,7 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_DOMAIN_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_DOMAIN_HPP
 
-#include "kokkos-execution/utils/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
@@ -15,7 +15,7 @@ PRAGMA_DIAGNOSTIC_POP
 #    include "plog/Log.h"
 #endif
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
 
 namespace Kokkos::Execution::execution_space {
 

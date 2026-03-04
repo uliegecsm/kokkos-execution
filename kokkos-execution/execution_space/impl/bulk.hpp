@@ -1,7 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
 #include "kokkos-execution/execution_space/impl/parallel_for.hpp"
 #include "kokkos-execution/impl/bulk.hpp"
 

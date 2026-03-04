@@ -1,7 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP
 
-#include "kokkos-execution/utils/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
