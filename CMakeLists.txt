@@ -5,6 +5,9 @@ project(kokkos-execution VERSION 0.0.1 LANGUAGES CXX)
 # Read the dependencies file.
 file(READ dependencies.json DEPENDENCIES_JSON)
 
+# Add Plog logging library.
+include(cmake/modules/BuildPlog.cmake)
+
 # Find Google Test.
 string(JSON GTest_REQUIRED_VERSION GET "${DEPENDENCIES_JSON}" github googletest)
 
