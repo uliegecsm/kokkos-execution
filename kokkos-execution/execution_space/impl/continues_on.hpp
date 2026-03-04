@@ -1,14 +1,14 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_CONTINUES_ON_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_CONTINUES_ON_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTINUES_ON_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTINUES_ON_HPP
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
-#include "kokkos_ext/impl/completion_signatures.hpp"
-#include "kokkos_ext/impl/env.hpp"
-#include "kokkos_ext/impl/execution_space/get_exec.hpp"
+#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/get_exec.hpp"
+#include "kokkos-execution/impl/completion_signatures.hpp"
+#include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Experimental::details::execution_space {
+namespace Kokkos::Execution::execution_space::impl {
 
 //! Receiver for @c continues_on.
 template <stdexec::receiver Rcvr>
@@ -30,7 +30,7 @@ struct ContinuesOnReceiver {
         stdexec::set_stopped(std::move(rcvr));
     }
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Rcvr, rcvr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, rcvr)
 };
 
 //! Sender for @c continues_on.
@@ -40,7 +40,7 @@ struct ContinuesOnSender {
 
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_KEEP(ContinuesOnSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ContinuesOnSender)
 
     template <stdexec::receiver Rcvr>
     auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>)
@@ -50,7 +50,7 @@ struct ContinuesOnSender {
         return stdexec::connect(std::forward<Sndr>(sndr), recv_t{.rcvr = std::move(rcvr)});
     }
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Sndr, sndr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, sndr)
 };
 
 template <>
@@ -62,6 +62,6 @@ struct transform_sender_for<stdexec::continues_on_t> {
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_CONTINUES_ON_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTINUES_ON_HPP

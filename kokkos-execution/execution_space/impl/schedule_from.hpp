@@ -1,13 +1,13 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SCHEDULE_FROM_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SCHEDULE_FROM_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCHEDULE_FROM_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCHEDULE_FROM_HPP
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
-#include "kokkos_ext/impl/completion_signatures.hpp"
-#include "kokkos_ext/impl/env.hpp"
+#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/impl/completion_signatures.hpp"
+#include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Experimental::details::execution_space {
+namespace Kokkos::Execution::execution_space::impl {
 
 //! Receiver for @c schedule_from.
 template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
@@ -48,7 +48,7 @@ struct ScheduleFromReceiver {
     }
 
     //! Make others aware of which execution space instance it may synchronize.
-    GRAPH_DISPATCHING_KOKKOS_EXT_UPSERT_EXEC(typename Schd::execution_space, schd.state->exec, Rcvr, rcvr)
+    KOKKOS_EXECUTION_UPSERT_EXEC(typename Schd::execution_space, schd.state->exec, Rcvr, rcvr)
 };
 
 //! Sender for @c schedule_from.
@@ -56,7 +56,7 @@ template <stdexec::scheduler Schd, stdexec::sender Sndr>
 struct ScheduleFromSender {
     using sender_concept = stdexec::sender_t;
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_KEEP(ScheduleFromSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender)
 
     template <stdexec::receiver Rcvr>
     stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
@@ -65,7 +65,7 @@ struct ScheduleFromSender {
         return stdexec::connect(std::forward<Sndr>(sndr), recv_t{.schd = std::move(schd), .rcvr = std::move(rcvr)});
     }
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Sndr, sndr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, sndr)
 
     Schd schd;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
@@ -89,6 +89,6 @@ struct transform_sender_for<stdexec::schedule_from_t> {
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SCHEDULE_FROM_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCHEDULE_FROM_HPP

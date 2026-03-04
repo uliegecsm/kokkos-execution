@@ -1,17 +1,17 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_OPERATION_STATE_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_OPERATION_STATE_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP
 
-#include "tests/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/IgnoreWarnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 #include "stdexec/execution.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
-#include "kokkos_ext/impl/env.hpp"
-#include "kokkos_ext/impl/execution_space/get_exec.hpp"
+#include "kokkos-execution/execution_space/impl/get_exec.hpp"
+#include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Experimental::details::execution_space {
+namespace Kokkos::Execution::execution_space::impl {
 
 template <typename Clsr>
 concept Closure = requires(const Clsr& clsr) {
@@ -51,7 +51,7 @@ struct OpStateBase : public stdexec::__immovable {
         /**
          * Sync at the boundary of the work enqueued on the execution space.
          *
-         * If the receiver environment can be queried for @ref Kokkos::Experimental::details::execution_space::get_exec_t,
+         * If the receiver environment can be queried for @ref Kokkos::Execution::execution_space::impl::get_exec_t,
          * the successor enqueues work on the same execution space, so don't fence here.
          *
          * Otherwise, synchronization must occur before invoking the downstream receiver. This situation may arise, for example,
@@ -83,7 +83,7 @@ struct OpStateBase : public stdexec::__immovable {
         return ExecutionSpaceRef<execution_space>{clsr.get_policy().space()};
     }
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Rcvr, rcvr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, rcvr)
 };
 
 template <typename ParentOp>
@@ -105,7 +105,7 @@ struct OpStateReceiver {
         parent_op->propagate_completion_signal(stdexec::set_stopped);
     }
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_UPSERT_EXEC(
+    KOKKOS_EXECUTION_UPSERT_EXEC(
         typename ParentOp::execution_space,
         parent_op->query(get_exec).get(),
         typename ParentOp::receiver_t,
@@ -136,6 +136,6 @@ struct OpState : public OpStateBase<Rcvr, Clsr> {
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_OPERATION_STATE_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP

@@ -1,17 +1,17 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_BULK_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_BULK_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
-#include "kokkos_ext/impl/bulk.hpp"
-#include "kokkos_ext/impl/execution_space/parallel_for.hpp"
+#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/parallel_for.hpp"
+#include "kokkos-execution/impl/bulk.hpp"
 
-namespace Kokkos::Experimental::details::execution_space {
+namespace Kokkos::Execution::execution_space::impl {
 
 template <>
 struct transform_sender_for<stdexec::bulk_t> {
     template <
         typename Env,
-        Kokkos::Experimental::details::impl::has_parallel_policy Data,
+        Kokkos::Execution::impl::has_parallel_policy Data,
         execution_space_completing_sender<Env> Sndr
     >
     auto operator()(const Env& env, stdexec::bulk_t, Data&& data, Sndr&& sndr) const noexcept {
@@ -32,6 +32,6 @@ struct transform_sender_for<stdexec::bulk_t> {
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_BULK_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP

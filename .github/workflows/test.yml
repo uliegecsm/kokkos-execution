@@ -69,6 +69,8 @@ jobs:
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     steps:
       - uses: actions/checkout@v6
+        with:
+            submodules: true
       - run: |
           cmake -S . -B build-${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }}
       - run: |

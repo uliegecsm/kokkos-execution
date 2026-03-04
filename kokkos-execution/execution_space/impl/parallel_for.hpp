@@ -1,19 +1,18 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_PARALLEL_FOR_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_PARALLEL_FOR_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
 
-#include "tests/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/IgnoreWarnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 #include "stdexec/execution.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
-#include "kokkos_ext/impl/execution_space/operation_state.hpp"
-#include "kokkos_ext/impl/parallel_for.hpp"
+#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/operation_state.hpp"
+#include "kokkos-execution/parallel_for.hpp"
 
-namespace Kokkos::Experimental::details::execution_space {
-
+namespace Kokkos::Execution::execution_space::impl {
 template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForClosure {
     using policy_t = ExecPolicy;
@@ -40,7 +39,7 @@ struct ParallelForSender {
     closure_t clsr;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_ADD(ParallelForSender, stdexec::set_error_t(std::exception_ptr))
+    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, stdexec::set_error_t(std::exception_ptr))
 
     template <stdexec::receiver Rcvr>
     constexpr auto connect(Rcvr rcvr) && noexcept(
@@ -49,7 +48,7 @@ struct ParallelForSender {
         return OpState<Sndr, Rcvr, closure_t>(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
     }
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Sndr, sndr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, sndr)
 };
 
 template <>
@@ -69,6 +68,6 @@ struct transform_sender_for<Kokkos::Experimental::parallel_for_t> {
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_PARALLEL_FOR_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP

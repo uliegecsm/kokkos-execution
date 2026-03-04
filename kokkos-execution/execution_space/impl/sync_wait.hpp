@@ -1,13 +1,13 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SYNC_WAIT_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SYNC_WAIT_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SYNC_WAIT_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SYNC_WAIT_HPP
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
-#include "kokkos_ext/impl/execution_space/get_exec.hpp"
-#include "kokkos_ext/impl/sync_wait.hpp"
+#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/impl/get_exec.hpp"
+#include "kokkos-execution/impl/sync_wait.hpp"
 
-namespace Kokkos::Experimental::details::execution_space {
+namespace Kokkos::Execution::execution_space::impl {
 
 //! Receiver for @c sync_wait.
 template <Kokkos::ExecutionSpace Exec, typename... Values>
@@ -15,7 +15,7 @@ struct SyncWaitReceiver {
     using receiver_concept = stdexec::receiver_t;
 
     State<Exec> const * state;
-    Kokkos::Experimental::details::impl::State* runloop_state;
+    Kokkos::Experimental::impl::State* runloop_state;
     std::optional<std::tuple<Values...>>* result;
 
     template <typename... Args>
@@ -39,13 +39,11 @@ struct SyncWaitReceiver {
 
     //! Make others aware of which execution space instance it will synchronize.
     [[nodiscard]]
-    constexpr auto get_env() const noexcept -> stdexec::__join_env_t<
-        stdexec::prop<get_exec_t, ExecutionSpaceRef<Exec>>,
-        Kokkos::Experimental::details::impl::env
-    > {
+    constexpr auto get_env() const noexcept
+        -> stdexec::__join_env_t<stdexec::prop<get_exec_t, ExecutionSpaceRef<Exec>>, Kokkos::Execution::impl::env> {
         return stdexec::__env::__join(
             stdexec::prop{get_exec, ExecutionSpaceRef{state->exec}},
-            Kokkos::Experimental::details::impl::env{runloop_state->loop.get_scheduler()});
+            Kokkos::Execution::impl::env{runloop_state->loop.get_scheduler()});
     }
 };
 
@@ -59,7 +57,7 @@ struct SyncWait {
     template <stdexec::sender Sndr>
     auto operator()(Sndr&& sndr) const noexcept(false)
         -> std::optional<stdexec::__sync_wait::__value_tuple_for_t<Sndr>> {
-        Kokkos::Experimental::details::impl::State runloop_state;
+        Kokkos::Execution::impl::State runloop_state;
 
         auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
 
@@ -101,6 +99,6 @@ struct apply_sender_for<stdexec::sync_wait_t> {
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space::impl
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SYNC_WAIT_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SYNC_WAIT_HPP

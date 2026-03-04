@@ -1,7 +1,7 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_DOMAIN_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_DOMAIN_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_DOMAIN_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_DOMAIN_HPP
 
-#include "tests/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/IgnoreWarnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
@@ -11,37 +11,37 @@ PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
 #include <stdexec/execution.hpp>
 PRAGMA_DIAGNOSTIC_POP
 
-#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+#if defined(KOKKOS_EXECUTION_DEBUG)
 #    include "plog/Log.h"
 #endif
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
+#include "kokkos-execution/execution_space/Context_fwd.hpp"
 
-namespace Kokkos::Experimental::details::execution_space {
+namespace Kokkos::Execution::execution_space {
 
 struct Domain : public stdexec::default_domain {
     template <typename Tag, stdexec::sender Sndr, typename... Args>
     requires stdexec::__callable<apply_sender_for<Tag>, Sndr, Args...>
     static auto apply_sender(Tag, Sndr&& sndr, Args&&... args) {
-#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+#if defined(KOKKOS_EXECUTION_DEBUG)
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": apply_sender for tag "
                    << Kokkos::Impl::TypeInfo<Tag>::name();
 #endif
-        return apply_sender_for<Tag>{}(std::forward<Sndr>(sndr), std::forward<Args>(args)...);
+        return impl::apply_sender_for<Tag>{}(std::forward<Sndr>(sndr), std::forward<Args>(args)...);
     }
 
     template <stdexec::sender Sndr, typename Env>
     requires stdexec::__applicable<transform_sender_for<stdexec::tag_of_t<Sndr>>, Sndr&&, const Env&>
     static auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env& env)
         noexcept(stdexec::__nothrow_applicable<transform_sender_for<stdexec::tag_of_t<Sndr>>, Sndr&&, const Env&>) {
-#if defined(GRAPH_DISPATCHING_KOKKOS_EXT_DEBUG)
+#if defined(KOKKOS_EXECUTION_DEBUG)
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": transform_sender for tag "
                    << Kokkos::Impl::TypeInfo<stdexec::tag_of_t<Sndr>>::name();
 #endif
-        return stdexec::__apply(transform_sender_for<stdexec::tag_of_t<Sndr>>{}, std::forward<Sndr>(sndr), env);
+        return stdexec::__apply(impl::transform_sender_for<stdexec::tag_of_t<Sndr>>{}, std::forward<Sndr>(sndr), env);
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_DOMAIN_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_DOMAIN_HPP

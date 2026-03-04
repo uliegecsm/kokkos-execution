@@ -1,9 +1,9 @@
-#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SCOPED_REGION_HPP
-#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SCOPED_REGION_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCOPED_REGION_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCOPED_REGION_HPP
 
 #include <format>
 
-#include "tests/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/IgnoreWarnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
@@ -13,9 +13,9 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "impl/Kokkos_Profiling.hpp"
 
-#include "kokkos_ext/impl/ExecutionSpaceContext_fwd.hpp"
-#include "kokkos_ext/impl/completion_signatures.hpp"
-#include "kokkos_ext/impl/env.hpp"
+#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/impl/completion_signatures.hpp"
+#include "kokkos-execution/impl/env.hpp"
 
 /**
  * @file
@@ -26,7 +26,7 @@ PRAGMA_DIAGNOSTIC_POP
  *  - https://github.com/NVIDIA/stdexec/blob/f7308ea245b896a76c6fd9a58a097ae23579e489/include/nvexec/nvtx.cuh
  */
 
-namespace Kokkos::Experimental::details::execution_space {
+namespace Kokkos::Execution::execution_space::impl {
 //! Kind of region action.
 enum class Kind : std::uint8_t {
     PUSH,
@@ -67,14 +67,14 @@ struct RegionReceiver {
         std::move(*this).complete(stdexec::set_error, std::forward<Error>(err));
     }
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Rcvr, rcvr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, rcvr)
 };
 
 template <Kind kind, stdexec::sender Sndr>
 struct RegionSender {
     using sender_concept = stdexec::sender_t;
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_KEEP(RegionSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(RegionSender)
 
     template <stdexec::receiver Rcvr>
     stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
@@ -89,7 +89,7 @@ struct RegionSender {
     Sndr sndr;
     std::string name{};
 
-    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Sndr, sndr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, sndr)
 };
 
 struct Push {
@@ -128,12 +128,12 @@ struct ScopedRegion {
     }
 };
 
-} // namespace Kokkos::Experimental::details::execution_space
+} // namespace Kokkos::Execution::execution_space::impl
 
 namespace Kokkos::Profiling {
-inline constexpr Kokkos::Experimental::details::execution_space::Push push{};
-inline constexpr Kokkos::Experimental::details::execution_space::Pop pop{};
-inline constexpr Kokkos::Experimental::details::execution_space::ScopedRegion scoped_region{};
+inline constexpr Kokkos::Execution::execution_space::impl::Push push{};
+inline constexpr Kokkos::Execution::execution_space::impl::Pop pop{};
+inline constexpr Kokkos::Execution::execution_space::impl::ScopedRegion scoped_region{};
 } // namespace Kokkos::Profiling
 
-#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_EXECUTION_SPACE_SCOPED_REGION_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCOPED_REGION_HPP
