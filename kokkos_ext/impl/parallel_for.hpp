@@ -1,0 +1,83 @@
+#ifndef GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_PARALLEL_FOR_HPP
+#define GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_PARALLEL_FOR_HPP
+
+#include "kokkos_ext/impl/completion_signatures.hpp"
+#include "kokkos_ext/impl/env.hpp"
+
+namespace Kokkos::Experimental {
+
+template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+struct ParallelForSender;
+
+//! Custom algorithm for the @c Kokkos::parallel_for construct.
+struct parallel_for_t {
+    template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+    constexpr auto operator()(std::string label, ExecPolicy policy, Functor functor) const {
+        return stdexec::__closure(*this, std::move(label), std::move(policy), std::move(functor));
+    }
+
+    template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+    constexpr auto operator()(ExecPolicy policy, Functor functor) const {
+        return this->operator()("", std::move(policy), std::move(functor));
+    }
+
+    template <typename Functor, std::integral T>
+    constexpr auto operator()(std::string label, const T work_count, Functor functor) const {
+        using execution_space =
+            typename Kokkos::Impl::FunctorPolicyExecutionSpace<std::remove_cvref_t<Functor>, void>::execution_space;
+        using policy_t = Kokkos::RangePolicy<execution_space>;
+
+        return this->operator()(std::move(label), policy_t(0, work_count), std::move(functor));
+    }
+
+    template <typename Functor, std::integral T>
+    constexpr auto operator()(const T work_count, Functor functor) const {
+        return this->operator()("", work_count, std::move(functor));
+    }
+
+    template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+    constexpr auto operator()(Sndr&& sndr, std::string label, ExecPolicy policy, Functor functor) const {
+        return ParallelForSender<Sndr, Functor, ExecPolicy>(
+            {std::move(label), std::move(functor), std::move(policy)}, std::forward<Sndr>(sndr));
+    }
+};
+
+template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+struct ParallelForData {
+    using functor_t = Functor;
+    using policy_t = ExecPolicy;
+
+    std::string label;
+    functor_t functor;
+    policy_t policy;
+};
+
+template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Functor, ExecPolicy>, Sndr> {
+    using sender_concept = stdexec::sender_t;
+
+    using base_t = stdexec::__tuple<parallel_for_t, ParallelForData<Functor, ExecPolicy>, Sndr>;
+
+    ParallelForSender(
+        ParallelForData<Functor, ExecPolicy> data,
+        Sndr&& sndr) // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+        : base_t{parallel_for_t{}, std::move(data), std::forward<Sndr>(sndr)} {
+    }
+
+    GRAPH_DISPATCHING_KOKKOS_EXT_COMPL_SIGS_ADD(ParallelForSender, stdexec::set_error_t(std::exception_ptr))
+
+    template <stdexec::receiver Rcvr>
+    constexpr auto connect(Rcvr) && = delete;
+
+    template <stdexec::receiver Rcvr>
+    constexpr auto connect(Rcvr) const & = delete;
+
+    static constexpr size_t idx_sndr = 2;
+    GRAPH_DISPATCHING_KOKKOS_EXT_FORWARDING_GET_ENV(Sndr, stdexec::__get<idx_sndr>(static_cast<const base_t&>(*this)))
+};
+
+inline constexpr parallel_for_t parallel_for{};
+
+} // namespace Kokkos::Experimental
+
+#endif // GRAPH_DISPATCHING_KOKKOS_EXT_IMPL_PARALLEL_FOR_HPP
