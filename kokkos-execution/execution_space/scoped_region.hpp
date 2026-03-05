@@ -1,9 +1,9 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCOPED_REGION_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCOPED_REGION_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_SCOPED_REGION_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_SCOPED_REGION_HPP
 
 #include <format>
 
-#include "kokkos-execution/utils/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
@@ -13,7 +13,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "impl/Kokkos_Profiling.hpp"
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
@@ -26,7 +26,8 @@ PRAGMA_DIAGNOSTIC_POP
  *  - https://github.com/NVIDIA/stdexec/blob/f7308ea245b896a76c6fd9a58a097ae23579e489/include/nvexec/nvtx.cuh
  */
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
+
 //! Kind of region action.
 enum class Kind : std::uint8_t {
     PUSH,
@@ -128,12 +129,12 @@ struct ScopedRegion {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
 namespace Kokkos::Profiling {
-inline constexpr Kokkos::Execution::execution_space::impl::Push push{};
-inline constexpr Kokkos::Execution::execution_space::impl::Pop pop{};
-inline constexpr Kokkos::Execution::execution_space::impl::ScopedRegion scoped_region{};
+inline constexpr Kokkos::Execution::execution_space::Push push{};
+inline constexpr Kokkos::Execution::execution_space::Pop pop{};
+inline constexpr Kokkos::Execution::execution_space::ScopedRegion scoped_region{};
 } // namespace Kokkos::Profiling
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCOPED_REGION_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_SCOPED_REGION_HPP

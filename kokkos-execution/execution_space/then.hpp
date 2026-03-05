@@ -1,10 +1,10 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_THEN_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_THEN_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_THEN_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_THEN_HPP
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
-#include "kokkos-execution/execution_space/impl/parallel_for.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/parallel_for.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 //! Inspired by https://github.com/kokkos/kokkos/blob/69273c3a4e7b6adeb95066341ca201d62fe1e698/core/src/impl/Kokkos_GraphNodeThenImpl.hpp#L28.
 template <typename Functor>
@@ -50,6 +50,6 @@ struct transform_sender_for<stdexec::then_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_THEN_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_THEN_HPP

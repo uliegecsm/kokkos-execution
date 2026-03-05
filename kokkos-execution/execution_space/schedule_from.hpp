@@ -1,13 +1,13 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCHEDULE_FROM_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCHEDULE_FROM_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_SCHEDULE_FROM_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_SCHEDULE_FROM_HPP
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 //! Receiver for @c schedule_from.
 template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
@@ -89,6 +89,6 @@ struct transform_sender_for<stdexec::schedule_from_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SCHEDULE_FROM_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_SCHEDULE_FROM_HPP

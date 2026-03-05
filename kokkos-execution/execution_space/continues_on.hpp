@@ -1,14 +1,14 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTINUES_ON_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTINUES_ON_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
-#include "kokkos-execution/execution_space/impl/get_exec.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 //! Receiver for @c continues_on.
 template <stdexec::receiver Rcvr>
@@ -62,6 +62,6 @@ struct transform_sender_for<stdexec::continues_on_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTINUES_ON_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP

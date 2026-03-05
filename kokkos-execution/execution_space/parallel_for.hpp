@@ -1,24 +1,25 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP
 
-#include "kokkos-execution/utils/IgnoreWarnings.hpp"
+#include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
 PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 #include "stdexec/execution.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
-#include "kokkos-execution/execution_space/Context_fwd.hpp"
-#include "kokkos-execution/execution_space/impl/operation_state.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
+
 template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForClosure {
     using policy_t = ExecPolicy;
     using execution_space = typename policy_t::execution_space;
 
-    Kokkos::Experimental::ParallelForData<Functor, policy_t> data;
+    Kokkos::Execution::impl::ParallelForData<Functor, policy_t> data;
 
     void execute() const & {
         Kokkos::parallel_for(data.label, data.policy, data.functor);
@@ -52,9 +53,9 @@ struct ParallelForSender {
 };
 
 template <>
-struct transform_sender_for<Kokkos::Experimental::parallel_for_t> {
+struct transform_sender_for<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, execution_space_completing_sender<Env> Sndr>
-    auto operator()(const Env& env, Kokkos::Experimental::parallel_for_t, Data&& data, Sndr&& sndr) const noexcept {
+    auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const noexcept {
         auto [label, functor, policy] = std::forward<Data>(data);
 
         using functor_t = decltype(functor);
@@ -68,6 +69,6 @@ struct transform_sender_for<Kokkos::Experimental::parallel_for_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP
