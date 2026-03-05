@@ -1,5 +1,5 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_CONTEXT_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_CONTEXT_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_HPP
 
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
@@ -17,18 +17,19 @@ PRAGMA_DIAGNOSTIC_POP
 #    include "plog/Log.h"
 #endif
 
+#include "kokkos-execution/execution_space/bulk.hpp"
+#include "kokkos-execution/execution_space/continues_on.hpp"
 #include "kokkos-execution/execution_space/domain.hpp"
-#include "kokkos-execution/execution_space/impl/bulk.hpp"
-#include "kokkos-execution/execution_space/impl/continues_on.hpp"
-#include "kokkos-execution/execution_space/impl/get_exec.hpp"
-#include "kokkos-execution/execution_space/impl/parallel_for.hpp"
-#include "kokkos-execution/execution_space/impl/schedule_from.hpp"
-#include "kokkos-execution/execution_space/impl/sync_wait.hpp"
-#include "kokkos-execution/execution_space/impl/then.hpp"
+#include "kokkos-execution/execution_space/get_exec.hpp"
+#include "kokkos-execution/execution_space/parallel_for.hpp"
+#include "kokkos-execution/execution_space/schedule_from.hpp"
+#include "kokkos-execution/execution_space/sync_wait.hpp"
+#include "kokkos-execution/execution_space/then.hpp"
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution {
 
-namespace impl {
+namespace execution_space {
+
 template <Kokkos::ExecutionSpace Exec>
 struct State {
     Exec exec;
@@ -117,30 +118,30 @@ struct Scheduler {
     State<Exec>* state;
 };
 
-} // namespace impl
+} // namespace execution_space
 
 /**
  * @brief Execution context using a @c Kokkos execution space under the hood.
  *
  * For instance, if @p Exec is @c Kokkos::Cuda, the following holds true:
- *  1. The execution context will be the @c Cuda stream stored by the @c Kokkos::Cuda instance in @ref Kokkos::Execution::execution_space::impl::State.
+ *  1. The execution context will be the @c Cuda stream stored by the @c Kokkos::Cuda instance in @ref Kokkos::Execution::execution_space::State.
  *  2. The execution resource is the GPU the stream is attached to.
  */
 template <Kokkos::ExecutionSpace Exec>
-struct Context {
-    using state_t = impl::State<Exec>;
+struct ExecutionSpaceContext {
+    using state_t = State<Exec>;
 
     state_t m_state;
 
-    explicit Context(Exec exec) // NOLINT(performance-unnecessary-value-param)
+    explicit ExecutionSpaceContext(Exec exec) // NOLINT(performance-unnecessary-value-param)
         : m_state{std::move(exec)} {
     }
 
-    auto get_scheduler() const noexcept -> impl::Scheduler<Exec> {
+    auto get_scheduler() const noexcept -> Scheduler<Exec> {
         return {const_cast<state_t*>(&m_state)};
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_CONTEXT_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_HPP

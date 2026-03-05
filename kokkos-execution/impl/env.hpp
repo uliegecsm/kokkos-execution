@@ -121,7 +121,7 @@ using upsert_in_env_t = std::invoke_result_t<upsert_in_env_fn, Tag, Env, Value>;
 inline constexpr upsert_in_env_fn upsert_in_env{};
 
 template <typename Tag, typename Env, typename Value>
-using upsert_in_env_or_join_t = std::invoke_result_t<impl::upsert_in_env_or_join_fn, Tag, Env, Value>;
+using upsert_in_env_or_join_t = std::invoke_result_t<upsert_in_env_or_join_fn, Tag, Env, Value>;
 
 inline constexpr upsert_in_env_or_join_fn upsert_in_env_or_join{};
 

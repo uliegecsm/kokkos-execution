@@ -1,5 +1,5 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_OPERATION_STATE_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_OPERATION_STATE_HPP
 
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
@@ -8,10 +8,10 @@ PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 #include "stdexec/execution.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
-#include "kokkos-execution/execution_space/impl/get_exec.hpp"
+#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 template <typename Clsr>
 concept Closure = requires(const Clsr& clsr) {
@@ -51,7 +51,7 @@ struct OpStateBase : public stdexec::__immovable {
         /**
          * Sync at the boundary of the work enqueued on the execution space.
          *
-         * If the receiver environment can be queried for @ref Kokkos::Execution::execution_space::impl::get_exec_t,
+         * If the receiver environment can be queried for @ref Kokkos::Execution::execution_space::get_exec_t,
          * the successor enqueues work on the same execution space, so don't fence here.
          *
          * Otherwise, synchronization must occur before invoking the downstream receiver. This situation may arise, for example,
@@ -136,6 +136,6 @@ struct OpState : public OpStateBase<Rcvr, Clsr> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_OPERATION_STATE_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_OPERATION_STATE_HPP

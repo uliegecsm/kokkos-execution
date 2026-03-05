@@ -1,9 +1,9 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTEXT_FWD_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTEXT_FWD_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_CONTEXT_FWD_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_CONTEXT_FWD_HPP
 
 #include "Kokkos_Concepts.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 template <typename Tag>
 struct apply_sender_for;
@@ -22,7 +22,7 @@ struct SchedulerEnv;
 template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
-//! Concept for a sender whose completion scheduler is @ref Kokkos::Execution::execution_space::impl::Scheduler.
+//! Concept for a sender whose completion scheduler is @ref Kokkos::Execution::execution_space::Scheduler.
 template <typename Sndr, typename Env = stdexec::env<>>
 concept execution_space_completing_sender =
     stdexec::sender<Sndr>
@@ -31,6 +31,6 @@ concept execution_space_completing_sender =
         Scheduler
     >;
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_CONTEXT_FWD_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_CONTEXT_FWD_HPP

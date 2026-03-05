@@ -1,5 +1,5 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP
 
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
@@ -8,11 +8,11 @@ PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 #include "stdexec/execution.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
-#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
-#include "kokkos-execution/execution_space/impl/operation_state.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForClosure {
@@ -69,6 +69,6 @@ struct transform_sender_for<Kokkos::Execution::parallel_for_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_PARALLEL_FOR_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP

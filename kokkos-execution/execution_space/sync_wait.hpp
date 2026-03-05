@@ -1,13 +1,13 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SYNC_WAIT_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SYNC_WAIT_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_SYNC_WAIT_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_SYNC_WAIT_HPP
 
 #include "stdexec/execution.hpp"
 
-#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
-#include "kokkos-execution/execution_space/impl/get_exec.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 //! Receiver for @c sync_wait.
 template <Kokkos::ExecutionSpace Exec, typename... Values>
@@ -99,6 +99,6 @@ struct apply_sender_for<stdexec::sync_wait_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_SYNC_WAIT_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_SYNC_WAIT_HPP

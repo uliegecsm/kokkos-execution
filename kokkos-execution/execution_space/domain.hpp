@@ -15,7 +15,7 @@ PRAGMA_DIAGNOSTIC_POP
 #    include "plog/Log.h"
 #endif
 
-#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
 
 namespace Kokkos::Execution::execution_space {
 
@@ -27,7 +27,7 @@ struct Domain : public stdexec::default_domain {
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": apply_sender for tag "
                    << Kokkos::Impl::TypeInfo<Tag>::name();
 #endif
-        return impl::apply_sender_for<Tag>{}(std::forward<Sndr>(sndr), std::forward<Args>(args)...);
+        return apply_sender_for<Tag>{}(std::forward<Sndr>(sndr), std::forward<Args>(args)...);
     }
 
     template <stdexec::sender Sndr, typename Env>
@@ -38,7 +38,7 @@ struct Domain : public stdexec::default_domain {
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": transform_sender for tag "
                    << Kokkos::Impl::TypeInfo<stdexec::tag_of_t<Sndr>>::name();
 #endif
-        return stdexec::__apply(impl::transform_sender_for<stdexec::tag_of_t<Sndr>>{}, std::forward<Sndr>(sndr), env);
+        return stdexec::__apply(transform_sender_for<stdexec::tag_of_t<Sndr>>{}, std::forward<Sndr>(sndr), env);
     }
 };
 

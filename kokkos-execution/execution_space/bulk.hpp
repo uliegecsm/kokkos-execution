@@ -1,11 +1,11 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_BULK_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_BULK_HPP
 
-#include "kokkos-execution/execution_space/impl/context_fwd.hpp"
-#include "kokkos-execution/execution_space/impl/parallel_for.hpp"
+#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/impl/bulk.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 template <>
 struct transform_sender_for<stdexec::bulk_t> {
@@ -32,6 +32,6 @@ struct transform_sender_for<stdexec::bulk_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_BULK_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_BULK_HPP

@@ -1,11 +1,11 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_GET_EXEC_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_GET_EXEC_HPP
+#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_GET_EXEC_HPP
+#define KOKKOS_EXECUTION_EXECUTION_SPACE_GET_EXEC_HPP
 
 #include "Kokkos_Core.hpp"
 
 #include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Execution::execution_space::impl {
+namespace Kokkos::Execution::execution_space {
 
 /**
  * Query an object for its @c Kokkos execution space instance.
@@ -57,9 +57,9 @@ struct ExecutionSpaceRef {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define KOKKOS_EXECUTION_UPSERT_EXEC_TYPE(_exec_type_, _rcvr_type_)                                                    \
     ::exec::upsert_in_env_or_join_t<                                                                                   \
-        Kokkos::Execution::execution_space::impl::get_exec_t,                                                          \
+        Kokkos::Execution::execution_space::get_exec_t,                                                                \
         stdexec::__fwd_env_t<stdexec::env_of_t<_rcvr_type_>>,                                                          \
-        Kokkos::Execution::execution_space::impl::ExecutionSpaceRef<_exec_type_>                                       \
+        Kokkos::Execution::execution_space::ExecutionSpaceRef<_exec_type_>                                             \
     >
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -67,11 +67,11 @@ struct ExecutionSpaceRef {
     [[nodiscard]]                                                                                                      \
     constexpr auto get_env() const noexcept -> KOKKOS_EXECUTION_UPSERT_EXEC_TYPE(_exec_type_, _rcvr_type_) {           \
         return ::exec::upsert_in_env_or_join(                                                                          \
-            Kokkos::Execution::execution_space::impl::get_exec,                                                        \
+            Kokkos::Execution::execution_space::get_exec,                                                              \
             stdexec::__fwd_env(stdexec::get_env(_rcvr_)),                                                              \
-            Kokkos::Execution::execution_space::impl::ExecutionSpaceRef{_exec_});                                      \
+            Kokkos::Execution::execution_space::ExecutionSpaceRef{_exec_});                                            \
     }
 
-} // namespace Kokkos::Execution::execution_space::impl
+} // namespace Kokkos::Execution::execution_space
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_IMPL_GET_EXEC_HPP
+#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_GET_EXEC_HPP
