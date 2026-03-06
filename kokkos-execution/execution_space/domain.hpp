@@ -15,7 +15,7 @@ PRAGMA_DIAGNOSTIC_POP
 #    include "plog/Log.h"
 #endif
 
-#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 

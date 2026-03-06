@@ -13,7 +13,8 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "impl/Kokkos_Profiling.hpp"
 
-#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/execution_space_fwd.hpp"
+
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 

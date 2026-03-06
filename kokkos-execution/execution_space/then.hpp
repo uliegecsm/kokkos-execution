@@ -1,7 +1,8 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_THEN_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_THEN_HPP
 
-#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/execution_space_fwd.hpp"
+
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
