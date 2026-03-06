@@ -28,4 +28,4 @@ jobs:
           cmake-format --config-files=.cmake-format.py \
             --log-level=debug \
             --check \
-            $(git ls-files CMakeLists.txt)
+            $(git ls-files CMakeLists.txt '*.cmake')

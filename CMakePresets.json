@@ -56,7 +56,8 @@
         },
         {
             "name": "gnu-OpenMP",
-            "inherits": ["default", "cxx-gnu"]
+            "inherits": ["default", "cxx-gnu"],
+            "cacheVariables": {"KokkosExecution_ENABLE_DEBUG_LOGGING": "ON"}
         },
         {
             "name": "clang-OpenMP",

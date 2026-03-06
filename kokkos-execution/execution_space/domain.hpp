@@ -11,7 +11,7 @@ PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
 #include <stdexec/execution.hpp>
 PRAGMA_DIAGNOSTIC_POP
 
-#if defined(KOKKOS_EXECUTION_DEBUG)
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
 #    include "plog/Log.h"
 #endif
 
@@ -23,7 +23,7 @@ struct Domain : public stdexec::default_domain {
     template <typename Tag, stdexec::sender Sndr, typename... Args>
     requires stdexec::__callable<ApplySenderFor<Tag>, Sndr, Args...>
     static auto apply_sender(Tag, Sndr&& sndr, Args&&... args) {
-#if defined(KOKKOS_EXECUTION_DEBUG)
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": apply_sender for tag "
                    << Kokkos::Impl::TypeInfo<Tag>::name();
 #endif
@@ -34,7 +34,7 @@ struct Domain : public stdexec::default_domain {
     requires stdexec::__applicable<TransformSenderFor<stdexec::tag_of_t<Sndr>>, Sndr&&, const Env&>
     static auto transform_sender(stdexec::set_value_t, Sndr&& sndr, const Env& env)
         noexcept(stdexec::__nothrow_applicable<TransformSenderFor<stdexec::tag_of_t<Sndr>>, Sndr&&, const Env&>) {
-#if defined(KOKKOS_EXECUTION_DEBUG)
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": transform_sender for tag "
                    << Kokkos::Impl::TypeInfo<stdexec::tag_of_t<Sndr>>::name();
 #endif
