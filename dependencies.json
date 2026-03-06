@@ -1,5 +1,4 @@
 {
-    "clang": "21",
     "cmake": "4.2.1",
     "python": "3.12",
     "github": {

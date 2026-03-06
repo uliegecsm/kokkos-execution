@@ -124,30 +124,42 @@ jobs:
       matrix:
         include:
           - kokkos_backends: [OpenMP]
-            compiler_family: gnu
+            compiler:
+              family: gnu
+              version: 14
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
           - kokkos_backends: [OpenMP]
-            compiler_family: clang
+            compiler:
+              family: clang
+              version: 22
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
           - kokkos_backends: [OpenMP]
-            compiler_family: clang
+            compiler:
+              family: clang
+              version: 22
             base_image     : ubuntu:24.04
             platforms      : linux/arm64
             runs-on        : "['self-hosted', 'linux', 'docker', 'arm64']"
           - kokkos_backends: [OpenMP, Cuda]
-            compiler_family: clang
+            compiler:
+              family: clang
+              version: 21
             base_image     : nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
             platforms      : linux/amd64
             kokkos_archs   : [VOLTA70]
           - kokkos_backends: [OpenMP, Cuda]
-            compiler_family: gnu-nvidia
+            compiler:
+              family: clang
+              version: 22
             base_image     : nvcr.io/nvidia/cuda:13.1.0-devel-ubuntu24.04
             platforms      : linux/amd64
             kokkos_archs   : [BLACKWELL120]
           - kokkos_backends: [OpenMP, HIP]
-            compiler_family: rocm
+            compiler:
+              family: rocm
+              version: 7.0.2
             base_image     : rocm/dev-ubuntu-24.04:7.0.2
             platforms      : linux/amd64
             kokkos_archs   : [ZEN5, AMD_GFX1201]
@@ -156,7 +168,6 @@ jobs:
 
       - shell: sh
         run  : |
-          echo CLANG_VERSION=$(jq '.clang' dependencies.json -j) >> $GITHUB_ENV
           echo CMAKE_VERSION=$(jq '.cmake' dependencies.json -j) >> $GITHUB_ENV
           echo CMAKE_PACKAGE_MANAGER_VERSION=$(jq '.github.cpm' dependencies.json -j) >> $GITHUB_ENV
           echo DOXYGEN_VERSION=$(jq '.github.doxygen' dependencies.json -j) >> $GITHUB_ENV
@@ -183,7 +194,7 @@ jobs:
 
       - id : compute-tag
         run: |
-          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
+          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-buildx-action@v3
@@ -199,10 +210,10 @@ jobs:
             cache-to: type=inline
             build-args: |
                 BASE_IMAGE=${{ matrix.base_image }}
-                CLANG_VERSION=${{ env.CLANG_VERSION }}
                 CMAKE_VERSION=${{ env.CMAKE_VERSION }}
                 CMAKE_PACKAGE_MANAGER_VERSION=${{ env.CMAKE_PACKAGE_MANAGER_VERSION }}
-                COMPILER_FAMILY=${{ matrix.compiler_family }}
+                COMPILER_FAMILY=${{ matrix.compiler.family }}
+                COMPILER_VERSION=${{ matrix.compiler.version }}
                 DOXYGEN_VERSION=${{ env.DOXYGEN_VERSION }}
                 GOOGLETEST_VERSION=${{ env.GOOGLETEST_VERSION }}
                 KOKKOS_ARCHS=${{ matrix.kokkos_archs && join(matrix.kokkos_archs, ',') || '' }}
