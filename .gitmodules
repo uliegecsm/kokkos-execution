@@ -2,3 +2,6 @@
 	path = external/plog
 	url = https://github.com/SergiusTheBest/plog
 	branch = 1.1.11
+[submodule "external/stdexec"]
+	path = external/stdexec
+	url = https://github.com/NVIDIA/stdexec

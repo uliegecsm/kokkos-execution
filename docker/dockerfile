@@ -122,21 +122,6 @@ RUN <<EOF
     cmake --build build -j4 --target install
 EOF
 
-# Fetch https://github.com/NVIDIA/stdexec sources.
-FROM requirements-cmake AS nvidia-stdexec
-
-ARG NVIDIA_STDEXEC_REF
-
-RUN <<EOF
-    set -ex
-
-    git clone --branch main --shallow-since=2025-06-01 https://github.com/NVIDIA/stdexec /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
-
-    cd /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
-
-    git checkout ${NVIDIA_STDEXEC_REF}
-EOF
-
 # Compile Google Test.
 FROM requirements-cmake AS google-test-compile
 
@@ -230,16 +215,13 @@ ARG DOXYGEN_VERSION
 ARG GOOGLETEST_VERSION
 ARG KOKKOS_SHA
 ARG KOKKOS_UTILS_SHA
-ARG NVIDIA_STDEXEC_REF
 
 COPY --from=doxygen-compile      /opt/doxygen-${DOXYGEN_VERSION}           /opt/doxygen-${DOXYGEN_VERSION}
 COPY --from=google-test-compile  /opt/google-test-${GOOGLETEST_VERSION}    /opt/google-test-${GOOGLETEST_VERSION}
 COPY --from=kokkos-compile       /opt/kokkos-${KOKKOS_SHA}                 /opt/kokkos-${KOKKOS_SHA}
 COPY --from=kokkos-utils-compile /opt/kokkos-utils-${KOKKOS_UTILS_SHA}     /opt/kokkos-utils-${KOKKOS_UTILS_SHA}
-COPY --from=nvidia-stdexec       /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF} /opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
 
 ENV Doxygen_ROOT=/opt/doxygen-${DOXYGEN_VERSION}
 ENV GTest_ROOT=/opt/google-test-${GOOGLETEST_VERSION}
 ENV Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}
 ENV KokkosUtils_ROOT=/opt/kokkos-utils-${KOKKOS_UTILS_SHA}
-ENV Stdexec_ROOT=/opt/nvidia/stdexec-${NVIDIA_STDEXEC_REF}
