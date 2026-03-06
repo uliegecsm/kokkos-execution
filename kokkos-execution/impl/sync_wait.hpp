@@ -3,7 +3,7 @@
 
 #include "stdexec/execution.hpp"
 
-namespace Kokkos::Execution::impl {
+namespace Kokkos::Execution::Impl {
 
 //! Inspired by https://github.com/NVIDIA/stdexec/blob/16076a81efa4477513e6ede9c2741fd034ecef99/include/stdexec/__detail/__sync_wait.hpp#L45-L65.
 struct env {
@@ -26,6 +26,6 @@ struct State {
     stdexec::run_loop loop;
 };
 
-} // namespace Kokkos::Execution::impl
+} // namespace Kokkos::Execution::Impl
 
 #endif // KOKKOS_EXECUTION_IMPL_SYNC_WAIT_HPP

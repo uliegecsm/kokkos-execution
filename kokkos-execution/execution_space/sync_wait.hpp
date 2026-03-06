@@ -7,7 +7,7 @@
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 //! Receiver for @c sync_wait.
 template <Kokkos::ExecutionSpace Exec, typename... Values>
@@ -15,7 +15,7 @@ struct SyncWaitReceiver {
     using receiver_concept = stdexec::receiver_t;
 
     State<Exec> const * state;
-    Kokkos::Execution::impl::State* runloop_state;
+    Kokkos::Execution::Impl::State* runloop_state;
     std::optional<std::tuple<Values...>>* result;
 
     template <typename... Args>
@@ -40,10 +40,10 @@ struct SyncWaitReceiver {
     //! Make others aware of which execution space instance it will synchronize.
     [[nodiscard]]
     constexpr auto get_env() const noexcept
-        -> stdexec::__join_env_t<stdexec::prop<get_exec_t, ExecutionSpaceRef<Exec>>, Kokkos::Execution::impl::env> {
+        -> stdexec::__join_env_t<stdexec::prop<get_exec_t, ExecutionSpaceRef<Exec>>, Kokkos::Execution::Impl::env> {
         return stdexec::__env::__join(
             stdexec::prop{get_exec, ExecutionSpaceRef{state->exec}},
-            Kokkos::Execution::impl::env{runloop_state->loop.get_scheduler()});
+            Kokkos::Execution::Impl::env{runloop_state->loop.get_scheduler()});
     }
 };
 
@@ -57,7 +57,7 @@ struct SyncWait {
     template <stdexec::sender Sndr>
     auto operator()(Sndr&& sndr) const noexcept(false)
         -> std::optional<stdexec::__sync_wait::__value_tuple_for_t<Sndr>> {
-        Kokkos::Execution::impl::State runloop_state;
+        Kokkos::Execution::Impl::State runloop_state;
 
         auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
 
@@ -92,13 +92,13 @@ struct SyncWait {
  *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-dispatch
  */
 template <>
-struct apply_sender_for<stdexec::sync_wait_t> {
+struct ApplySenderFor<stdexec::sync_wait_t> {
     template <execution_space_completing_sender Sndr>
     auto operator()(Sndr&& sndr) && noexcept(std::is_nothrow_invocable_v<SyncWait, Sndr&&>) {
         return SyncWait{}(std::forward<Sndr>(sndr));
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_SYNC_WAIT_HPP

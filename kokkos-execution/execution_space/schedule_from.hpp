@@ -7,7 +7,7 @@
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 //! Receiver for @c schedule_from.
 template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
@@ -38,7 +38,7 @@ struct ScheduleFromReceiver {
         stdexec::set_value(std::move(rcvr));
     }
 
-    template <class Error>
+    template <typename Error>
     void set_error(Error&& err) && noexcept {
         stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
     }
@@ -72,7 +72,7 @@ struct ScheduleFromSender {
 };
 
 template <>
-struct transform_sender_for<stdexec::schedule_from_t> {
+struct TransformSenderFor<stdexec::schedule_from_t> {
     template <typename Sndr, typename Env>
     using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, const Env&>;
 
@@ -89,6 +89,6 @@ struct transform_sender_for<stdexec::schedule_from_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_SCHEDULE_FROM_HPP

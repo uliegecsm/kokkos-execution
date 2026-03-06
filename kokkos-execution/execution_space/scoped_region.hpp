@@ -26,7 +26,7 @@ PRAGMA_DIAGNOSTIC_POP
  *  - https://github.com/NVIDIA/stdexec/blob/f7308ea245b896a76c6fd9a58a097ae23579e489/include/nvexec/nvtx.cuh
  */
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 //! Kind of region action.
 enum class Kind : std::uint8_t {
@@ -129,12 +129,12 @@ struct ScopedRegion {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 namespace Kokkos::Profiling {
-inline constexpr Kokkos::Execution::execution_space::Push push{};
-inline constexpr Kokkos::Execution::execution_space::Pop pop{};
-inline constexpr Kokkos::Execution::execution_space::ScopedRegion scoped_region{};
+inline constexpr Kokkos::Execution::ExecutionSpaceImpl::Push push{};
+inline constexpr Kokkos::Execution::ExecutionSpaceImpl::Pop pop{};
+inline constexpr Kokkos::Execution::ExecutionSpaceImpl::ScopedRegion scoped_region{};
 } // namespace Kokkos::Profiling
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_SCOPED_REGION_HPP

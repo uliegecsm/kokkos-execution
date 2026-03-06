@@ -4,7 +4,7 @@
 #include "kokkos-execution/execution_space/context_fwd.hpp"
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 //! Inspired by https://github.com/kokkos/kokkos/blob/69273c3a4e7b6adeb95066341ca201d62fe1e698/core/src/impl/Kokkos_GraphNodeThenImpl.hpp#L28.
 template <typename Functor>
@@ -19,7 +19,7 @@ struct ThenWrapper {
 };
 
 template <>
-struct transform_sender_for<stdexec::then_t> {
+struct TransformSenderFor<stdexec::then_t> {
     template <typename Sndr, typename Env>
     using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, const Env&>;
 
@@ -50,6 +50,6 @@ struct transform_sender_for<stdexec::then_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_THEN_HPP

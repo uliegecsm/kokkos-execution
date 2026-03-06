@@ -12,14 +12,14 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForClosure {
     using policy_t = ExecPolicy;
     using execution_space = typename policy_t::execution_space;
 
-    Kokkos::Execution::impl::ParallelForData<Functor, policy_t> data;
+    Kokkos::Execution::Impl::ParallelForData<Functor, policy_t> data;
 
     void execute() const & {
         Kokkos::parallel_for(data.label, data.policy, data.functor);
@@ -53,7 +53,7 @@ struct ParallelForSender {
 };
 
 template <>
-struct transform_sender_for<Kokkos::Execution::parallel_for_t> {
+struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, execution_space_completing_sender<Env> Sndr>
     auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const noexcept {
         auto [label, functor, policy] = std::forward<Data>(data);
@@ -69,6 +69,6 @@ struct transform_sender_for<Kokkos::Execution::parallel_for_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP

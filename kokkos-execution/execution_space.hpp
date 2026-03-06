@@ -28,7 +28,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 namespace Kokkos::Execution {
 
-namespace execution_space {
+namespace ExecutionSpaceImpl {
 
 template <Kokkos::ExecutionSpace Exec>
 struct State {
@@ -118,13 +118,13 @@ struct Scheduler {
     State<Exec>* state;
 };
 
-} // namespace execution_space
+} // namespace ExecutionSpaceImpl
 
 /**
  * @brief Execution context using a @c Kokkos execution space under the hood.
  *
  * For instance, if @p Exec is @c Kokkos::Cuda, the following holds true:
- *  1. The execution context will be the @c Cuda stream stored by the @c Kokkos::Cuda instance in @ref Kokkos::Execution::execution_space::State.
+ *  1. The execution context will be the @c Cuda stream stored by the @c Kokkos::Cuda instance in @ref Kokkos::Execution::ExecutionSpaceImpl::State.
  *  2. The execution resource is the GPU the stream is attached to.
  */
 template <Kokkos::ExecutionSpace Exec>

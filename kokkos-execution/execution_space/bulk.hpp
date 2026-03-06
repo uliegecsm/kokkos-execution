@@ -5,13 +5,13 @@
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/impl/bulk.hpp"
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 template <>
-struct transform_sender_for<stdexec::bulk_t> {
+struct TransformSenderFor<stdexec::bulk_t> {
     template <
         typename Env,
-        Kokkos::Execution::impl::has_parallel_policy Data,
+        Kokkos::Execution::Impl::has_parallel_policy Data,
         execution_space_completing_sender<Env> Sndr
     >
     auto operator()(const Env& env, stdexec::bulk_t, Data&& data, Sndr&& sndr) const noexcept {
@@ -32,6 +32,6 @@ struct transform_sender_for<stdexec::bulk_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_BULK_HPP
