@@ -72,6 +72,6 @@ jobs:
         with:
             submodules: true
       - run: |
-          cmake -S . -B build-${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }}
+          cmake -S . --preset=${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }}
       - run: |
-          cmake --build build-${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
+          cmake --build --preset=${{ matrix.compiler_family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
