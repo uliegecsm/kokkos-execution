@@ -158,6 +158,7 @@ jobs:
         run  : |
           echo CLANG_VERSION=$(jq '.clang' dependencies.json -j) >> $GITHUB_ENV
           echo CMAKE_VERSION=$(jq '.cmake' dependencies.json -j) >> $GITHUB_ENV
+          echo CMAKE_PACKAGE_MANAGER_VERSION=$(jq '.github.cpm' dependencies.json -j) >> $GITHUB_ENV
           echo DOXYGEN_VERSION=$(jq '.github.doxygen' dependencies.json -j) >> $GITHUB_ENV
           echo GOOGLETEST_VERSION=$(jq '.github.googletest' dependencies.json -j) >> $GITHUB_ENV
           echo KOKKOS_SHA=$(jq '.github.kokkos.sha' dependencies.json -j) >> $GITHUB_ENV
@@ -200,6 +201,7 @@ jobs:
                 BASE_IMAGE=${{ matrix.base_image }}
                 CLANG_VERSION=${{ env.CLANG_VERSION }}
                 CMAKE_VERSION=${{ env.CMAKE_VERSION }}
+                CMAKE_PACKAGE_MANAGER_VERSION=${{ env.CMAKE_PACKAGE_MANAGER_VERSION }}
                 COMPILER_FAMILY=${{ matrix.compiler_family }}
                 DOXYGEN_VERSION=${{ env.DOXYGEN_VERSION }}
                 GOOGLETEST_VERSION=${{ env.GOOGLETEST_VERSION }}

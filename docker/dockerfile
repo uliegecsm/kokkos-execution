@@ -97,6 +97,11 @@ RUN <<EOF
     rm ${INSTALLER}
 EOF
 
+ARG CMAKE_PACKAGE_MANAGER_VERSION
+
+ADD https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CMAKE_PACKAGE_MANAGER_VERSION}/CPM.cmake \
+    /opt/cpm-${CMAKE_PACKAGE_MANAGER_VERSION}/
+
 ENV PATH=/opt/cmake-${CMAKE_VERSION}/bin:${PATH}
 
 # Compile Doxygen.
