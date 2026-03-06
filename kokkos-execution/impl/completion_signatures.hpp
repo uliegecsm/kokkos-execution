@@ -3,7 +3,7 @@
 
 #include "stdexec/execution.hpp"
 
-namespace Kokkos::Execution::impl {
+namespace Kokkos::Execution::Impl {
 
 /**
  * @brief Completion signatures of @c _sndr_type_.
@@ -38,6 +38,6 @@ namespace Kokkos::Execution::impl {
         return ::stdexec::__completion_signatures_of_t<::stdexec::__copy_cvref_t<Self, Sndr>, Env...>{};               \
     }
 
-} // namespace Kokkos::Execution::impl
+} // namespace Kokkos::Execution::Impl
 
 #endif // KOKKOS_EXECUTION_IMPL_COMPLETION_SIGNATURES_HPP

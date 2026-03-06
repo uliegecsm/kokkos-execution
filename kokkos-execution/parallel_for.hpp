@@ -6,12 +6,12 @@
 
 namespace Kokkos::Execution {
 
-namespace impl {
+namespace Impl {
 
 template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender;
 
-} // namespace impl
+} // namespace Impl
 
 //! Custom algorithm for the @c Kokkos::parallel_for construct.
 struct parallel_for_t {
@@ -41,13 +41,12 @@ struct parallel_for_t {
 
     template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
     constexpr auto operator()(Sndr&& sndr, std::string label, ExecPolicy policy, Functor functor) const {
-        return impl::ParallelForSender<Sndr, Functor, ExecPolicy>(
+        return Impl::ParallelForSender<Sndr, Functor, ExecPolicy>(
             {std::move(label), std::move(functor), std::move(policy)}, std::forward<Sndr>(sndr));
     }
 };
 
-namespace impl {
-
+namespace Impl {
 template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForData {
     using functor_t = Functor;
@@ -82,7 +81,7 @@ struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Func
     KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, stdexec::__get<idx_sndr>(static_cast<const base_t&>(*this)))
 };
 
-} // namespace impl
+} // namespace Impl
 
 inline constexpr parallel_for_t parallel_for{};
 

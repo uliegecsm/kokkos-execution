@@ -8,7 +8,7 @@
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
-namespace Kokkos::Execution::execution_space {
+namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 //! Receiver for @c continues_on.
 template <stdexec::receiver Rcvr>
@@ -21,7 +21,7 @@ struct ContinuesOnReceiver {
         stdexec::set_value(std::move(rcvr));
     }
 
-    template <class Error>
+    template <typename Error>
     void set_error(Error&& err) && noexcept {
         stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
     }
@@ -54,7 +54,7 @@ struct ContinuesOnSender {
 };
 
 template <>
-struct transform_sender_for<stdexec::continues_on_t> {
+struct TransformSenderFor<stdexec::continues_on_t> {
     template <typename Env, stdexec::__is_instance_of<Scheduler> Schd, stdexec::sender Sndr>
     auto operator()(const Env&, stdexec::continues_on_t, Schd&&, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<ContinuesOnSender<Sndr>, Sndr&&>) {
@@ -62,6 +62,6 @@ struct transform_sender_for<stdexec::continues_on_t> {
     }
 };
 
-} // namespace Kokkos::Execution::execution_space
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
