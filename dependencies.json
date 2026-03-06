@@ -3,6 +3,7 @@
     "cmake": "4.2.1",
     "python": "3.12",
     "github": {
+        "cpm": "0.42.0",
         "doxygen": "1.15.0",
         "googletest": "1.17.0",
         "kokkos": {
