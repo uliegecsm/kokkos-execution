@@ -1,0 +1,150 @@
+{
+    "version": 10,
+    "configurePresets": [
+        {
+            "name": "default",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build-with-${presetName}",
+            "warnings": {
+                "dev": true,
+                "uninitialized": true,
+                "unusedCli": true,
+                "deprecated": true
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "KokkosExecution_ENABLE_TESTS": "ON"
+            }
+        },
+        {
+            "name": "cxx-ccache",
+            "hidden": true,
+            "cacheVariables": {"CMAKE_CXX_COMPILER_LAUNCHER": "ccache"}
+        },
+        {
+            "name": "cxx-gnu",
+            "hidden": true,
+            "inherits": "cxx-ccache",
+            "cacheVariables": {"CMAKE_CXX_COMPILER": "g++"}
+        },
+        {
+            "name": "cxx-clang",
+            "hidden": true,
+            "inherits": "cxx-ccache",
+            "cacheVariables": {"CMAKE_CXX_COMPILER": "clang++"}
+        },
+        {
+            "name": "cxx-cuda-gnu-nvidia",
+            "hidden": true,
+            "inherits": "cxx-ccache",
+            "cacheVariables": {"CMAKE_CXX_COMPILER": "$penv{Kokkos_ROOT}/bin/nvcc_wrapper"}
+        },
+        {
+            "name": "cxx-cuda-clang",
+            "hidden": true,
+            "inherits": "cxx-clang"
+        },
+        {
+            "name": "cxx-hip-rocm",
+            "hidden": true,
+            "cacheVariables": {"CMAKE_CXX_COMPILER": "hipcc"}
+        },
+        {
+            "name": "gnu-OpenMP",
+            "inherits": ["default", "cxx-gnu"]
+        },
+        {
+            "name": "clang-OpenMP",
+            "inherits": ["default", "cxx-clang"],
+            "cacheVariables": {
+                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
+                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
+                "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address"
+            }
+        },
+        {
+            "name": "gnu-nvidia-OpenMP-Cuda",
+            "inherits": ["default", "cxx-cuda-gnu-nvidia"]
+        },
+        {
+            "name": "clang-OpenMP-Cuda",
+            "inherits": ["default", "cxx-cuda-clang"],
+            "cacheVariables": {"CMAKE_CXX_FLAGS": "-Wno-error=unknown-cuda-version"}
+        },
+        {
+            "name": "rocm-OpenMP-HIP",
+            "inherits": ["default", "cxx-hip-rocm"]
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default",
+            "inheritConfigureEnvironment": true
+        },
+        {
+            "name": "gnu-OpenMP",
+            "configurePreset": "gnu-OpenMP",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-OpenMP",
+            "configurePreset": "clang-OpenMP",
+            "inherits": "default"
+        },
+        {
+            "name": "gnu-nvidia-OpenMP-Cuda",
+            "configurePreset": "gnu-nvidia-OpenMP-Cuda",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-OpenMP-Cuda",
+            "configurePreset": "clang-OpenMP-Cuda",
+            "inherits": "default"
+        },
+        {
+            "name": "rocm-OpenMP-HIP",
+            "configurePreset": "rocm-OpenMP-HIP",
+            "inherits": "default"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "default",
+            "hidden": true,
+            "configurePreset": "default",
+            "inheritConfigureEnvironment": true,
+            "output": {"outputOnFailure": true},
+            "execution": {
+                "noTestsAction": "error",
+                "stopOnFailure": false,
+                "scheduleRandom": true
+            }
+        },
+        {
+            "name": "gnu-OpenMP",
+            "configurePreset": "gnu-OpenMP",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-OpenMP",
+            "configurePreset": "clang-OpenMP",
+            "inherits": "default"
+        },
+        {
+            "name": "gnu-nvidia-OpenMP-Cuda",
+            "configurePreset": "gnu-nvidia-OpenMP-Cuda",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-OpenMP-Cuda",
+            "configurePreset": "clang-OpenMP-Cuda",
+            "inherits": "default"
+        },
+        {
+            "name": "rocm-OpenMP-HIP",
+            "configurePreset": "rocm-OpenMP-HIP",
+            "inherits": "default"
+        }
+    ]
+}

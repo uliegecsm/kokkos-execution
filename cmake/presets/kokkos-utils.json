@@ -85,13 +85,13 @@
             "inherits": "default"
         },
         {
-            "name": "clang-OpenMP-Cuda",
-            "configurePreset": "clang-OpenMP-Cuda",
+            "name": "gnu-nvidia-OpenMP-Cuda",
+            "configurePreset": "gnu-nvidia-OpenMP-Cuda",
             "inherits": "default"
         },
         {
-            "name": "gnu-nvidia-OpenMP-Cuda",
-            "configurePreset": "gnu-nvidia-OpenMP-Cuda",
+            "name": "clang-OpenMP-Cuda",
+            "configurePreset": "clang-OpenMP-Cuda",
             "inherits": "default"
         },
         {
