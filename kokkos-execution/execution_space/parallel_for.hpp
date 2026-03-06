@@ -8,7 +8,8 @@ PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
 #include "stdexec/execution.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
-#include "kokkos-execution/execution_space/context_fwd.hpp"
+#include "kokkos-execution/execution_space/execution_space_fwd.hpp"
+
 #include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
