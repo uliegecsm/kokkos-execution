@@ -1,0 +1,29 @@
+@PACKAGE_INIT@
+
+set(KokkosExecution_ENABLE_DEBUG_LOGGING @KokkosExecution_ENABLE_DEBUG_LOGGING@)
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Kokkos)
+
+if(NOT TARGET STDEXEC::stdexec)
+  message(FATAL_ERROR "STDEXEC::stdexec not found. Please fetch stdexec via CPM "
+                      "before calling find_package(KokkosExecution)."
+  )
+endif()
+
+if(KokkosExecution_ENABLE_DEBUG_LOGGING)
+  find_dependency(plog)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/KokkosExecutionTargets.cmake")
+
+target_link_libraries(Kokkos::kokkosexecution INTERFACE STDEXEC::stdexec)
+
+if(KokkosExecution_ENABLE_DEBUG_LOGGING)
+  target_link_libraries(Kokkos::kokkosexecution INTERFACE plog::plog)
+endif()
+
+if(NOT TARGET Kokkos::Execution)
+  add_library(Kokkos::Execution ALIAS Kokkos::kokkosexecution)
+endif()

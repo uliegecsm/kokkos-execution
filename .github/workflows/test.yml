@@ -87,3 +87,6 @@ jobs:
           cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
       - run: |
           ctest --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
+      - run: |
+          bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
+
