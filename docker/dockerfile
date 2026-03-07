@@ -23,7 +23,24 @@ EOF
 
 FROM requirements-python AS requirements-compiler-gnu-base
 
-RUN apt-helpers install-packages --clean --update --packages gcc g++
+ARG COMPILER_VERSION
+
+RUN <<EOF
+    set -ex
+
+    apt-helpers install-packages --clean --update --packages gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION}
+
+    update-alternatives-helpers --prefix /usr/bin \
+        --display --level=10 \
+        --for-each-of \
+            gcc=gcc-${COMPILER_VERSION} \
+            g++=g++-${COMPILER_VERSION} \
+            $(uname -m)-linux-gnu-gcc=$(uname -m)-linux-gnu-gcc-${COMPILER_VERSION} \
+            $(uname -m)-linux-gnu-g++=$(uname -m)-linux-gnu-g++-${COMPILER_VERSION}
+
+    gcc -dumpfullversion -dumpversion
+    g++ -dumpfullversion -dumpversion
+EOF
 
 FROM requirements-compiler-gnu-base AS requirements-compiler-gnu
 FROM requirements-compiler-gnu-base AS requirements-compiler-gnu-nvidia
@@ -34,31 +51,30 @@ ENV PATH=/opt/rocm/bin:${PATH}
 
 FROM requirements-python AS requirements-compiler-clang
 
-ARG CLANG_VERSION
+ARG COMPILER_VERSION
 
 RUN <<EOF
     set -ex
 
     apt-helpers install-packages --update --packages wget lsb-release gpg software-properties-common
 
-    wget https://apt.llvm.org/llvm.sh
-    chmod +x llvm.sh
-    ./llvm.sh ${CLANG_VERSION}
-    rm llvm.sh
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/llvm.asc
+    echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${COMPILER_VERSION} main" > /etc/apt/sources.list.d/llvm.list
 
-    apt-helpers install-packages --clean \
-        --update --packages              \
-        clang-${CLANG_VERSION}           \
-        clang-tidy-${CLANG_VERSION}      \
-        clang-format-${CLANG_VERSION}    \
-        libomp-${CLANG_VERSION}-dev
+    apt-helpers install-packages --clean    \
+        --update --packages                 \
+        clang-${COMPILER_VERSION}           \
+        libclang-rt-${COMPILER_VERSION}-dev \
+        clang-tidy-${COMPILER_VERSION}      \
+        clang-format-${COMPILER_VERSION}    \
+        libomp-${COMPILER_VERSION}-dev
 
     update-alternatives-helpers --prefix /usr/bin --level 10 \
         --display --for-each-of                              \
-        clang=clang-${CLANG_VERSION}                         \
-        clang++=clang++-${CLANG_VERSION}                     \
-        clang-tidy=clang-tidy-${CLANG_VERSION}               \
-        clang-format=clang-format-${CLANG_VERSION}
+        clang=clang-${COMPILER_VERSION}                      \
+        clang++=clang++-${COMPILER_VERSION}                  \
+        clang-tidy=clang-tidy-${COMPILER_VERSION}            \
+        clang-format=clang-format-${COMPILER_VERSION}
 EOF
 
 FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-system
