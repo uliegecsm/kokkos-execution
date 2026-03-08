@@ -34,6 +34,11 @@
             "cacheVariables": {"CMAKE_CXX_COMPILER": "clang++"}
         },
         {
+            "name": "clang-tidy",
+            "hidden": true,
+            "cacheVariables": {"KokkosExecution_ENABLE_CLANG_TIDY" : "ON"}
+        },
+        {
             "name": "cxx-cuda-gnu-nvidia",
             "hidden": true,
             "inherits": "cxx-ccache",
@@ -55,7 +60,7 @@
         },
         {
             "name": "clang-OpenMP",
-            "inherits": ["default", "cxx-clang"],
+            "inherits": ["default", "cxx-clang", "clang-tidy"],
             "cacheVariables": {
                 "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
                 "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
@@ -68,7 +73,7 @@
         },
         {
             "name": "clang-OpenMP-Cuda",
-            "inherits": ["default", "cxx-cuda-clang"],
+            "inherits": ["default", "cxx-cuda-clang", "clang-tidy"],
             "cacheVariables": {"CMAKE_CXX_FLAGS": "-Wno-error=unknown-cuda-version"}
         },
         {
