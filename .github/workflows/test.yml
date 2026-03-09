@@ -80,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-            submodules: true
+          submodules: true
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
       - run: |
@@ -90,3 +90,16 @@ jobs:
       - run: |
           bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
 
+  documentation:
+    needs: [build-images, format]
+    runs-on: [self-hosted, linux, docker, amd64]
+    container:
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:gnu-14-OpenMP
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - run: |
+          cmake -S . --preset=gnu-OpenMP -DKokkosExecution_ENABLE_DOCS=ON
+      - run: |
+          cmake --build --preset=gnu-OpenMP -j4 --target=docs
