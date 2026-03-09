@@ -13,10 +13,6 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "Kokkos_Core.hpp"
 
-#if defined(KOKKOS_EXECUTION_DEBUG)
-#    include "plog/Log.h"
-#endif
-
 #include "kokkos-execution/execution_space/bulk.hpp"
 #include "kokkos-execution/execution_space/continues_on.hpp"
 #include "kokkos-execution/execution_space/domain.hpp"
@@ -129,7 +125,7 @@ struct Scheduler {
  */
 template <Kokkos::ExecutionSpace Exec>
 struct ExecutionSpaceContext {
-    using state_t = State<Exec>;
+    using state_t = ExecutionSpaceImpl::State<Exec>;
 
     state_t m_state;
 
@@ -137,7 +133,7 @@ struct ExecutionSpaceContext {
         : m_state{std::move(exec)} {
     }
 
-    auto get_scheduler() const noexcept -> Scheduler<Exec> {
+    auto get_scheduler() const noexcept -> ExecutionSpaceImpl::Scheduler<Exec> {
         return {const_cast<state_t*>(&m_state)};
     }
 };
