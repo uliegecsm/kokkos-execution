@@ -9,3 +9,6 @@ git
 
 # Builders.
 make
+
+# Documentation.
+texlive-base
