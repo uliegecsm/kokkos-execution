@@ -4,21 +4,15 @@ set(KokkosExecution_ENABLE_DEBUG_LOGGING @KokkosExecution_ENABLE_DEBUG_LOGGING@)
 
 include(CMakeFindDependencyMacro)
 
-find_dependency(Kokkos)
+find_dependency(Kokkos COMPONENTS kokkoscore)
 
-if(NOT TARGET STDEXEC::stdexec)
-  message(FATAL_ERROR "STDEXEC::stdexec not found. Please fetch stdexec via CPM "
-                      "before calling find_package(KokkosExecution)."
-  )
-endif()
+find_dependency(stdexec)
 
 if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   find_dependency(plog)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/KokkosExecutionTargets.cmake")
-
-target_link_libraries(Kokkos::kokkosexecution INTERFACE STDEXEC::stdexec)
 
 if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   target_link_libraries(Kokkos::kokkosexecution INTERFACE plog::plog)

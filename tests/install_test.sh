@@ -5,8 +5,6 @@ CMAKE_PRESET=$2
 
 CPM_VERSION=$(python3 -c 'import json; print(json.load(open("dependencies.json"))["github"]["cpm"])')
 
-STDEXEC_SOURCE_DIR=$PWD/external/stdexec
-
 PLOG_SOURCE_DIR=$PWD/external/plog
 
 CMAKE_INSTALL_PREFIX=/opt/this-is-our-install-folder-for-test-purposes
@@ -30,12 +28,6 @@ cmake_minimum_required(VERSION 4.0.0)
 project(test LANGUAGES CXX)
 
 include(/opt/cpm-${CPM_VERSION}/CPM.cmake)
-
-cpmaddpackage(
-  NAME stdexec
-  SOURCE_DIR "${STDEXEC_SOURCE_DIR}"
-  OPTIONS "STDEXEC_BUILD_TESTS OFF" "STDEXEC_BUILD_EXAMPLES OFF"
-)
 
 cpmaddpackage(
     NAME plog

@@ -40,8 +40,6 @@ cpmaddpackage(
   stdexec
   SOURCE_DIR
   "${CMAKE_SOURCE_DIR}/external/stdexec"
-  EXCLUDE_FROM_ALL
-  YES
   OPTIONS
   "STDEXEC_BUILD_TESTS OFF"
   "STDEXEC_BUILD_EXAMPLES OFF"
@@ -89,7 +87,7 @@ target_compile_features(kokkosexecution INTERFACE cxx_std_20)
 
 target_compile_definitions(kokkosexecution INTERFACE KOKKOS_IMPL_PUBLIC_INCLUDE)
 
-target_link_libraries(kokkosexecution INTERFACE Kokkos::kokkoscore $<BUILD_INTERFACE:STDEXEC::stdexec>)
+target_link_libraries(kokkosexecution INTERFACE Kokkos::kokkoscore STDEXEC::stdexec)
 
 if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   target_compile_definitions(kokkosexecution INTERFACE KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
