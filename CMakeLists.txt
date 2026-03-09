@@ -12,6 +12,7 @@ project(kokkos-execution VERSION ${KokkosExecution_VERSION} LANGUAGES CXX)
 # Options.
 option(KokkosExecution_ENABLE_CLANG_TIDY "Enable clang-tidy checks" OFF)
 option(KokkosExecution_ENABLE_DEBUG_LOGGING "Enable debug logging" OFF)
+option(KokkosExecution_ENABLE_DOCS "Enable documentation" OFF)
 option(KokkosExecution_ENABLE_TESTS "Enable testing" ON)
 
 # Read the dependencies file.
@@ -131,4 +132,9 @@ install(
 if(KokkosExecution_ENABLE_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+# Documentation.
+if(KokkosExecution_ENABLE_DOCS)
+  add_subdirectory(docs)
 endif()
