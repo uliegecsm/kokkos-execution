@@ -66,6 +66,7 @@ target_sources(
             FILES
             kokkos-execution/execution_space.hpp
             kokkos-execution/parallel_for.hpp
+            kokkos-execution/stdexec.hpp
             kokkos-execution/execution_space/bulk.hpp
             kokkos-execution/execution_space/continues_on.hpp
             kokkos-execution/execution_space/domain.hpp
@@ -127,6 +128,13 @@ install(
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/KokkosExecution
   NAMESPACE Kokkos::
 )
+
+if(KokkosExecution_ENABLE_TESTS OR KokkosExecution_ENABLE_DOCS)
+  # Find Google Test.
+  string(JSON GTest_REQUIRED_VERSION GET "${DEPENDENCIES_JSON}" github googletest)
+
+  find_package(GTest ${GTest_REQUIRED_VERSION} CONFIG REQUIRED)
+endif()
 
 # Testing.
 if(KokkosExecution_ENABLE_TESTS)

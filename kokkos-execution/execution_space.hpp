@@ -1,15 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_HPP
 
-#include "kokkos-execution/utils/ignore_warnings.hpp"
-PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
-#include <stdexec/execution.hpp>
-PRAGMA_DIAGNOSTIC_POP
+#include "kokkos-execution/stdexec.hpp"
 
 #include "Kokkos_Core.hpp"
 
@@ -19,6 +11,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/execution_space/schedule_from.hpp"
+#include "kokkos-execution/execution_space/scoped_region.hpp"
 #include "kokkos-execution/execution_space/sync_wait.hpp"
 #include "kokkos-execution/execution_space/then.hpp"
 

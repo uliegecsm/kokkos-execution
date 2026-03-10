@@ -63,7 +63,7 @@ struct UpsertInEnvFn {
     constexpr auto operator()(Tag tag, Env&& env, Value&& value) const noexcept {
         return stdexec::env{
             stdexec::prop{tag, std::forward<Value>(value)},
-            std::forward<Env>(env).env2_
+            std::forward<Env>(env).__env2_
         };
     }
 
@@ -76,7 +76,7 @@ struct UpsertInEnvFn {
         return stdexec::env{
             std::forward<Env>(env).__env1_,
             this->operator()(
-                tag, std::forward<Env>(env).env2_, std::forward<Value>(value))}; // NOLINT(bugprone-use-after-move)
+                tag, std::forward<Env>(env).__env2_, std::forward<Value>(value))}; // NOLINT(bugprone-use-after-move)
     }
 
     //! Unwrap forwarding environment and delegate to the appropriate overload.

@@ -1,18 +1,13 @@
 # Find kokkos-utils.
 find_package(KokkosUtils CONFIG REQUIRED)
 
-# Find Google Test.
-string(JSON GTest_REQUIRED_VERSION GET "${DEPENDENCIES_JSON}" github googletest)
-
-find_package(GTest ${GTest_REQUIRED_VERSION} CONFIG REQUIRED)
-
 # Helpers.
 include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
 
 # Function to add a test (common steps).
 function(add_one_test)
 
-  cmake_parse_arguments(aot_args "" "NAME" "" ${ARGN})
+  cmake_parse_arguments(aot_args "" "NAME" "ADDITIONAL_LINK_LIBRARIES" ${ARGN})
 
   # Set executable name and primary source file.
   cmake_path(SET SOURCE_FILE "test_${aot_args_NAME}.cpp")
@@ -37,6 +32,10 @@ function(add_one_test)
   # Always allow logging and kokkos-utils.
   target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE plog::plog Kokkos::kokkosutils)
 
+  if(DEFINED aot_args_ADDITIONAL_LINK_LIBRARIES)
+    target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE ${aot_args_ADDITIONAL_LINK_LIBRARIES})
+  endif()
+
   add_test(NAME ${aot_args_EXECUTABLE_NAME} COMMAND $<TARGET_FILE:${aot_args_EXECUTABLE_NAME}>
                                                     --gtest_fail_if_no_test_linked
   )
@@ -53,3 +52,5 @@ target_link_libraries(test_common PUBLIC GTest::gtest Kokkos::kokkoscore)
 
 # Include subdirectories.
 add_subdirectory(execution_space)
+add_subdirectory(impl)
+add_subdirectory(utils)
