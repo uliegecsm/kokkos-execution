@@ -100,7 +100,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - uses: docker/build-push-action@v7.0.0
         with:
@@ -197,7 +197,7 @@ jobs:
           TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - uses: docker/build-push-action@v7.0.0
         with:
