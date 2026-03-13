@@ -9,39 +9,35 @@
 
 #include "kokkos-utils/concepts/View.hpp"
 
+#include "tests/utils/atomic.hpp"
+
 namespace Tests::Utils::Functors {
 
 //! Increment @ref data.
-template <Kokkos::utils::concepts::ViewOfRank<0> ViewType, bool MayThrow = true>
+template <Kokkos::utils::concepts::ViewOfRank<0> ViewType, bool MayThrow = true, bool Atomic = false>
 struct Increment {
     typename ViewType::non_const_type data;
 
     KOKKOS_FUNCTION
-    void operator()() const noexcept(!MayThrow) {
+    void operator()() const noexcept(!MayThrow) requires(Atomic == false)
+    {
         ++data();
+    }
+
+    KOKKOS_FUNCTION
+    void operator()() const noexcept(!MayThrow) requires(Atomic == true)
+    {
+        Tests::Utils::atomic_add(data.data(), 1);
     }
 };
 
 //! Add a @c then using @ref Tests::Utils::Functors::Increment that may throw. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THEN_INCREMENT(_data_)                                                                                         \
-    stdexec::then(Tests::Utils::Functors::Increment<std::remove_cvref_t<decltype(_data_)>, true>{.data = _data_})
+    stdexec::then(Tests::Utils::Functors::Increment<std::remove_cvref_t<decltype(_data_)>, true, false>{.data = _data_})
 
-template <Kokkos::utils::concepts::View ViewType>
-using as_atomic_view_t = Kokkos::View<
-    typename ViewType::traits::data_type,
-    typename ViewType::traits::array_layout,
-    typename ViewType::traits::device_type,
-    typename ViewType::traits::hooks_policy,
-    Kokkos::MemoryTraits<ViewType::traits::memory_traits::impl_value | Kokkos::Atomic>
->;
-
-//! Same as @ref THEN_INCREMENT with atomic memory traits. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+//! Same as @ref THEN_INCREMENT, using @ref Tests::Utils::atomic_add. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THEN_INCREMENT_ATOMIC(_data_)                                                                                  \
-    stdexec::then(                                                                                                     \
-        Tests::Utils::Functors::Increment<                                                                             \
-            Tests::Utils::Functors::as_atomic_view_t<std::remove_cvref_t<decltype(_data_)>>,                           \
-            true                                                                                                       \
-        >{.data = _data_})
+    stdexec::then(Tests::Utils::Functors::Increment<std::remove_cvref_t<decltype(_data_)>, true, true>{.data = _data_})
 
 } // namespace Tests::Utils::Functors
 
