@@ -173,7 +173,7 @@ FROM requirements-cmake AS kokkos-compile
 
 ARG COMPILER_FAMILY
 ARG KOKKOS_ARCHS
-ARG KOKKOS_BACKENDS
+ARG KOKKOS_PRESET
 ARG KOKKOS_SHA
 ARG KOKKOS_USERNAME
 
@@ -190,8 +190,6 @@ RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kok
 
     cp /cmake/presets/kokkos.json CMakePresets.json
 
-    KOKKOS_PRESET=${COMPILER_FAMILY}-$(echo ${KOKKOS_BACKENDS} | tr ',' '-')
-
     cmake -S . --preset=${KOKKOS_PRESET} \
         $([ -n "$KOKKOS_ARCHS" ] && echo $KOKKOS_ARCHS | tr ',' '\n' | sed 's/^/-DKokkos_ARCH_/; s/$/=ON/') \
         -DCMAKE_INSTALL_PREFIX=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
@@ -202,7 +200,7 @@ EOF
 FROM kokkos-compile AS kokkos-utils-compile
 
 ARG COMPILER_FAMILY
-ARG KOKKOS_BACKENDS
+ARG KOKKOS_PRESET
 ARG KOKKOS_SHA
 ARG KOKKOS_UTILS_SHA
 
@@ -219,8 +217,6 @@ RUN --mount=target=/cmake/presets/kokkos-utils.json,type=bind,source=cmake/prese
 
     cp /cmake/presets/kokkos-utils.json CMakePresets.json
 
-    KOKKOS_PRESET=${COMPILER_FAMILY}-$(echo ${KOKKOS_BACKENDS} | tr ',' '-')
-
     export Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
 
     cmake -S . --preset=${KOKKOS_PRESET} \
@@ -234,6 +230,7 @@ FROM requirements-cmake AS final
 
 ARG DOXYGEN_VERSION
 ARG GOOGLETEST_VERSION
+ARG KOKKOS_PRESET
 ARG KOKKOS_SHA
 ARG KOKKOS_UTILS_SHA
 
