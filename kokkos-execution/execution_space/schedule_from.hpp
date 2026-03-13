@@ -23,10 +23,11 @@ struct ScheduleFromReceiver {
         const bool skip = [&]() {
             if constexpr (stdexec::__is_instance_of<Rcvr, ContinuesOnReceiver>) {
                 if constexpr (stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>) {
-                    if constexpr (std::same_as<
-                                      std::remove_cvref_t<decltype(get_exec(stdexec::get_env(rcvr)).get())>,
-                                      typename Schd::execution_space
-                                  >) {
+                    if constexpr (
+                        std::same_as<
+                            std::remove_cvref_t<decltype(get_exec(stdexec::get_env(rcvr)).get())>,
+                            typename Schd::execution_space
+                        >) {
                         return schd.state->exec == get_exec(stdexec::get_env(rcvr)).get();
                     }
                 }
