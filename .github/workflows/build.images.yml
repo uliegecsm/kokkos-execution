@@ -163,6 +163,14 @@ jobs:
             base_image     : rocm/dev-ubuntu-24.04:7.0.2
             platforms      : linux/amd64
             kokkos_archs   : [ZEN5, AMD_GFX1201]
+          # After this line come the images we build, but don't test.
+          - kokkos_backends: [OpenMP, Cuda]
+            compiler:
+              family: clang
+              version: 22
+            base_image     : nvcr.io/nvidia/cuda:13.1.0-devel-ubuntu24.04
+            platforms      : linux/amd64
+            kokkos_archs   : [ZEN3, AMPERE86]
     steps:
       - uses: actions/checkout@v6
 
