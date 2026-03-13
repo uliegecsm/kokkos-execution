@@ -59,7 +59,7 @@ RUN <<EOF
     apt-helpers install-packages --update --packages wget lsb-release gpg software-properties-common
 
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/llvm.asc
-    echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${COMPILER_VERSION} main" > /etc/apt/sources.list.d/llvm.list
+    echo "deb https://apt.llvm.org/noble/ llvm-toolchain-noble-${COMPILER_VERSION} main" > /etc/apt/sources.list.d/llvm.list
 
     apt-helpers install-packages --clean    \
         --update --packages                 \
@@ -194,7 +194,7 @@ RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kok
 
     cmake -S . --preset=${KOKKOS_PRESET} \
         $([ -n "$KOKKOS_ARCHS" ] && echo $KOKKOS_ARCHS | tr ',' '\n' | sed 's/^/-DKokkos_ARCH_/; s/$/=ON/') \
-        -DCMAKE_INSTALL_PREFIX=/opt/kokkos-${KOKKOS_SHA}
+        -DCMAKE_INSTALL_PREFIX=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
 
     cmake --build --preset=${KOKKOS_PRESET} -j4 --target install
 EOF
@@ -221,10 +221,10 @@ RUN --mount=target=/cmake/presets/kokkos-utils.json,type=bind,source=cmake/prese
 
     KOKKOS_PRESET=${COMPILER_FAMILY}-$(echo ${KOKKOS_BACKENDS} | tr ',' '-')
 
-    export Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}
+    export Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
 
     cmake -S . --preset=${KOKKOS_PRESET} \
-        -DCMAKE_INSTALL_PREFIX=/opt/kokkos-utils-${KOKKOS_UTILS_SHA}
+        -DCMAKE_INSTALL_PREFIX=/opt/kokkos-utils-${KOKKOS_UTILS_SHA}/${KOKKOS_PRESET}
 
     cmake --build --preset=${KOKKOS_PRESET} -j4 --target=install
 EOF
@@ -237,12 +237,12 @@ ARG GOOGLETEST_VERSION
 ARG KOKKOS_SHA
 ARG KOKKOS_UTILS_SHA
 
-COPY --from=doxygen-compile      /opt/doxygen-${DOXYGEN_VERSION}           /opt/doxygen-${DOXYGEN_VERSION}
-COPY --from=google-test-compile  /opt/google-test-${GOOGLETEST_VERSION}    /opt/google-test-${GOOGLETEST_VERSION}
-COPY --from=kokkos-compile       /opt/kokkos-${KOKKOS_SHA}                 /opt/kokkos-${KOKKOS_SHA}
-COPY --from=kokkos-utils-compile /opt/kokkos-utils-${KOKKOS_UTILS_SHA}     /opt/kokkos-utils-${KOKKOS_UTILS_SHA}
+COPY --from=doxygen-compile      /opt/doxygen-${DOXYGEN_VERSION}                        /opt/doxygen-${DOXYGEN_VERSION}
+COPY --from=google-test-compile  /opt/google-test-${GOOGLETEST_VERSION}                 /opt/google-test-${GOOGLETEST_VERSION}
+COPY --from=kokkos-compile       /opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}             /opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
+COPY --from=kokkos-utils-compile /opt/kokkos-utils-${KOKKOS_UTILS_SHA}/${KOKKOS_PRESET} /opt/kokkos-utils-${KOKKOS_UTILS_SHA}/${KOKKOS_PRESET}
 
 ENV Doxygen_ROOT=/opt/doxygen-${DOXYGEN_VERSION}
 ENV GTest_ROOT=/opt/google-test-${GOOGLETEST_VERSION}
-ENV Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}
-ENV KokkosUtils_ROOT=/opt/kokkos-utils-${KOKKOS_UTILS_SHA}
+ENV Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
+ENV KokkosUtils_ROOT=/opt/kokkos-utils-${KOKKOS_UTILS_SHA}/${KOKKOS_PRESET}
