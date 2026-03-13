@@ -1,10 +1,6 @@
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-result")
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/repeat_until.hpp"
 PRAGMA_DIAGNOSTIC_POP
 

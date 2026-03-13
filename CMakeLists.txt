@@ -46,6 +46,9 @@ cpmaddpackage(
   "STDEXEC_BUILD_EXAMPLES OFF"
 )
 
+# Compiler warnings.
+include(cmake/modules/warnings.cmake)
+
 if(KokkosExecution_ENABLE_DEBUG_LOGGING OR KokkosExecution_ENABLE_TESTS)
   # Add Plog logging library.
   include(cmake/modules/BuildPlog.cmake)
@@ -144,5 +147,6 @@ endif()
 
 # Documentation.
 if(KokkosExecution_ENABLE_DOCS)
+  include(cmake/modules/doxygen.cmake)
   add_subdirectory(docs)
 endif()

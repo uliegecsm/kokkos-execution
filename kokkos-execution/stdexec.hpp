@@ -3,11 +3,7 @@
 
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include <stdexec/execution.hpp>
 PRAGMA_DIAGNOSTIC_POP
 

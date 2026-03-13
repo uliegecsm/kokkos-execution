@@ -3,13 +3,7 @@
 
 #include <format>
 
-#include "kokkos-execution/utils/ignore_warnings.hpp"
-PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
-#include "stdexec/execution.hpp"
-PRAGMA_DIAGNOSTIC_POP
+#include "kokkos-execution/stdexec.hpp"
 
 #include "impl/Kokkos_Profiling.hpp"
 

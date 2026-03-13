@@ -1,15 +1,7 @@
 #ifndef KOKKOS_EXECUTION_IMPL_ENV_HPP
 #define KOKKOS_EXECUTION_IMPL_ENV_HPP
 
-#include "kokkos-execution/utils/ignore_warnings.hpp"
-PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
-#include <stdexec/execution.hpp>
-PRAGMA_DIAGNOSTIC_POP
+#include "kokkos-execution/stdexec.hpp"
 
 //! Retrieve the environment of @p _obj_ (with forwarding). // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define KOKKOS_EXECUTION_FORWARDING_GET_ENV(_type_, _obj_)                                                             \

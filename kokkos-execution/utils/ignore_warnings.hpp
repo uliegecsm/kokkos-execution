@@ -16,13 +16,24 @@
 #    error "Unsupported compiler."
 #endif
 
-/// We need to ignore a dangling reference warning under @c GCC, which is
-/// a known issue (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107532) and a false
-/// positive.
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 13
-#    define PRAGMA_DIAGNOSTIC_IGNORED_DANGLING_REFERENCE PRAGMA_DIAGNOSTIC_IGNORED("-Wdangling-reference")
+#if defined(__clang__)
+#    define KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED_COMPILER_SPECIFIC                                       \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-attributes")
 #else
-#    define PRAGMA_DIAGNOSTIC_IGNORED_DANGLING_REFERENCE
+#    define KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED_COMPILER_SPECIFIC
 #endif
 
+//! Basic list of ignored diagnostics when including anything from @c stdexec.
+#if !defined(__DOXYGEN__)
+#    define KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED                                                         \
+        KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED_COMPILER_SPECIFIC                                           \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")                                                                 \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")                                                                      \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")                                                                          \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")                                                                \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")                                                                  \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-result")
+#else
+#    define KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#endif
 #endif // KOKKOS_EXECUTION_UTILS_IGNORE_WARNINGS_HPP

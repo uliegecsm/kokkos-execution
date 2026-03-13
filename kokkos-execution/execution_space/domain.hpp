@@ -1,15 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_DOMAIN_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_DOMAIN_HPP
 
-#include "kokkos-execution/utils/ignore_warnings.hpp"
-PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wunused-parameter")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")
-#include <stdexec/execution.hpp>
-PRAGMA_DIAGNOSTIC_POP
+#include "kokkos-execution/stdexec.hpp"
 
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
 #    include "plog/Log.h"
