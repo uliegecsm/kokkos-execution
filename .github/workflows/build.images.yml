@@ -217,7 +217,7 @@ jobs:
                 DOXYGEN_VERSION=${{ env.DOXYGEN_VERSION }}
                 GOOGLETEST_VERSION=${{ env.GOOGLETEST_VERSION }}
                 KOKKOS_ARCHS=${{ matrix.kokkos_archs && join(matrix.kokkos_archs, ',') || '' }}
-                KOKKOS_BACKENDS=${{ join(matrix.kokkos_backends, ',') }}
+                KOKKOS_PRESET=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
                 KOKKOS_SHA=${{ env.KOKKOS_SHA }}
                 KOKKOS_USERNAME=${{ env.KOKKOS_USERNAME }}
                 KOKKOS_UTILS_SHA=${{ env.KOKKOS_UTILS_SHA }}
