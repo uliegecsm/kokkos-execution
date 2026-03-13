@@ -32,7 +32,7 @@ class ThenTest
    public:
     using recorder_listener_t =
         RecorderListener<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
-    using variant_t = std::variant<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
+    using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
 //! @test Check traits of sender returned by @c then when customized for @c Kokkos::Execution::ExecutionSpaceImpl::Domain.
