@@ -81,6 +81,8 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: true
+      - run : |
+          ccache --verbose --show-stats
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
       - run: |

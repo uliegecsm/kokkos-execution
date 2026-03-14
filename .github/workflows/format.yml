@@ -13,15 +13,15 @@ jobs:
   clang:
     runs-on: [self-hosted, linux, docker, amd64]
     container:
-      image: ${{ inputs.CI_IMAGE }}:clang-OpenMP
+      image: ${{ inputs.CI_IMAGE }}:clang-22-OpenMP
     steps:
       - uses: actions/checkout@v6
-      - run: bash clang-format.sh
+      - run: git ls-files *.hpp *.h *.cpp *.c | xargs clang-format-22 --dry-run --Werror
 
   cmake:
     runs-on: [self-hosted, linux, docker, amd64]
     container:
-      image: ${{ inputs.CI_IMAGE }}:clang-OpenMP
+      image: ${{ inputs.CI_IMAGE }}:clang-22-OpenMP
     steps:
       - uses: actions/checkout@v6
       - run: |

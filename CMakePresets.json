@@ -36,6 +36,7 @@
         {
             "name": "clang-tidy",
             "hidden": true,
+            "inherits": "cxx-ccache",
             "cacheVariables": {"KokkosExecution_ENABLE_CLANG_TIDY" : "ON"}
         },
         {
@@ -52,6 +53,7 @@
         {
             "name": "cxx-hip-rocm",
             "hidden": true,
+            "inherits": "cxx-ccache",
             "cacheVariables": {"CMAKE_CXX_COMPILER": "hipcc"}
         },
         {
