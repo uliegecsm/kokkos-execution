@@ -38,7 +38,7 @@ class LetValueTest
    public:
     using recorder_listener_t =
         RecorderListener<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
-    using variant_t = std::variant<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
+    using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
 //! @test Use the value channel and @c stdexec::let_value to keep a "scratch" @c Kokkos view alive during the computations.
