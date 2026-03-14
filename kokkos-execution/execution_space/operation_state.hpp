@@ -1,12 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_OPERATION_STATE_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_OPERATION_STATE_HPP
 
-#include "kokkos-execution/utils/ignore_warnings.hpp"
-PRAGMA_DIAGNOSTIC_PUSH
-PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")
-PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")
-#include "stdexec/execution.hpp"
-PRAGMA_DIAGNOSTIC_POP
+#include "kokkos-execution/stdexec.hpp"
 
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/env.hpp"

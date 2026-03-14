@@ -3,17 +3,7 @@ string(JSON DOXYGEN_VERSION GET "${DEPENDENCIES_JSON}" "github" "doxygen")
 find_package(Doxygen ${DOXYGEN_VERSION} REQUIRED)
 
 # Fetch tag files of other projects.
-set(KokkosUtils_DOC_URL https://uliegecsm.github.io/kokkos-utils/)
-file(DOWNLOAD ${KokkosUtils_DOC_URL}/kokkos-utils.tag ${CMAKE_CURRENT_BINARY_DIR}/kokkos-utils.tag
-     STATUS fetch_tag_file
-)
-if(NOT fetch_tag_file EQUAL 0)
-  message(
-    FATAL_ERROR
-      "An error occurred while fetching tag file for 'kokkos-utils' from ${KokkosUtils_DOC_URL} (${fetch_tag_file})"
-  )
-endif()
-set(DOXYGEN_TAGFILES ${CMAKE_CURRENT_BINARY_DIR}/kokkos-utils.tag=${KokkosUtils_DOC_URL})
+fetch_doxygen_tag(kokkos-utils https://uliegecsm.github.io/kokkos-utils)
 
 set(HOMEPAGE_MD ${CMAKE_SOURCE_DIR}/README.md)
 
@@ -23,6 +13,7 @@ set(DOXYGEN_EXTRACT_ALL YES)
 set(DOXYGEN_FILE_PATTERNS *.c *.cpp *.h *.hpp)
 set(DOXYGEN_IMAGE_PATH ${CMAKE_SOURCE_DIR})
 set(DOXYGEN_MACRO_EXPANSION YES)
+set(DOXYGEN_PREDEFINED __DOXYGEN__)
 set(DOXYGEN_REFERENCES_RELATION YES)
 set(DOXYGEN_SOURCE_BROWSER YES)
 set(DOXYGEN_TIMESTAMP YES)
