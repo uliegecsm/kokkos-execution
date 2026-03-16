@@ -47,7 +47,7 @@ struct OpStateBase : public stdexec::__immovable {
          * Sync at the boundary of the work enqueued on the execution space.
          *
          * If the receiver environment can be queried for @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,
-         * the successor enqueues work on the same execution space, so don't fence here.
+         * and if the successor enqueues work on the same execution space instance, no fence is needed.
          *
          * Otherwise, synchronization must occur before invoking the downstream receiver. This situation may arise, for example,
          * when the execution space scheduler is used in a @c stdexec::when_all branch. In the default implementation of @c stdexec::when_all,
@@ -56,7 +56,25 @@ struct OpStateBase : public stdexec::__immovable {
          * @todo Explore event-based synchronization for cases in which the successor is still on the device,
          *       but on a different execution space. The objective would be to avoid occupying the current host thread.
          */
-        if constexpr (!stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>) {
+        const bool skip = [&]() {
+            if constexpr (
+                stdexec::__is_instance_of<Rcvr, ScheduleFromReceiver>
+                | stdexec::__is_instance_of<Rcvr, SyncWaitReceiver>) {
+                return true;
+            } else {
+                if constexpr (stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>) {
+                    if constexpr (
+                        std::same_as<
+                            std::remove_cvref_t<decltype(get_exec(stdexec::get_env(rcvr)).get())>,
+                            execution_space
+                        >) {
+                        return this->query(get_exec).get() == get_exec(stdexec::get_env(rcvr)).get();
+                    }
+                }
+                return false;
+            }
+        }();
+        if (!skip) {
             this->query(get_exec)
                 .get()
                 .fence(std::format("{}: continuation", Kokkos::Impl::TypeInfo<execution_space>::name()));

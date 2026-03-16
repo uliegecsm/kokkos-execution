@@ -12,6 +12,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
+#include "tests/utils/kokkos.hpp"
 #include "tests/utils/stdexec.hpp"
 
 /**
@@ -152,8 +153,6 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
  * @test A @c stdexec::when_all with two branches, one on some @ref Kokkos::Execution::ExecutionSpaceContext instance A and another
  *       on another @ref Kokkos::Execution::ExecutionSpaceContext instance B,
  *       followed by the @ref Kokkos::Execution::ExecutionSpaceContext instance A.
- *
- * @todo It misses a synchronization after the branch on @ref Kokkos::Execution::ExecutionSpaceContext instance B.
  */
 TEST_F(WhenAllTest, two_branches_followed_by_self) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -167,13 +166,27 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
                     stdexec::schedule(esc_B.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
               | stdexec::continues_on(esc_A.get_scheduler()) | THEN_INCREMENT(data);
 
-    ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+    const auto recorded_events = recorder_listener_t::record(
+        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+
+    if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+    } else {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+    }
 
     ASSERT_EQ(data(), 3);
 }
