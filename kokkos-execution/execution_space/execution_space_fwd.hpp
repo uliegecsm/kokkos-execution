@@ -22,6 +22,12 @@ struct SchedulerEnv;
 template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
+template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
+struct ScheduleFromReceiver;
+
+template <Kokkos::ExecutionSpace Exec, typename... Values>
+struct SyncWaitReceiver;
+
 //! Concept for a sender whose completion scheduler is @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler.
 template <typename Sndr, typename Env = stdexec::env<>>
 concept execution_space_completing_sender =
