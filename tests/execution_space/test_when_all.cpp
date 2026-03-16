@@ -90,6 +90,32 @@ TEST_F(WhenAllTest, single_branch_followed_by_self) {
 }
 
 /**
+ * @test A @c stdexec::when_all with a single @ref Kokkos::Execution::ExecutionSpaceContext branch,
+ *       followed by some work on some unrelated scheduler, followed by the same @ref Kokkos::Execution::ExecutionSpaceContext instance.
+ *
+ * @todo It misses a synchronization after the branch on @ref Kokkos::Execution::ExecutionSpaceContext.
+ */
+TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec};
+    experimental::execution::single_thread_context stc{};
+
+    auto sndr = stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data))
+              | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data)
+              | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_THAT(
+        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 3);
+}
+
+/**
  * @test A @c stdexec::when_all with two branches, one on @ref Kokkos::Execution::ExecutionSpaceContext and another
  *       on the single thread context,
  *       followed by the same @ref Kokkos::Execution::ExecutionSpaceContext instance.
