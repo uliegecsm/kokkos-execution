@@ -14,6 +14,8 @@ int main(int argc, char** argv) {
 
     Kokkos::initialize(argc, argv);
 
+    Kokkos::print_configuration(std::cout);
+
     const auto code = RUN_ALL_TESTS();
 
     Kokkos::finalize();
