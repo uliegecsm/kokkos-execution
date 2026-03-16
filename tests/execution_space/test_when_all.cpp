@@ -10,6 +10,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
+#include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/kokkos.hpp"
@@ -256,6 +257,66 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 4);
+}
+
+/**
+ * @test Verify that an independent branch can overlap with a nested @c when_all.
+ *
+ * @verbatim
+ *  exec_a   exec_b        exec_c
+ *    |        |              |
+ *   [A]      [B]            [C]
+ *      \     /               |
+ *     when_all               |
+ *         |                  |
+ *   (exec_a) [D]             |
+ *              \             |
+ *              when_all------+
+ * @endverbatim
+ *
+* @todo C cannot currently overlap with neither of A, B or D.
+ */
+TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
+    const view_s_t data(Kokkos::view_alloc("data - shared space"));
+
+    const auto [exec_a, exec_b, exec_c] = Kokkos::Experimental::partition_space(exec, 1, 1, 1);
+
+    const context_t ctx_a{exec_a}, ctx_b{exec_b}, ctx_c{exec_c};
+
+    auto br_A = ::stdexec::schedule(ctx_a.get_scheduler()) | THEN_LABELED_PFOR('A');
+    auto br_B = ::stdexec::schedule(ctx_b.get_scheduler()) | THEN_LABELED_PFOR('B');
+    auto br_C = ::stdexec::schedule(ctx_c.get_scheduler()) | THEN_LABELED_PFOR('C');
+
+    auto when_AB_then_D = ::stdexec::when_all(std::move(br_A), std::move(br_B))
+                        | ::stdexec::continues_on(ctx_a.get_scheduler()) | THEN_LABELED_PFOR('D');
+
+    auto sndr = ::stdexec::when_all(std::move(when_AB_then_D), std::move(br_C));
+
+    const auto recorded_events = recorder_listener_t::record(
+        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+
+    if (Tests::Utils::are_same_instances(exec_a, exec_b)) {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec_a, "'A'"),
+                MATCHER_FOR_BEGIN_PFOR(exec_b, "'B'"),
+                MATCHER_FOR_BEGIN_PFOR(exec_a, "'D'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_a, dispatch_label(exec_a, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec_c, "'C'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_c, dispatch_label(exec_c, "continuation"))));
+    } else {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec_a, "'A'"),
+                MATCHER_FOR_BEGIN_PFOR(exec_b, "'B'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_b, dispatch_label(exec_b, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec_a, "'D'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_a, dispatch_label(exec_a, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec_c, "'C'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_c, dispatch_label(exec_c, "continuation"))));
+    }
 }
 
 } // namespace Tests::ExecutionSpaceImpl
