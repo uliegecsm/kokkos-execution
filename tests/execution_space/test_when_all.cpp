@@ -91,6 +91,32 @@ TEST_F(WhenAllTest, single_branch_followed_by_self) {
 }
 
 /**
+ * @test A @c stdexec::when_all with a single mixed branch involving a segment on a @ref Kokkos::Execution::ExecutionSpaceContext instance
+ *       followed by a segment on another scheduler. The @c stdexec::when_all is followed by the same @ref Kokkos::Execution::ExecutionSpaceContext instance.
+ */
+TEST_F(WhenAllTest, single_mixed_branch_followed_by_self) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec};
+    experimental::execution::single_thread_context stc{};
+
+    auto sndr = stdexec::when_all(
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data)
+                    | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data))
+              | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_THAT(
+        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 3);
+}
+
+/**
  * @test A @c stdexec::when_all with a single @ref Kokkos::Execution::ExecutionSpaceContext branch,
  *       followed by some work on some unrelated scheduler, followed by the same @ref Kokkos::Execution::ExecutionSpaceContext instance.
  *
