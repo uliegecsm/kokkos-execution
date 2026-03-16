@@ -47,6 +47,7 @@ Checks:
     llvm-include-order,
     llvm-namespace-comment,
     misc-const-correctness,
+    misc-include-cleaner,
     misc-redundant-expression,
     misc-static-assert,
     misc-uniqueptr-reset-release,
