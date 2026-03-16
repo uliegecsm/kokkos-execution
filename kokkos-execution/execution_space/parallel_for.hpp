@@ -56,12 +56,20 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
 
         using functor_t = decltype(functor);
         using policy_t = decltype(policy);
+        using closure_t = ParallelForClosure<functor_t, policy_t>;
 
         auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-        policy_t policy_updated(Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec);
+        //! Only the execution space instance, not its type, can be bound lately.
+        static_assert(
+            std::same_as<typename decltype(schd)::execution_space, typename closure_t::execution_space>,
+            "The policy's execution space type must be the same as the completion scheduler's execution space type.");
+
         return ParallelForSender<Sndr, functor_t, policy_t>{
-            {{std::move(label), std::move(functor), std::move(policy_updated)}}, std::forward<Sndr>(sndr)};
+            {{std::move(label),
+              std::move(functor),
+              policy_t(Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec)}},
+            std::forward<Sndr>(sndr)};
     }
 };
 
