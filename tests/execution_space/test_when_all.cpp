@@ -260,62 +260,58 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
 }
 
 /**
- * @test Verify that an independent branch can overlap with a nested @c when_all.
+ * @test Verify that an independent branch can overlap with a nested @c stdexec::when_all.
  *
  * @verbatim
- *  exec_a   exec_b        exec_c
- *    |        |              |
- *   [A]      [B]            [C]
- *      \     /               |
- *     when_all               |
- *         |                  |
- *   (exec_a) [D]             |
- *              \             |
- *              when_all------+
+ * schedule(esc_A) | then('A') -- \
+ *                                 when_all --> continues_on(esc_A) | then('D') -- \
+ * schedule(esc_B) | then('B') -- /                                                 when_all
+ *                                                                                 /
+ * schedule(esc_C) | then('C') ---------------------------------------------------
  * @endverbatim
  *
-* @todo C cannot currently overlap with neither of A, B or D.
+ * @todo C cannot currently overlap with either of A, B or D.
  */
 TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
-    const auto [exec_a, exec_b, exec_c] = Kokkos::Experimental::partition_space(exec, 1, 1, 1);
+    const auto [exec_A, exec_B, exec_C] = Kokkos::Experimental::partition_space(exec, 1, 1, 1);
 
-    const context_t ctx_a{exec_a}, ctx_b{exec_b}, ctx_c{exec_c};
+    const context_t esc_A{exec_A}, esc_B{exec_B}, esc_C{exec_C};
 
-    auto br_A = ::stdexec::schedule(ctx_a.get_scheduler()) | THEN_LABELED_PFOR('A');
-    auto br_B = ::stdexec::schedule(ctx_b.get_scheduler()) | THEN_LABELED_PFOR('B');
-    auto br_C = ::stdexec::schedule(ctx_c.get_scheduler()) | THEN_LABELED_PFOR('C');
+    auto br_A = ::stdexec::schedule(esc_A.get_scheduler()) | THEN_LABELED_PFOR('A');
+    auto br_B = ::stdexec::schedule(esc_B.get_scheduler()) | THEN_LABELED_PFOR('B');
+    auto br_C = ::stdexec::schedule(esc_C.get_scheduler()) | THEN_LABELED_PFOR('C');
 
     auto when_AB_then_D = ::stdexec::when_all(std::move(br_A), std::move(br_B))
-                        | ::stdexec::continues_on(ctx_a.get_scheduler()) | THEN_LABELED_PFOR('D');
+                        | ::stdexec::continues_on(esc_A.get_scheduler()) | THEN_LABELED_PFOR('D');
 
     auto sndr = ::stdexec::when_all(std::move(when_AB_then_D), std::move(br_C));
 
     const auto recorded_events = recorder_listener_t::record(
         [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
 
-    if (Tests::Utils::are_same_instances(exec_a, exec_b)) {
+    if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec_a, "'A'"),
-                MATCHER_FOR_BEGIN_PFOR(exec_b, "'B'"),
-                MATCHER_FOR_BEGIN_PFOR(exec_a, "'D'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_a, dispatch_label(exec_a, "continuation")),
-                MATCHER_FOR_BEGIN_PFOR(exec_c, "'C'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_c, dispatch_label(exec_c, "continuation"))));
+                MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
+                MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
+                MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "continuation"))));
     } else {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec_a, "'A'"),
-                MATCHER_FOR_BEGIN_PFOR(exec_b, "'B'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_b, dispatch_label(exec_b, "continuation")),
-                MATCHER_FOR_BEGIN_PFOR(exec_a, "'D'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_a, dispatch_label(exec_a, "continuation")),
-                MATCHER_FOR_BEGIN_PFOR(exec_c, "'C'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_c, dispatch_label(exec_c, "continuation"))));
+                MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
+                MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
+                MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "continuation"))));
     }
 }
 
