@@ -29,6 +29,8 @@ PRAGMA_DIAGNOSTIC_POP
  * The tests can be found in @ref tests/execution_space/test_when_all.cpp.
  */
 
+using host_execution_space = Kokkos::DefaultHostExecutionSpace;
+
 namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
@@ -252,6 +254,59 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
                 MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "continuation")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+    }
+
+    ASSERT_EQ(data(), 3);
+}
+
+/**
+ * @test A @c stdexec::when_all with two branches, the first on a @ref Kokkos::Execution::ExecutionSpaceContext
+ *       instantiated for the test execution space type and the second on a @ref Kokkos::Execution::ExecutionSpaceContext
+ *       instantiated for the default host execution space type, followed by work on the first execution context.
+ *
+ * @verbatim
+ * schedule(esc)   | then_atomic -- \
+ *                                   when_all --> continues_on(esc) | then
+ * schedule(esc_h) | then_atomic -- /
+ * @endverbatim
+ */
+TEST_F(WhenAllTest, two_branches_host_device_followed_by_device) {
+    using context_h_t = Kokkos::Execution::ExecutionSpaceContext<host_execution_space>;
+
+    const view_s_t data(Kokkos::view_alloc("data - shared space"));
+
+    const context_t esc{exec};
+
+    const host_execution_space exec_h{};
+    const context_h_t esc_h{exec_h};
+
+    auto sndr = stdexec::when_all(
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
+                    stdexec::schedule(esc_h.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
+              | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = recorder_listener_t::record(
+        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+
+    if (Tests::Utils::are_same_instances(exec, exec_h)) {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    } else {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "continuation")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     }
 
     ASSERT_EQ(data(), 3);
