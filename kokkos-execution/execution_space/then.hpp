@@ -11,7 +11,7 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 template <typename Functor>
 requires(std::same_as<void, std::invoke_result_t<Functor>>)
 struct ThenWrapper {
-    Functor functor;
+    Functor functor; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
     template <std::integral T>
     KOKKOS_FUNCTION void operator()(const T) const {
@@ -45,7 +45,7 @@ struct TransformSenderFor<stdexec::then_t> {
 
         return sndr_t<Sndr, Functor, Env>{
             {{std::string(std::format("{}: then", Kokkos::Impl::TypeInfo<execution_space<Sndr, Env>>::name())),
-              ThenWrapper{std::forward<Functor>(functor)},
+              ThenWrapper<Functor>{std::forward<Functor>(functor)},
               policy_t<Sndr, Env>(schd.state->exec, 0, 1)}},
             std::forward<Sndr>(sndr)};
     }

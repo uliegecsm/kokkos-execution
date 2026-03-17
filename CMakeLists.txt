@@ -81,6 +81,7 @@ target_sources(
             kokkos-execution/execution_space/scoped_region.hpp
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
+            kokkos-execution/impl/attributes.hpp
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signatures.hpp
             kokkos-execution/impl/continues_on.hpp
