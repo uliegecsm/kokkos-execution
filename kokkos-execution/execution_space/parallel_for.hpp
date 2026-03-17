@@ -6,6 +6,7 @@
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
 #include "kokkos-execution/execution_space/operation_state.hpp"
+#include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -45,7 +46,7 @@ struct ParallelForSender {
         return OpState<Sndr, Rcvr, closure_t>(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
     }
 
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, sndr)
+    KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 };
 
 template <>

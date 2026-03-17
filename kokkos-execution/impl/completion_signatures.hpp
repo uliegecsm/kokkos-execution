@@ -2,6 +2,7 @@
 #define KOKKOS_EXECUTION_IMPL_COMPLETION_SIGNATURES_HPP
 
 #include "stdexec/execution.hpp"
+#include <exec/completion_signatures.hpp>
 
 namespace Kokkos::Execution::Impl {
 
@@ -22,10 +23,12 @@ namespace Kokkos::Execution::Impl {
         constexpr auto success_completion_count =                                                                      \
             ::stdexec::__msize_t<::stdexec::__detail::__count_of<::stdexec::set_value_t, child_completions_t>>::value; \
         if constexpr (success_completion_count > 0) {                                                                  \
-            return ::stdexec::transform_completion_signatures<                                                         \
-                child_completions_t,                                                                                   \
-                ::stdexec::completion_signatures<::stdexec::set_value_t() __VA_OPT__(, ) __VA_ARGS__>                  \
-            >{};                                                                                                       \
+            return experimental::execution::transform_completion_signatures(                                           \
+                child_completions_t{},                                                                                 \
+                experimental::execution::keep_completion<stdexec::set_value_t>(),                                      \
+                experimental::execution::ignore_completion(),                                                          \
+                experimental::execution::ignore_completion(),                                                          \
+                stdexec::completion_signatures<__VA_ARGS__>());                                                        \
         } else {                                                                                                       \
             return child_completions_t{};                                                                              \
         }                                                                                                              \

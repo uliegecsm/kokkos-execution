@@ -5,6 +5,7 @@
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
+#include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
@@ -67,7 +68,7 @@ struct ScheduleFromSender {
         return stdexec::connect(std::forward<Sndr>(sndr), recv_t{.schd = std::move(schd), .rcvr = std::move(rcvr)});
     }
 
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, sndr)
+    KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 
     Schd schd;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)

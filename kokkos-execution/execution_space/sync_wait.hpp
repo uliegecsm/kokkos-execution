@@ -60,7 +60,7 @@ struct SyncWait {
         -> std::optional<stdexec::__sync_wait::__value_tuple_for_t<Sndr>> {
         Kokkos::Execution::Impl::State runloop_state;
 
-        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::env{});
 
         using result_t = std::optional<stdexec::__sync_wait::__value_tuple_for_t<Sndr>>;
 

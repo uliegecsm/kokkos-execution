@@ -1,6 +1,7 @@
 #ifndef KOKKOS_EXECUTION_PARALLEL_FOR_HPP
 #define KOKKOS_EXECUTION_PARALLEL_FOR_HPP
 
+#include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
@@ -78,7 +79,9 @@ struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Func
     constexpr auto connect(Rcvr) const & = delete;
 
     static constexpr size_t idx_sndr = 2;
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, stdexec::__get<idx_sndr>(static_cast<const base_t&>(*this)))
+    KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(
+        Sndr,
+        stdexec::__get<idx_sndr>(static_cast<const base_t&>(*this)))
 };
 
 } // namespace Impl

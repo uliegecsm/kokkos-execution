@@ -9,6 +9,7 @@
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
+#include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 
@@ -85,7 +86,7 @@ struct RegionSender {
     Sndr sndr;
     std::string name{};
 
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Sndr, sndr)
+    KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 };
 
 struct Push {
