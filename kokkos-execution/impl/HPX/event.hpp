@@ -9,6 +9,10 @@
  * Specialization of @ref Kokkos::Execution::Impl::Event for @c Kokkos::Experimental::HPX.
  */
 
+#if !defined(KOKKOS_ENABLE_IMPL_HPX_ASYNC_DISPATCH)
+#    error "This is not supported."
+#endif
+
 namespace Kokkos::Execution::Impl {
 
 template <>
@@ -18,7 +22,7 @@ template <>
 struct Event<Kokkos::Experimental::HPX> {
     using mark_event_t = MarkEvent<Kokkos::Experimental::HPX>;
 
-    mutable std::optional<hpx::execution::experimental::any_sender<>> m_sender = std::nullopt;
+    std::shared_ptr<hpx::lcos::local::event> m_event = nullptr;
     void* m_id = nullptr; //! Used to keep a stable event ID across moves.
 
     Event() = default;
@@ -30,12 +34,12 @@ struct Event<Kokkos::Experimental::HPX> {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
-        : m_sender(std::move(other.m_sender))
+        : m_event(std::move(other.m_event))
         , m_id(std::exchange(other.m_id, nullptr)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
-            m_sender = std::move(other.m_sender);
+            m_event = std::move(other.m_event);
             m_id = std::exchange(other.m_id, nullptr);
         }
         return *this;
@@ -43,16 +47,31 @@ struct Event<Kokkos::Experimental::HPX> {
     ~Event() = default;
 
     void record(const Kokkos::Experimental::HPX& exec) {
-        m_sender = exec.get_sender();
-        m_id = (void*) std::addressof(*m_sender);
+        /**
+         * Always allocate a new event. Otherwise, the sequence:
+         * @code
+         * event.record(exec_A);
+         * event.record(exec_B);
+         * event.wait();
+         * @endcode
+         * will be surprising to the user. Indeed, if the two successive calls to @ref record
+         * would use the same @ref m_event, the call to @ref wait would potentially complete
+         * due to @c exec_A, while the expectation is that it completes due to @c exec_B.
+         */
+        m_event = std::make_shared<hpx::lcos::local::event>();
+        exec.impl_bulk_plain_erased<int>(
+            false, /* force_synchronous */
+            true,  /* is_light_weight_policy */
+            [event = m_event](const auto) { event->set(); },
+            1);
+        m_id = (void*) std::addressof(*m_event);
         mark_event_t::record(m_id, exec);
     }
 
-    //! @note Consumes @ref m_sender.
     void wait() const {
-        if (m_sender.has_value()) {
-            mark_event_t::wait(m_id);
-            hpx::this_thread::experimental::sync_wait(*std::exchange(m_sender, std::nullopt));
+        mark_event_t::wait(m_id);
+        if (!m_event->occurred()) {
+            m_event->wait();
         }
     }
 };

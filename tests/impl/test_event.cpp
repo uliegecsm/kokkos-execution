@@ -101,7 +101,7 @@ void test_event_record_and_wait(const Exec& exec) {
 
 KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait, (exec))
 
-//! @test Record an event and wait for it many times. Check that it marks both steps once, and subsequent waits are just "for free".
+//! @test Record an event and wait for it many times. It marks all wait events.
 template <Kokkos::ExecutionSpace Exec>
 void test_event_record_and_wait_many_times(const Exec& exec) {
     const auto recorded_events = EventTest::recorder_listener_t::record([&exec]() {
@@ -114,10 +114,14 @@ void test_event_record_and_wait_many_times(const Exec& exec) {
         event.wait();
     });
 
-    ASSERT_EQ(recorded_events.size(), 2);
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(6));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_EVENT_RECORD(exec));
     const auto event_id = extract_event_record_id(recorded_events.at(0));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
 }
 
 KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait_many_times, (exec))
@@ -133,7 +137,7 @@ void test_event_record_and_wait_and_record_and_wait(const Exec& exec) {
         event.wait();
     });
 
-    ASSERT_EQ(recorded_events.size(), 4);
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(4));
 
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_EVENT_RECORD(exec));
     auto event_id = extract_event_record_id(recorded_events.at(0));
