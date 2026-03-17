@@ -19,7 +19,6 @@
  * The tests can be found in @ref tests/execution_space/test_on.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
 using host_execution_space = Kokkos::DefaultHostExecutionSpace;
 
 namespace Tests::ExecutionSpaceImpl {
@@ -27,7 +26,7 @@ namespace Tests::ExecutionSpaceImpl {
 using namespace Kokkos::utils::callbacks;
 
 class OnTest
-    : public Tests::Utils::ExecutionSpaceContextTest<execution_space>
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;

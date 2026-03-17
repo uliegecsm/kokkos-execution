@@ -30,14 +30,12 @@ PRAGMA_DIAGNOSTIC_POP
  * The tests can be found in @ref tests/execution_space/test_any_sender.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
 class AnySenderTest
-    : public Tests::Utils::ExecutionSpaceContextTest<execution_space>
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
@@ -52,10 +50,10 @@ TEST_F(AnySenderTest, then) {
     using any_sender_t = experimental::execution::any_receiver_ref<
         stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
         Kokkos::Execution::ExecutionSpaceImpl::get_exec
-            .signature<Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef<execution_space>() noexcept>
+            .signature<Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef<TEST_EXECUTION_SPACE>() noexcept>
     >::
         template any_sender<
-            stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<Kokkos::Execution::ExecutionSpaceImpl::Scheduler<execution_space>() noexcept>,
+            stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<scheduler_t() noexcept>,
             stdexec::get_completion_domain<stdexec::set_value_t>.signature<Kokkos::Execution::ExecutionSpaceImpl::Domain() noexcept>
         >;
 

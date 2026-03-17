@@ -24,19 +24,17 @@ PRAGMA_DIAGNOSTIC_POP
  * The tests can be found in @ref tests/execution_space/test_inter_op.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
 class InterOpTest
-    : public Tests::Utils::ExecutionSpaceContextTest<execution_space>
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
 
-    static constexpr bool on_device = Tests::Utils::on_device<execution_space>();
+    static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
 
 //! @test Transition from @ref Kokkos::Execution::ExecutionSpaceContext to @c stdexec::inline_scheduler.

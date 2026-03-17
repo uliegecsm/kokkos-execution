@@ -21,19 +21,17 @@
  * The tests can be found in @ref tests/execution_space/test_parallel_for.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
 class ParallelForTest
-    : public Tests::Utils::ExecutionSpaceContextTest<execution_space>
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
 
-    static constexpr bool on_device = Tests::Utils::on_device<execution_space>();
+    static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
 
 /**
@@ -47,7 +45,7 @@ consteval bool test_sndr_traits() {
 
     //! Parallel for sender.
     using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
-    using policy_t = Kokkos::RangePolicy<execution_space>;
+    using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_sndr_t = SndrAdptr<schd_sndr_t, functor_t, policy_t>;
 
     //! Models the sender concept.
@@ -70,7 +68,7 @@ consteval bool test_sndr_traits() {
     //! Has the expected completion scheduler.
     static_assert(std::same_as<
                   stdexec::__completion_scheduler_of_t<stdexec::set_value_t, pfor_sndr_t, stdexec::env<>>,
-                  Kokkos::Execution::ExecutionSpaceImpl::Scheduler<execution_space>
+                  Kokkos::Execution::ExecutionSpaceImpl::Scheduler<TEST_EXECUTION_SPACE>
     >);
 
     //! Is connectable.
@@ -106,7 +104,7 @@ consteval bool test_sndr_decomposition() {
 
     //! Parallel for sender.
     using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
-    using policy_t = Kokkos::RangePolicy<execution_space>;
+    using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, functor_t, policy_t>;
 
     //! Is decomposable into the expected algorithm tag, data, and child sender.
@@ -133,7 +131,7 @@ static_assert(test_sndr_decomposition());
 template <typename ViewType, bool ExpectNoThrowMoveConstructible>
 consteval bool test_closure_traits() {
     using functor_t = Tests::Utils::Functors::SumIndices<ViewType>;
-    using policy_t = Kokkos::RangePolicy<execution_space>;
+    using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<functor_t, policy_t>;
 
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
@@ -153,7 +151,7 @@ TEST_F(ParallelForTest, team_policy) {
     const auto [num_teams, team_size] = [&]() {
 //! @c Kokkos hardcodes a maximum team size of 1 on @c HPX. See also https://github.com/kokkos/kokkos/blob/1c6efc105c2366a95fa3d0012b38bbf4c03aecd5/core/src/HPX/Kokkos_HPX.hpp#L742-L747.
 #if defined(KOKKOS_ENABLE_HPX)
-        if constexpr (std::same_as<execution_space, Kokkos::Experimental::HPX>) {
+        if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::Experimental::HPX>) {
             return std::make_tuple(size, 1);
         }
 #endif
@@ -170,12 +168,35 @@ TEST_F(ParallelForTest, team_policy) {
     auto chain = stdexec::schedule(esc.get_scheduler())
                | Kokkos::Execution::parallel_for(
                      "hello from pfor",
-                     Kokkos::TeamPolicy<execution_space>(num_teams, team_size),
+                     Kokkos::TeamPolicy<TEST_EXECUTION_SPACE>(num_teams, team_size),
                      Tests::Utils::Functors::SumIndices{.data = witness});
 
     stdexec::sync_wait(std::move(chain));
 
     ASSERT_EQ(witness(), size / 2 * (size - 1));
+}
+
+template <typename ViewType, Kokkos::ExecutionSpace Exec>
+auto closure_object_creation_overloads(
+    const size_t size,
+    const ViewType& witness,
+    const Kokkos::Execution::ExecutionSpaceContext<Exec>& esc) -> stdexec::sender auto {
+    auto chain = stdexec::schedule(esc.get_scheduler())
+               | Kokkos::Execution::parallel_for(
+                     "passing label, execution policy and functor",
+                     Kokkos::RangePolicy<Exec>(0, size),
+                     Tests::Utils::Functors::SumIndices{.data = witness})
+               | Kokkos::Execution::parallel_for(
+                     Kokkos::RangePolicy<Exec>(0, size), Tests::Utils::Functors::SumIndices{.data = witness});
+
+    if constexpr (std::same_as<Exec, Kokkos::DefaultExecutionSpace>) {
+        return std::move(chain)
+             | Kokkos::Execution::parallel_for(
+                   "passing label, work count and functor", size, Tests::Utils::Functors::SumIndices{.data = witness})
+             | Kokkos::Execution::parallel_for(size, Tests::Utils::Functors::SumIndices{.data = witness});
+    } else {
+        return chain;
+    }
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for closure object creation overloads.
@@ -184,29 +205,31 @@ TEST_F(ParallelForTest, closure_object_creation_overloads) {
 
     const view_s_t witness(Kokkos::view_alloc(exec, "data - shared space"));
 
-    const context_t esc{exec};
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = closure_object_creation_overloads(size, witness, context_t{exec})]() mutable {
+            stdexec::sync_wait(std::move(chain));
+        });
 
-    auto chain = stdexec::schedule(esc.get_scheduler())
-               | Kokkos::Execution::parallel_for(
-                     "passing label, execution policy and functor",
-                     Kokkos::RangePolicy<execution_space>(0, size),
-                     Tests::Utils::Functors::SumIndices{.data = witness})
-               | Kokkos::Execution::parallel_for(
-                     Kokkos::RangePolicy<execution_space>(0, size), Tests::Utils::Functors::SumIndices{.data = witness})
-               | Kokkos::Execution::parallel_for(
-                     "passing label, work count and functor", size, Tests::Utils::Functors::SumIndices{.data = witness})
-               | Kokkos::Execution::parallel_for(size, Tests::Utils::Functors::SumIndices{.data = witness});
+    unsigned short int ievent = 0;
+
+    ASSERT_GE(recorded_events.size(), 3);
+
+    using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, "passing label, execution policy and functor"),
-            MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<Tests::Utils::Functors::SumIndices<view_s_t>>::name()),
-            MATCHER_FOR_BEGIN_PFOR(exec, "passing label, work count and functor"),
-            MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<Tests::Utils::Functors::SumIndices<view_s_t>>::name()),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+        recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, "passing label, execution policy and functor"));
+    ASSERT_THAT(recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()));
 
-    ASSERT_EQ(witness(), 4 * size / 2 * (size - 1));
+    if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::DefaultExecutionSpace>) {
+        ASSERT_THAT(
+            recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, "passing label, work count and functor"));
+        ASSERT_THAT(
+            recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()));
+    }
+
+    ASSERT_THAT(recorded_events.at(ievent), MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+
+    ASSERT_EQ(witness(), ievent * size / 2 * (size - 1));
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for with two consecutive parallel regions and check there is no fence in between.
@@ -219,15 +242,15 @@ TEST_F(ParallelForTest, two_parallel_regions) {
 
     auto chain = stdexec::schedule(esc.get_scheduler())
                | Kokkos::Execution::parallel_for(
-                     std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<execution_space>::name()),
-                     Kokkos::RangePolicy<execution_space>(0, size),
+                     std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
+                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
                      Tests::Utils::Functors::SumIndices{.data = witness})
                | stdexec::then(
                      Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{
                          .prev = size / 2 * (size - 1), .value = 4, .data = witness.data()})
                | Kokkos::Execution::parallel_for(
-                     std::format("{}: hello again from pfor", Kokkos::Impl::TypeInfo<execution_space>::name()),
-                     Kokkos::RangePolicy<execution_space>(0, 2 * size),
+                     std::format("{}: hello again from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
+                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 2 * size),
                      Tests::Utils::Functors::SumIndices{.data = witness});
 
     ASSERT_THAT(
@@ -249,8 +272,8 @@ TEST_F(ParallelForTest, starts_on_parallel_region) {
 
     auto sndr = stdexec::just()
               | Kokkos::Execution::parallel_for(
-                    std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<execution_space>::name()),
-                    Kokkos::RangePolicy<execution_space>(0, size),
+                    std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
+                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
                     Tests::Utils::Functors::SumIndices{.data = witness});
 
     const context_t esc{exec};

@@ -14,11 +14,9 @@
  * The tests can be found in @ref tests/execution_space/test_operation_state.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
-class OpStateTest : public Tests::Utils::ExecutionSpaceContextTest<execution_space> { };
+class OpStateTest : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE> { };
 
 //! @test Check traits of @c Kokkos::Execution::ExecutionSpaceImpl::OpState.
 consteval bool test_op_state_traits() {
@@ -27,7 +25,7 @@ consteval bool test_op_state_traits() {
 
     //! Parallel for closure.
     using functor_t = Tests::Utils::Functors::SumIndices<typename OpStateTest::view_s_t>;
-    using policy_t = Kokkos::RangePolicy<execution_space>;
+    using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using clsr_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<functor_t, policy_t>;
 
     //! Receiver.
