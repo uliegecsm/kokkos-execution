@@ -21,11 +21,13 @@ struct CheckSchedulerTypeSender;
 
 template <typename Tag, stdexec::scheduler Schd>
 struct check_scheduler_type_t {
-    constexpr auto operator()() const {
+    [[nodiscard]]
+    constexpr auto operator()() const noexcept {
         return stdexec::__closure(*this);
     }
 
     template <stdexec::sender Sndr>
+    [[nodiscard]]
     constexpr auto operator()(Sndr&& sndr) const {
         return CheckSchedulerTypeSender<Sndr, Tag, Schd>{std::forward<Sndr>(sndr)};
     }
