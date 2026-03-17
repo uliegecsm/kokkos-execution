@@ -1,7 +1,7 @@
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
-#include <exec/single_thread_context.hpp>
+#include "exec/single_thread_context.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
@@ -57,6 +57,8 @@ TEST_F(WhenAllTest, single_branch) {
     /// it does not have a completion scheduler and so it is not an execution space completing sender.
     static_assert(!Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<decltype(sndr)>);
 
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
     /// Because the sender returned by @c stdexec::when_all is not an execution space completing sender,
     /// the default implementation of @c stdexec::sync_wait is used.
     ASSERT_THAT(
@@ -79,6 +81,8 @@ TEST_F(WhenAllTest, single_branch_followed_by_self) {
 
     auto sndr = stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data))
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
@@ -105,6 +109,8 @@ TEST_F(WhenAllTest, single_mixed_branch_followed_by_self) {
                     | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data))
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
         testing::ElementsAre(
@@ -129,6 +135,8 @@ TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
     auto sndr = stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data))
               | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data)
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
@@ -164,6 +172,8 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
 
     auto sndr = std::move(w_a) | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
         testing::ElementsAre(
@@ -190,6 +200,8 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
                     stdexec::schedule(esc_A.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
                     stdexec::schedule(esc_B.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
               | stdexec::continues_on(esc_A.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = recorder_listener_t::record(
         [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
@@ -232,6 +244,8 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
                     stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
               | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data)
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),

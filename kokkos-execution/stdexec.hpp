@@ -4,7 +4,7 @@
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
-#include <stdexec/execution.hpp>
+#include "stdexec/execution.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
 #endif // KOKKOS_EXECUTION_STDEXEC_HPP
