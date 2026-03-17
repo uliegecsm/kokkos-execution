@@ -49,7 +49,7 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}, docker_run_args: "--security-opt seccomp=unconfined", no-aslr: true}
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
@@ -103,6 +103,7 @@ jobs:
       - run: |
           cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
       - run: |
+          ${{ matrix.no-aslr && 'setarch --addr-no-randomize' || '' }} \
           ctest --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
       - run: |
           bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}

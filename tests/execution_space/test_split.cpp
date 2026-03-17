@@ -5,6 +5,8 @@ KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/static_thread_pool.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
@@ -32,7 +34,12 @@ class SplitTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t = RecorderListener<
+        BeginFenceEvent,
+        BeginParallelForEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
 };
 
 //! @test Use @c experimental::execution::split and @c stdexec::sync_wait right after.
@@ -72,17 +79,33 @@ TEST_F(SplitTest, within) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    /// Each branch may be executed by a distinct host thread. However, the callback manager is not thread safe.
-    /// So ordering of the event is not guaranteed.
-    ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
-        testing::UnorderedElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "continuation")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "continuation"))));
+    const auto recorded_events = recorder_listener_t::record(
+        [chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); });
+
+    /// Each branch may be executed by a distinct host thread. So ordering of the event is not guaranteed.
+    if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        ASSERT_THAT(recorded_events, ::testing::SizeIs(8));
+        ASSERT_THAT(
+            recorded_events, ::testing::Contains(MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then"))).Times(4));
+        ASSERT_THAT(recorded_events, ::testing::Contains(MATCHER_FOR_RECORD_EVENT(exec)).Times(2));
+        std::ranges::for_each(
+            recorded_events | std::views::filter([](const auto& event) -> bool {
+                return std::holds_alternative<Kokkos::Execution::Impl::RecordEvent>(event);
+            }),
+            [&](const auto& event) {
+                ASSERT_THAT(recorded_events, ::testing::Contains(MATCHER_FOR_WAIT_EVENT(event)).Times(1));
+            });
+    } else {
+        ASSERT_THAT(
+            recorded_events,
+            testing::UnorderedElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
+    }
 
     ASSERT_EQ(data(), 5);
 }

@@ -4,6 +4,8 @@ KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/single_thread_context.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
@@ -32,7 +34,12 @@ class TransferWhenAllTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t = RecorderListener<
+        BeginFenceEvent,
+        BeginParallelForEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
 };
 
 //! @test Two branches on different execution space instances A and B of the same type, followed by a @c stdexec::then on instance A.
@@ -75,13 +82,21 @@ TEST_F(TransferWhenAllTest, Y) {
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+    } else if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        ASSERT_EQ(recorded_events.size(), 6);
+        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")));
+        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")));
+        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec_B));
+        ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
+        ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")));
+        ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
     } else {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "continuation")),
+                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
     }

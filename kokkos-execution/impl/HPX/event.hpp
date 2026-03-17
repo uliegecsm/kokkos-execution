@@ -20,7 +20,7 @@ struct SupportEvents<Kokkos::Experimental::HPX> : std::true_type { };
 
 template <>
 struct Event<Kokkos::Experimental::HPX> {
-    std::shared_ptr<hpx::lcos::local::event> m_event = nullptr;
+    mutable std::optional<Kokkos::Experimental::HPX> m_exec = std::nullopt;
     uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
@@ -32,12 +32,12 @@ struct Event<Kokkos::Experimental::HPX> {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
-        : m_event(std::move(other.m_event))
+        : m_exec(std::move(other.m_exec))
         , m_event_id(std::exchange(other.m_event_id, invalid_event_id)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
-            m_event = std::move(other.m_event);
+            m_exec = std::move(other.m_exec);
             m_event_id = std::exchange(other.m_event_id, invalid_event_id);
         }
         return *this;
@@ -45,30 +45,39 @@ struct Event<Kokkos::Experimental::HPX> {
     ~Event() = default;
 
     void record(const Kokkos::Experimental::HPX& exec) {
-        /**
-         * Always allocate a new event. Otherwise, the sequence:
-         * @code
-         * event.record(exec_A);
-         * event.record(exec_B);
-         * event.wait();
-         * @endcode
-         * will be surprising to the user. Indeed, if the two successive calls to @ref record
-         * would use the same @ref m_event, the call to @ref wait would potentially complete
-         * due to @c exec_A, while the expectation is that it completes due to @c exec_B.
-         */
-        m_event = std::make_shared<hpx::lcos::local::event>();
-        exec.impl_bulk_plain_erased<int>(
-            false, /* force_synchronous */
-            true,  /* is_light_weight_policy */
-            [event = m_event](const auto) { event->set(); },
-            1);
+        m_exec = exec;
         record_event(exec, m_event_id);
     }
 
+    /**
+     * If there is no explicit call to the @c Kokkos::Experimental::HPX instance @c fence anywhere, there will
+     * be leaks due to circular dependencies, much like described in https://github.com/kokkos/kokkos/pull/8992.
+     *
+     * The initial approach from https://github.com/uliegecsm/kokkos-execution/pull/106, based on using
+     * @c hpx::lcos::local::event, has been discarded because it would never clean the underlying sender through a
+     * @c fence.
+     *
+     * Yet, it has been decided to mimic
+     * https://github.com/kokkos/kokkos/blob/91584fc13aaf09330bc391466dbae0249895291f/core/src/HPX/Kokkos_HPX.hpp#L139-L156
+     * so that there is no @c fence event recorded.
+     *
+     * Even though @ref wait may therefore synchronize even the work pushed to @ref m_exec after the call to @ref record,
+     * it's the most reasonable way forward for now.
+     */
     void wait() const {
         wait_event(m_event_id);
-        if (!m_event->occurred()) {
-            m_event->wait();
+        if (m_exec.has_value()) {
+            auto& instance_data = m_exec->impl_get_instance_data();
+
+            {
+                const std::lock_guard<hpx::spinlock> lock(instance_data.m_sender_mutex);
+
+                auto& sndr = instance_data.m_sender;
+                hpx::this_thread::experimental::sync_wait(std::move(sndr));
+                sndr = hpx::execution::experimental::unique_any_sender<>(hpx::execution::experimental::just());
+            }
+
+            m_exec = std::nullopt;
         }
     }
 };

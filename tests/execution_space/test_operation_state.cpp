@@ -82,6 +82,49 @@ constexpr bool test_op_state_passed_by_const_ref() {
 }
 static_assert(test_op_state_passed_by_const_ref());
 
+/**
+ * @test Check that @ref Kokkos::Execution::ExecutionSpaceImpl::OpStateBase possibly uses
+ *       an @ref Kokkos::Execution::Impl::Event only if
+ *       the receiver environment is queryable for a delegation scheduler and the execution space supports events.
+ */
+template <stdexec::receiver Rcvr>
+consteval bool test_delegate_completion_with_event() {
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string_view,
+        Tests::Utils::Functors::Labeled<'a'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+    using opstate_t =
+        Kokkos::Execution::ExecutionSpaceImpl::OpState<typename OpStateTest::schedule_sender_t, Rcvr, closure_t>;
+    using opstate_base_t = Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<Rcvr, closure_t>;
+    using may_delegate_completion_with_event_t =
+        Kokkos::Execution::ExecutionSpaceImpl::MayDelegateCompletionWithEvent<Rcvr, TEST_EXECUTION_SPACE>;
+
+    static_assert(std::derived_from<opstate_t, opstate_base_t>);
+    static_assert(std::derived_from<opstate_base_t, may_delegate_completion_with_event_t>);
+
+    //! When delegating, additional space is taken by the storage of the operation state. Otherwise, it only stores the receiver.
+    if constexpr (Kokkos::Execution::ExecutionSpaceImpl::delegate_completion_with_event<Rcvr, TEST_EXECUTION_SPACE>) {
+        static_assert(sizeof(may_delegate_completion_with_event_t) > sizeof(Rcvr));
+        static_assert(std::same_as<
+                      typename may_delegate_completion_with_event_t::receiver_t,
+                      Kokkos::Execution::ExecutionSpaceImpl::WaitEventReceiver<Rcvr, TEST_EXECUTION_SPACE>
+        >);
+        static_assert(std::same_as<
+                      typename may_delegate_completion_with_event_t::receiver_t::event_t,
+                      Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE>
+        >);
+    } else {
+        static_assert(sizeof(may_delegate_completion_with_event_t) == sizeof(Rcvr));
+    }
+
+    return true;
+}
+static_assert(test_delegate_completion_with_event<Tests::Utils::SinkReceiver>());
+static_assert(test_delegate_completion_with_event<
+              Kokkos::Execution::ExecutionSpaceImpl::SyncWaitReceiver<TEST_EXECUTION_SPACE>
+>());
+
 //! @test Check construction, query for execution space instance, and start.
 TEST_F(OpStateTest, construct_query_and_start) {
     constexpr size_t size = 10;

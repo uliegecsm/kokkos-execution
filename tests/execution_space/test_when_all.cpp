@@ -7,6 +7,8 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/execution_space_context.hpp"
@@ -39,7 +41,12 @@ class WhenAllTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t = RecorderListener<
+        BeginFenceEvent,
+        BeginParallelForEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
 };
 
 /**
@@ -67,13 +74,23 @@ TEST_F(WhenAllTest, single_branch) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    /// Because the sender returned by @c stdexec::when_all is not an execution space completing sender,
-    /// the default implementation of @c stdexec::sync_wait is used.
-    ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "continuation"))));
+    const auto recorded_events = recorder_listener_t::record(
+        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+
+    if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        ASSERT_EQ(recorded_events.size(), 3);
+        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_RECORD_EVENT(exec));
+        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
+    } else {
+        /// Because the sender returned by @c stdexec::when_all is not an execution space completing sender,
+        /// the default implementation of @c stdexec::sync_wait is used.
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
+    }
 
     ASSERT_EQ(data(), 1);
 }
@@ -159,13 +176,25 @@ TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "continuation")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    const auto recorded_events = recorder_listener_t::record(
+        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+
+    if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        ASSERT_EQ(recorded_events.size(), 5);
+        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_RECORD_EVENT(exec));
+        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
+        ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+    } else {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    }
 
     ASSERT_EQ(data(), 3);
 }
@@ -245,13 +274,21 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+    } else if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        ASSERT_EQ(recorded_events.size(), 6);
+        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec_B));
+        ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
+        ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait")));
     } else {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "continuation")),
+                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
     }
@@ -298,13 +335,21 @@ TEST_F(WhenAllTest, two_branches_host_device_followed_by_device) {
                 MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    } else if constexpr (Kokkos::Execution::Impl::support_events<host_execution_space>) {
+        ASSERT_EQ(recorded_events.size(), 6);
+        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")));
+        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec_h));
+        ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
+        ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
     } else {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "continuation")),
+                MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     }
@@ -337,13 +382,25 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "continuation")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    const auto recorded_events = recorder_listener_t::record(
+        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+
+    if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        ASSERT_EQ(recorded_events.size(), 5);
+        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_RECORD_EVENT(exec));
+        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
+        ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")));
+        ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+    } else {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    }
 
     ASSERT_EQ(data(), 4);
 }
@@ -381,7 +438,7 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            // MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "continuation")),
+            // MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
@@ -398,8 +455,6 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
  *                                                                                 /
  * schedule(esc_C) | then('C') ---------------------------------------------------
  * @endverbatim
- *
- * @todo C cannot currently overlap with either of A, B or D.
  */
 TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
     const auto [exec_A, exec_B, exec_C] = Kokkos::Experimental::partition_space(exec, 1, 1, 1);
@@ -425,20 +480,32 @@ TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
                 MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "continuation")),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "continuation"))));
+                MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "after dispatch"))));
+    } else if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        ASSERT_EQ(recorded_events.size(), 10);
+        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"));
+        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"));
+        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec_B));
+        ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"));
+        ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_RECORD_EVENT(exec_C));
+        ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
+        ASSERT_THAT(recorded_events.at(6), MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"));
+        ASSERT_THAT(recorded_events.at(7), MATCHER_FOR_RECORD_EVENT(exec_A));
+        ASSERT_THAT(recorded_events.at(8), MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)));
+        ASSERT_THAT(recorded_events.at(9), MATCHER_FOR_WAIT_EVENT(recorded_events.at(7)));
     } else {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "continuation")),
+                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "continuation")),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "continuation"))));
+                MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "after dispatch"))));
     }
 }
 
