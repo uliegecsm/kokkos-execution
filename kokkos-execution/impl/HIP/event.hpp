@@ -16,9 +16,8 @@ struct SupportEvents<Kokkos::HIP> : std::true_type { };
 
 template <>
 struct Event<Kokkos::HIP> {
-    using mark_event_t = MarkEvent<Kokkos::HIP>;
-
     hipEvent_t m_event = nullptr;
+    uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
 
@@ -29,7 +28,8 @@ struct Event<Kokkos::HIP> {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
-        : m_event(std::exchange(other.m_event, nullptr)) {
+        : m_event(std::exchange(other.m_event, nullptr))
+        , m_event_id(std::exchange(other.m_event_id, invalid_event_id)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
@@ -37,6 +37,7 @@ struct Event<Kokkos::HIP> {
                 KOKKOS_IMPL_HIP_SAFE_CALL(hipEventDestroy(m_event));
             }
             m_event = std::exchange(other.m_event, nullptr);
+            m_event_id = std::exchange(other.m_event_id, invalid_event_id);
         }
         return *this;
     }
@@ -51,11 +52,11 @@ struct Event<Kokkos::HIP> {
             KOKKOS_IMPL_HIP_SAFE_CALL(hipEventCreateWithFlags(&m_event, hipEventDisableTiming));
         }
         KOKKOS_IMPL_HIP_SAFE_CALL(hipEventRecord(m_event, exec.hip_stream()));
-        mark_event_t::record(static_cast<void*>(m_event), exec);
+        record_event(exec, m_event_id);
     }
 
     void wait() const {
-        mark_event_t::wait(static_cast<void*>(m_event));
+        wait_event(m_event_id);
         if (hipEventQuery(m_event) != hipSuccess) {
             KOKKOS_IMPL_HIP_SAFE_CALL(hipEventSynchronize(m_event));
         }

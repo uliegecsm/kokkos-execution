@@ -16,9 +16,8 @@ struct SupportEvents<Kokkos::Cuda> : std::true_type { };
 
 template <>
 struct Event<Kokkos::Cuda> {
-    using mark_event_t = MarkEvent<Kokkos::Cuda>;
-
     cudaEvent_t m_event = nullptr;
+    uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
 
@@ -29,7 +28,8 @@ struct Event<Kokkos::Cuda> {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
-        : m_event(std::exchange(other.m_event, nullptr)) {
+        : m_event(std::exchange(other.m_event, nullptr))
+        , m_event_id(std::exchange(other.m_event_id, invalid_event_id)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
@@ -37,6 +37,7 @@ struct Event<Kokkos::Cuda> {
                 KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventDestroy(m_event));
             }
             m_event = std::exchange(other.m_event, nullptr);
+            m_event_id = std::exchange(other.m_event_id, invalid_event_id);
         }
         return *this;
     }
@@ -51,11 +52,11 @@ struct Event<Kokkos::Cuda> {
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&m_event, cudaEventDisableTiming));
         }
         KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventRecord(m_event, exec.cuda_stream()));
-        mark_event_t::record(static_cast<void*>(m_event), exec);
+        record_event(exec, m_event_id);
     }
 
     void wait() const {
-        mark_event_t::wait(static_cast<void*>(m_event));
+        wait_event(m_event_id);
         if (cudaEventQuery(m_event) != cudaSuccess) {
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventSynchronize(m_event));
         }

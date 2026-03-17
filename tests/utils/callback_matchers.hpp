@@ -1,7 +1,6 @@
 #ifndef KOKKOS_EXECUTION_TESTS_UTILS_CALLBACK_MATCHERS_HPP
 #define KOKKOS_EXECUTION_TESTS_UTILS_CALLBACK_MATCHERS_HPP
 
-#include <regex>
 #include <string>
 #include <string_view>
 
@@ -49,33 +48,23 @@ constexpr std::string dispatch_label(const Exec&, Label&& label) {
     return std::string(Kokkos::Impl::TypeInfo<Exec>::name()).append(": ").append(std::forward<Label>(label));
 }
 
-//! Event record message, regex-ready.
-static constexpr char event_record_regex[] = ": event (0x[0-9a-f]+) recorded on ";
+#if defined(KOKKOS_EXECUTION_IMPL_EVENT_HPP)
+DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::Impl, RecordEvent)
+DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::Impl, WaitEvent)
+#endif
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage)
-#define MATCHER_FOR_EVENT_RECORD(_exec_)                                                                               \
-    AProfileEvent(                                                                                                     \
+#define MATCHER_FOR_RECORD_EVENT(_exec_)                                                                               \
+    ARecordEvent(                                                                                                      \
         ::testing::Field(                                                                                              \
-            &Kokkos::utils::callbacks::ProfileEvent::name,                                                             \
-            ::testing::MatchesRegex(                                                                                   \
-                std::string(Kokkos::Impl::TypeInfo<std::remove_cvref_t<decltype(_exec_)>>::name())                     \
-                    .append(event_record_regex)                                                                        \
-                    .append(std::to_string(Kokkos::Tools::Experimental::device_id(_exec_))))))
+            &Kokkos::Execution::Impl::RecordEvent::dev_id,                                                             \
+            ::testing::Eq(Kokkos::Tools::Experimental::device_id(_exec_))))
 
-#define MATCHER_FOR_EVENT_WAIT(_exec_, _id_)                                                                           \
-    AProfileEventWithName(                                                                                             \
-        std::string(Kokkos::Impl::TypeInfo<_exec_>::name()).append(": waiting for event ").append(_id_))
+#define MATCHER_FOR_WAIT_EVENT(_record_event_variant_)                                                                 \
+    AWaitEvent(                                                                                                        \
+        ::testing::Field(                                                                                              \
+            &Kokkos::Execution::Impl::WaitEvent::event_id,                                                             \
+            ::testing::Eq(std::get<Kokkos::Execution::Impl::RecordEvent>(_record_event_variant_).event_id)))
 // NOLINTEND(cppcoreguidelines-macro-usage)
-
-//! Extract the event ID based on @ref event_record_regex.
-template <typename... RecordedTypes>
-std::string extract_event_record_id(const std::variant<RecordedTypes...>& record) {
-    const auto& name = std::get<Kokkos::utils::callbacks::ProfileEvent>(record).name;
-    std::smatch match;
-    if (std::regex_search(name, match, std::regex(event_record_regex))) {
-        return match[1].str(); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-    }
-    throw std::runtime_error(std::format("Could not find '{}' in '{}'.", event_record_regex, name));
-}
 
 #endif // KOKKOS_EXECUTION_TESTS_UTILS_CALLBACK_MATCHERS_HPP
