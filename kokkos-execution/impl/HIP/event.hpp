@@ -18,7 +18,7 @@ template <>
 struct Event<Kokkos::HIP> {
     using mark_event_t = MarkEvent<Kokkos::HIP>;
 
-    hipEvent_t event = nullptr;
+    hipEvent_t m_event = nullptr;
 
     Event() = default;
 
@@ -29,35 +29,35 @@ struct Event<Kokkos::HIP> {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
-        : event(std::exchange(other.event, nullptr)) {
+        : m_event(std::exchange(other.m_event, nullptr)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
-            if (event != nullptr) {
-                KOKKOS_IMPL_HIP_SAFE_CALL(hipEventDestroy(event));
+            if (m_event != nullptr) {
+                KOKKOS_IMPL_HIP_SAFE_CALL(hipEventDestroy(m_event));
             }
-            event = std::exchange(other.event, nullptr);
+            m_event = std::exchange(other.m_event, nullptr);
         }
         return *this;
     }
 
     ~Event() {
-        if (event != nullptr)
-            KOKKOS_IMPL_HIP_SAFE_CALL(hipEventDestroy(event));
+        if (m_event != nullptr)
+            KOKKOS_IMPL_HIP_SAFE_CALL(hipEventDestroy(m_event));
     }
 
     void record(const Kokkos::HIP& exec) {
-        if (event == nullptr) {
-            KOKKOS_IMPL_HIP_SAFE_CALL(hipEventCreateWithFlags(&event, hipEventDisableTiming));
+        if (m_event == nullptr) {
+            KOKKOS_IMPL_HIP_SAFE_CALL(hipEventCreateWithFlags(&m_event, hipEventDisableTiming));
         }
-        KOKKOS_IMPL_HIP_SAFE_CALL(hipEventRecord(event, exec.hip_stream()));
-        mark_event_t::record(static_cast<void*>(event), exec);
+        KOKKOS_IMPL_HIP_SAFE_CALL(hipEventRecord(m_event, exec.hip_stream()));
+        mark_event_t::record(static_cast<void*>(m_event), exec);
     }
 
     void wait() const {
-        mark_event_t::wait(static_cast<void*>(event));
-        if (hipEventQuery(event) != hipSuccess) {
-            KOKKOS_IMPL_HIP_SAFE_CALL(hipEventSynchronize(event));
+        mark_event_t::wait(static_cast<void*>(m_event));
+        if (hipEventQuery(m_event) != hipSuccess) {
+            KOKKOS_IMPL_HIP_SAFE_CALL(hipEventSynchronize(m_event));
         }
     }
 };

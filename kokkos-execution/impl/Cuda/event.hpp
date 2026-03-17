@@ -18,7 +18,7 @@ template <>
 struct Event<Kokkos::Cuda> {
     using mark_event_t = MarkEvent<Kokkos::Cuda>;
 
-    cudaEvent_t event = nullptr;
+    cudaEvent_t m_event = nullptr;
 
     Event() = default;
 
@@ -29,35 +29,35 @@ struct Event<Kokkos::Cuda> {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
-        : event(std::exchange(other.event, nullptr)) {
+        : m_event(std::exchange(other.m_event, nullptr)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
-            if (event != nullptr) {
-                KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventDestroy(event));
+            if (m_event != nullptr) {
+                KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventDestroy(m_event));
             }
-            event = std::exchange(other.event, nullptr);
+            m_event = std::exchange(other.m_event, nullptr);
         }
         return *this;
     }
 
     ~Event() {
-        if (event != nullptr)
-            KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventDestroy(event));
+        if (m_event != nullptr)
+            KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventDestroy(m_event));
     }
 
     void record(const Kokkos::Cuda& exec) {
-        if (event == nullptr) {
-            KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+        if (m_event == nullptr) {
+            KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&m_event, cudaEventDisableTiming));
         }
-        KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventRecord(event, exec.cuda_stream()));
-        mark_event_t::record(static_cast<void*>(event), exec);
+        KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventRecord(m_event, exec.cuda_stream()));
+        mark_event_t::record(static_cast<void*>(m_event), exec);
     }
 
     void wait() const {
-        mark_event_t::wait(static_cast<void*>(event));
-        if (cudaEventQuery(event) != cudaSuccess) {
-            KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventSynchronize(event));
+        mark_event_t::wait(static_cast<void*>(m_event));
+        if (cudaEventQuery(m_event) != cudaSuccess) {
+            KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventSynchronize(m_event));
         }
     }
 };
