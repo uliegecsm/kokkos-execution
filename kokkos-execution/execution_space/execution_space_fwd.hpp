@@ -17,9 +17,6 @@ template <Kokkos::ExecutionSpace Exec>
 struct State;
 
 template <Kokkos::ExecutionSpace Exec>
-struct SchedulerEnv;
-
-template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
 template <stdexec::scheduler Schd, stdexec::receiver Rcvr>

@@ -24,24 +24,6 @@ struct State {
     Exec exec;
 };
 
-//! See https://github.com/NVIDIA/stdexec/blob/9514e7bdf4b5d16d8ee4b5ad0e9c8733c3539f37/include/nvexec/stream/common.cuh#L168-L195).
-template <Kokkos::ExecutionSpace Exec>
-struct SchedulerEnv {
-    using execution_space = Exec;
-
-    [[nodiscard]]
-    constexpr auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> Scheduler<Exec> {
-        return {state};
-    }
-
-    [[nodiscard]]
-    constexpr auto query(stdexec::get_completion_domain_t<stdexec::set_value_t>) const noexcept -> Domain {
-        return {};
-    }
-
-    State<Exec>* state;
-};
-
 /**
  * @brief Scheduler for a @c Kokkos execution space.
  *
@@ -72,6 +54,25 @@ struct Scheduler {
 
         using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
 
+        //! See https://github.com/NVIDIA/stdexec/blob/5076be2b35de2e78330201b888d82c81b8cb428b/include/nvexec/stream_context.cuh#L110.
+        struct Attributes {
+            template <typename... Env>
+            [[nodiscard]]
+            constexpr auto
+                query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, Env...) const noexcept -> Scheduler {
+                return {state};
+            }
+
+            template <typename... Env>
+            [[nodiscard]]
+            constexpr auto
+                query(stdexec::get_completion_domain_t<stdexec::set_value_t>, Env...) const noexcept -> Domain {
+                return {};
+            }
+
+            State<Exec>* state;
+        };
+
         template <stdexec::receiver_of<completion_signatures> Rcvr>
         [[nodiscard]]
         OpState<Rcvr> connect(Rcvr rcvr) noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
@@ -79,15 +80,15 @@ struct Scheduler {
         }
 
         [[nodiscard]]
-        constexpr auto get_env() const noexcept -> const SchedulerEnv<Exec>& {
+        constexpr auto get_env() const noexcept -> const Attributes& {
             return env;
         }
 
-        SchedulerEnv<Exec> env;
+        Attributes env;
     };
 
     [[nodiscard]]
-    Sender schedule() const noexcept {
+    constexpr auto schedule() const noexcept -> Sender {
         return {state};
     }
 

@@ -22,8 +22,8 @@ namespace Tests::ExecutionSpaceImpl {
 
 using execution_space_context_t = Kokkos::Execution::ExecutionSpaceContext<execution_space>;
 using execution_space_scheduler_t = Kokkos::Execution::ExecutionSpaceImpl::Scheduler<execution_space>;
-using execution_space_scheduler_env_t = Kokkos::Execution::ExecutionSpaceImpl::SchedulerEnv<execution_space>;
 using execution_space_schedule_sender_t = typename execution_space_scheduler_t::Sender;
+using execution_space_scheduler_env_t = typename execution_space_schedule_sender_t::Attributes;
 
 //! @test @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler models the @c stdexec::scheduler concept.
 consteval bool test_scheduler_concept() {
@@ -72,7 +72,7 @@ consteval bool test_scheduler_schedule() {
 
 /**
  * @test Check that the @c stdexec::get_env query on @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender returns
- *       @ref Kokkos::Execution::ExecutionSpaceImpl::SchedulerEnv.
+ *       @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender::Attributes.
  */
 consteval bool test_schedule_sender_env() {
     static_assert(
@@ -104,7 +104,7 @@ consteval bool test_scheduler_queries() {
 }
 static_assert(test_scheduler_queries());
 
-//! @test Check queries of @ref Kokkos::Execution::ExecutionSpaceImpl::SchedulerEnv.
+//! @test Check queries of @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender::Attributes.
 consteval bool test_scheduler_env_queries() {
     static_assert(std::same_as<
                   stdexec::__query_result_t<
