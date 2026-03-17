@@ -43,9 +43,11 @@ TEST_F(OnTest, on_same_execution_space_instance) {
 
     const context_t esc{exec};
 
-    auto chain = stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data)
-               | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>()
-               | stdexec::on(esc.get_scheduler(), THEN_INCREMENT(data))
+    auto chain = stdexec::schedule(esc.get_scheduler())
+               | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT(data)
+               | stdexec::on(
+                     esc.get_scheduler(),
+                     Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT(data))
                | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
