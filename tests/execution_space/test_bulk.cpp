@@ -17,14 +17,12 @@
  * The tests can be found in @ref tests/execution_space/test_bulk.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
 class BulkTest
-    : public Tests::Utils::ExecutionSpaceContextTest<execution_space>
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;

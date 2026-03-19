@@ -4,6 +4,12 @@ find_package(KokkosUtils CONFIG REQUIRED)
 # Helpers.
 include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
 
+# Mapping from enabled Kokkos devices to execution space type.
+set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_CUDA "Cuda")
+set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_HIP "HIP")
+set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_OPENMP "OpenMP")
+set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_SERIAL "Serial")
+
 # Function to add a test (common steps).
 function(add_one_test)
 
@@ -15,34 +21,47 @@ function(add_one_test)
 
   get_parent_relpath_repr(DIRECTORY "${PROJECT_SOURCE_DIR}" FILENAME "${SOURCE_FILE}")
 
-  set(aot_args_EXECUTABLE_NAME "${gprr_PARENT_RELPATH_REPR}_${aot_args_NAME}")
+  foreach(DEVICE IN LISTS Kokkos_DEVICES)
+    if(NOT DEFINED KOKKOS_DEVICE_TO_EXECUTION_SPACE_${DEVICE})
+      message(FATAL_ERROR "No execution space mapping for device '${DEVICE}'.")
+    endif()
 
-  # Create test executable.
-  add_executable(${aot_args_EXECUTABLE_NAME})
+    set(aot_args_EXECUTABLE_NAME
+        "${gprr_PARENT_RELPATH_REPR}_${aot_args_NAME}.${KOKKOS_DEVICE_TO_EXECUTION_SPACE_${DEVICE}}"
+    )
 
-  # Add the source file to the executable.
-  target_sources(${aot_args_EXECUTABLE_NAME} PRIVATE ${SOURCE_FILE})
+    # Create test executable.
+    add_executable(${aot_args_EXECUTABLE_NAME})
 
-  # Link the executable to 'test_common'.
-  target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE test_common)
+    # Add the source file to the executable.
+    target_sources(${aot_args_EXECUTABLE_NAME} PRIVATE ${SOURCE_FILE})
 
-  # Always link to 'kokkos-execution'.
-  target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE Kokkos::Execution)
+    # Tell the translation unit which execution space to use.
+    target_compile_definitions(
+      ${aot_args_EXECUTABLE_NAME} PRIVATE TEST_EXECUTION_SPACE=Kokkos::${KOKKOS_DEVICE_TO_EXECUTION_SPACE_${DEVICE}}
+    )
 
-  # Always allow logging and kokkos-utils.
-  target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE plog::plog Kokkos::kokkosutils)
+    # Link the executable to 'test_common'.
+    target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE test_common)
 
-  if(DEFINED aot_args_ADDITIONAL_LINK_LIBRARIES)
-    target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE ${aot_args_ADDITIONAL_LINK_LIBRARIES})
-  endif()
+    # Always link to 'kokkos-execution'.
+    target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE Kokkos::Execution)
 
-  add_test(NAME ${aot_args_EXECUTABLE_NAME} COMMAND $<TARGET_FILE:${aot_args_EXECUTABLE_NAME}>
-                                                    --gtest_fail_if_no_test_linked
-  )
+    # Always allow logging and kokkos-utils.
+    target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE plog::plog Kokkos::kokkosutils)
 
-  # Ensure that GTest will shuffle the tests.
-  set_property(TEST ${aot_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_SHUFFLE=1")
-  set_property(TEST ${aot_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_RANDOM_SEED=0")
+    if(DEFINED aot_args_ADDITIONAL_LINK_LIBRARIES)
+      target_link_libraries(${aot_args_EXECUTABLE_NAME} PRIVATE ${aot_args_ADDITIONAL_LINK_LIBRARIES})
+    endif()
+
+    add_test(NAME ${aot_args_EXECUTABLE_NAME} COMMAND $<TARGET_FILE:${aot_args_EXECUTABLE_NAME}>
+                                                      --gtest_fail_if_no_test_linked
+    )
+
+    # Ensure that GTest will shuffle the tests.
+    set_property(TEST ${aot_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_SHUFFLE=1")
+    set_property(TEST ${aot_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_RANDOM_SEED=0")
+  endforeach()
 endfunction()
 
 # Common test object library.

@@ -35,6 +35,7 @@ struct parallel_for_t {
         return this->operator()(std::move(label), policy_t(0, work_count), std::move(functor));
     }
 
+    //! @warning May default to @c Kokkos::DefaultExecutionSpace, see https://github.com/kokkos/kokkos/blob/be33a115413f5eef8f82ff0ad1ca85c331edf153/core/src/Kokkos_Parallel.hpp#L155-L157.
     template <typename Functor, std::integral T>
     constexpr auto operator()(const T work_count, Functor functor) const {
         return this->operator()("", work_count, std::move(functor));

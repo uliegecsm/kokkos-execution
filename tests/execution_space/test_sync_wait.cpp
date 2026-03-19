@@ -16,11 +16,9 @@
  * The tests can be found in @ref tests/execution_space/test_sync_wait.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
-using ExecutionSpaceContextTest = Tests::Utils::ExecutionSpaceContextTest<execution_space>;
+using ExecutionSpaceContextTest = Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>;
 
 /**
  * @test Ensure that @c sync_wait is properly customized.

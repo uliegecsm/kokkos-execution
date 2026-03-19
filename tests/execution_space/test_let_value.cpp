@@ -24,14 +24,12 @@ PRAGMA_DIAGNOSTIC_POP
  * The tests can be found in @ref tests/execution_space/test_let_value.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
 class LetValueTest
-    : public Tests::Utils::ExecutionSpaceContextTest<execution_space>
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t =
@@ -47,7 +45,7 @@ TEST_F(LetValueTest, scoped_allocation) {
 
     experimental::execution::single_thread_context stc{};
 
-    using view_of_5_t = Kokkos::View<value_t[5], typename execution_space::memory_space>;
+    using view_of_5_t = Kokkos::View<value_t[5], typename TEST_EXECUTION_SPACE::memory_space>;
 
     //! Allocate a @c Kokkos view only when the sender is running, put it in the value channel.
     auto allocate = stdexec::schedule(esc.get_scheduler())

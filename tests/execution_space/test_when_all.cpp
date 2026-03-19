@@ -28,14 +28,12 @@ PRAGMA_DIAGNOSTIC_POP
  * The tests can be found in @ref tests/execution_space/test_when_all.cpp.
  */
 
-using execution_space = Kokkos::DefaultExecutionSpace;
-
 namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
 class WhenAllTest
-    : public Tests::Utils::ExecutionSpaceContextTest<execution_space>
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
@@ -279,12 +277,12 @@ TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
 
     const context_t esc_A{exec_A}, esc_B{exec_B}, esc_C{exec_C};
 
-    auto br_A = ::stdexec::schedule(esc_A.get_scheduler()) | THEN_LABELED_PFOR('A');
-    auto br_B = ::stdexec::schedule(esc_B.get_scheduler()) | THEN_LABELED_PFOR('B');
-    auto br_C = ::stdexec::schedule(esc_C.get_scheduler()) | THEN_LABELED_PFOR('C');
+    auto br_A = ::stdexec::schedule(esc_A.get_scheduler()) | THEN_LABELED_PFOR(TEST_EXECUTION_SPACE, 'A');
+    auto br_B = ::stdexec::schedule(esc_B.get_scheduler()) | THEN_LABELED_PFOR(TEST_EXECUTION_SPACE, 'B');
+    auto br_C = ::stdexec::schedule(esc_C.get_scheduler()) | THEN_LABELED_PFOR(TEST_EXECUTION_SPACE, 'C');
 
     auto when_AB_then_D = ::stdexec::when_all(std::move(br_A), std::move(br_B))
-                        | ::stdexec::continues_on(esc_A.get_scheduler()) | THEN_LABELED_PFOR('D');
+                        | ::stdexec::continues_on(esc_A.get_scheduler()) | THEN_LABELED_PFOR(TEST_EXECUTION_SPACE, 'D');
 
     auto sndr = ::stdexec::when_all(std::move(when_AB_then_D), std::move(br_C));
 
