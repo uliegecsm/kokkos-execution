@@ -135,13 +135,12 @@ jobs:
               version: 22
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
-          - kokkos_backends: [OpenMP]
+          - kokkos_backends: [HPX]
             compiler:
-              family: clang
-              version: 22
+              family: gnu
+              version: 14
             base_image     : ubuntu:24.04
-            platforms      : linux/arm64
-            runs-on        : "['self-hosted', 'linux', 'docker', 'arm64']"
+            platforms      : linux/amd64
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
@@ -156,6 +155,13 @@ jobs:
             base_image     : nvcr.io/nvidia/cuda:13.1.0-devel-ubuntu24.04
             platforms      : linux/amd64
             kokkos_archs   : [BLACKWELL120]
+          - kokkos_backends: [HPX, Cuda]
+            compiler:
+              family: clang
+              version: 22
+            base_image     : nvcr.io/nvidia/cuda:13.1.0-devel-ubuntu24.04
+            platforms      : linux/amd64
+            kokkos_archs   : [BLACKWELL120]
           - kokkos_backends: [OpenMP, HIP]
             compiler:
               family: rocm
@@ -164,6 +170,13 @@ jobs:
             platforms      : linux/amd64
             kokkos_archs   : [ZEN5, AMD_GFX1201]
           # After this line come the images we build, but don't test.
+          - kokkos_backends: [OpenMP]
+            compiler:
+              family: clang
+              version: 22
+            base_image     : ubuntu:24.04
+            platforms      : linux/arm64
+            runs-on        : "['self-hosted', 'linux', 'docker', 'arm64']"
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
@@ -184,6 +197,14 @@ jobs:
           echo KOKKOS_USERNAME=$(jq '.github.kokkos.username' dependencies.json -j) >> $GITHUB_ENV
           echo KOKKOS_UTILS_SHA=$(jq '.github."kokkos-utils".sha' dependencies.json -j) >> $GITHUB_ENV
           echo PYTHON_VERSION=$(jq '.python' dependencies.json -j) >> $GITHUB_ENV
+
+      - run: |
+          python3 docker/backend.py \
+            --kokkos-backends=${{ join(matrix.kokkos_backends, ',') }} \
+            --dependencies=dependencies.json \
+            --input=docker/dockerfile \
+            --compiler-family=${{ matrix.compiler.family }} \
+            --output=docker/dockerfile.backend
 
       - uses: docker/login-action@v4
         with:
@@ -212,7 +233,7 @@ jobs:
             context: .
             platforms: ${{ matrix.platforms }}
             push: ${{ github.ref == 'refs/heads/main' }}
-            file: docker/dockerfile
+            file: docker/dockerfile.backend
             tags: ${{ steps.compute-tag.outputs.tag }}
             cache-from: type=registry,ref=${{ steps.compute-tag.outputs.tag }}
             cache-to: type=inline

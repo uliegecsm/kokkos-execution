@@ -43,7 +43,6 @@ RUN <<EOF
 EOF
 
 FROM requirements-compiler-gnu-base AS requirements-compiler-gnu
-FROM requirements-compiler-gnu-base AS requirements-compiler-gnu-nvidia
 
 FROM requirements-python AS requirements-compiler-rocm
 
@@ -168,8 +167,12 @@ RUN <<EOF
     cmake --build build --target install
 EOF
 
+FROM requirements-cmake AS requirements-backend
+
+REPLACE_REQUIREMENTS_BACKEND
+
 # Build Kokkos.
-FROM requirements-cmake AS kokkos-compile
+FROM requirements-backend AS kokkos-compile
 
 ARG COMPILER_FAMILY
 ARG KOKKOS_ARCHS
@@ -226,7 +229,7 @@ RUN --mount=target=/cmake/presets/kokkos-utils.json,type=bind,source=cmake/prese
 EOF
 
 # Build the final image from previous stages.
-FROM requirements-cmake AS final
+FROM requirements-backend AS final
 
 ARG DOXYGEN_VERSION
 ARG GOOGLETEST_VERSION

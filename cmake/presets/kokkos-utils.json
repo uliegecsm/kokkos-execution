@@ -34,14 +34,6 @@
             "cacheVariables": {"CMAKE_CXX_COMPILER": "hipcc"}
         },
         {
-            "$comment": "Use GNU for host code and nvcc for device code.",
-            "name": "cxx-cuda-gnu-nvidia",
-            "hidden": true,
-            "cacheVariables": {
-                "CMAKE_CXX_COMPILER": "$penv{Kokkos_ROOT}/bin/nvcc_wrapper"
-            }
-        },
-        {
             "$comment": "Use Clang for host and device code.",
             "name": "cxx-cuda-clang",
             "hidden": true,
@@ -56,11 +48,15 @@
             "inherits": ["default", "cxx-clang"]
         },
         {
-            "name": "gnu-nvidia-OpenMP-Cuda",
-            "inherits": ["default", "cxx-cuda-gnu-nvidia"]
+            "name": "gnu-HPX",
+            "inherits": ["default", "cxx-gnu"]
         },
         {
             "name": "clang-OpenMP-Cuda",
+            "inherits": ["default", "cxx-cuda-clang"]
+        },
+        {
+            "name": "clang-HPX-Cuda",
             "inherits": ["default", "cxx-cuda-clang"]
         },
         {
@@ -85,13 +81,18 @@
             "inherits": "default"
         },
         {
-            "name": "gnu-nvidia-OpenMP-Cuda",
-            "configurePreset": "gnu-nvidia-OpenMP-Cuda",
+            "name": "gnu-HPX",
+            "configurePreset": "gnu-HPX",
             "inherits": "default"
         },
         {
             "name": "clang-OpenMP-Cuda",
             "configurePreset": "clang-OpenMP-Cuda",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-HPX-Cuda",
+            "configurePreset": "clang-HPX-Cuda",
             "inherits": "default"
         },
         {

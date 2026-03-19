@@ -54,6 +54,10 @@ jobs:
             compiler:
               family: clang
               version: 22
+          - kokkos_backends: [HPX]
+            compiler:
+              family: gnu
+              version: 14
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
@@ -61,6 +65,12 @@ jobs:
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix     : -volta70
           - kokkos_backends: [OpenMP, Cuda]
+            compiler:
+              family: clang
+              version: 22
+            runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'blackwell120', 'gpu:0']"
+            tag_suffix     : -blackwell120
+          - kokkos_backends: [HPX, Cuda]
             compiler:
               family: clang
               version: 22
