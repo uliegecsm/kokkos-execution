@@ -3,6 +3,7 @@
 
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
+#include "tests/utils/functors/counter.hpp"
 #include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
@@ -72,8 +73,7 @@ consteval bool test_sndr_no_throw_transformable() {
     using sndr_bulk_maythrow_on_move_t =
         decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 1, Tests::Utils::Functors::NoOp<false, false, true>{}));
 
-    //! @todo It should not be nothrow transformable.
-    static_assert(stdexec::__detail::__has_nothrow_transform_sender<
+    static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
                   Kokkos::Execution::ExecutionSpaceImpl::Domain,
                   stdexec::set_value_t,
                   sndr_bulk_maythrow_on_move_t&&,
@@ -147,6 +147,39 @@ TEST_F(BulkTest, bulk) {
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), size / 2 * (size - 1));
+}
+
+//! @test Check that there isn't any spurious copy of the functor when the sender is connected as an rvalue or an lvalue.
+TEST_F(BulkTest, no_spurious_copy_on_connect) {
+    const context_t esc{exec};
+
+    Tests::Utils::Functors::Counter::reset();
+
+    {
+        auto lvalue = stdexec::schedule(esc.get_scheduler())
+                    | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::Counter{});
+
+        [[maybe_unused]]
+        auto lopstate = stdexec::connect(lvalue, Tests::Utils::SinkReceiver{});
+
+        ASSERT_EQ(Tests::Utils::Functors::Counter::copy_assignments, 0);
+        ASSERT_EQ(Tests::Utils::Functors::Counter::copy_constructions, 1);
+        ASSERT_EQ(Tests::Utils::Functors::Counter::move_assignments, 0);
+    }
+
+    Tests::Utils::Functors::Counter::reset();
+
+    {
+        auto rvalue = stdexec::schedule(esc.get_scheduler())
+                    | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::Counter{});
+
+        [[maybe_unused]]
+        auto ropstate = stdexec::connect(std::move(rvalue), Tests::Utils::SinkReceiver{});
+
+        ASSERT_EQ(Tests::Utils::Functors::Counter::copy_assignments, 0);
+        ASSERT_EQ(Tests::Utils::Functors::Counter::copy_constructions, 0);
+        ASSERT_EQ(Tests::Utils::Functors::Counter::move_assignments, 0);
+    }
 }
 
 } // namespace Tests::ExecutionSpaceImpl
