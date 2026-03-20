@@ -5,6 +5,7 @@
         "cpm": "0.42.0",
         "doxygen": "1.15.0",
         "googletest": "1.17.0",
+        "hpx": "1.11.0",
         "kokkos": {
             "sha": "1f5f4b6d82c07939f036263e4651d27a543c2049",
             "username": "kokkos"

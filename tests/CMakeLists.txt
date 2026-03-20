@@ -7,6 +7,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
 # Mapping from enabled Kokkos devices to execution space type.
 set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_CUDA "Cuda")
 set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_HIP "HIP")
+set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_HPX "Experimental::HPX")
 set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_OPENMP "OpenMP")
 set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_SERIAL "Serial")
 
@@ -27,7 +28,7 @@ function(add_one_test)
     endif()
 
     set(aot_args_EXECUTABLE_NAME
-        "${gprr_PARENT_RELPATH_REPR}_${aot_args_NAME}.${KOKKOS_DEVICE_TO_EXECUTION_SPACE_${DEVICE}}"
+        "${gprr_PARENT_RELPATH_REPR}_${aot_args_NAME}.${DEVICE}"
     )
 
     # Create test executable.

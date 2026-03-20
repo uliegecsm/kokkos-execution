@@ -1,13 +1,13 @@
-FROM ubuntu:24.04
+FROM python:3.14
 
 RUN <<EOF
     set -ex
 
-    apt update
+    pip install system-helpers typeguard
 
-    apt install --yes --no-install-recommends jq curl ca-certificates
+    apt-helpers install-packages --update --packages jq curl ca-certificates
 
     curl -sSL https://get.docker.com/ | sh
 
-    apt clean && rm -rf /var/lib/apt/lists/*
+    apt-helpers clean
 EOF

@@ -41,14 +41,6 @@
             }
         },
         {
-            "$comment": "Use GNU for host code and nvcc for device code.",
-            "name": "cxx-cuda-gnu-nvidia",
-            "hidden": true,
-            "cacheVariables": {
-                "CMAKE_CXX_COMPILER": "${sourceDir}/bin/nvcc_wrapper"
-            }
-        },
-        {
             "$comment": "Use Clang for host and device code.",
             "name": "cxx-cuda-clang",
             "hidden": true,
@@ -60,6 +52,14 @@
             "hidden": true,
             "cacheVariables": {
                 "Kokkos_ENABLE_OPENMP": "ON"
+            }
+        },
+        {
+            "$comment": "Inherit from this preset to use the HPX backend.",
+            "name": "HPX",
+            "hidden": true,
+            "cacheVariables": {
+                "Kokkos_ENABLE_HPX": "ON"
             }
         },
         {
@@ -91,12 +91,20 @@
             "inherits": ["default", "cxx-clang", "OpenMP"]
         },
         {
-            "name": "gnu-nvidia-OpenMP-Cuda",
-            "inherits": ["default", "cxx-cuda-gnu-nvidia", "OpenMP", "Cuda"]
+            "name": "gnu-HPX",
+            "inherits": ["default", "cxx-gnu", "HPX"]
         },
         {
             "name": "clang-OpenMP-Cuda",
             "inherits": ["default", "cxx-cuda-clang", "OpenMP", "Cuda"]
+        },
+        {
+            "name": "clang-HPX-Cuda",
+            "inherits": ["default", "cxx-cuda-clang", "HPX", "Cuda"],
+            "environment": {
+                "$comment": "https://github.com/kokkos/kokkos/issues/8977",
+                "LDFLAGS": "-latomic"
+            }
         },
         {
             "name": "rocm-OpenMP-HIP",
@@ -120,13 +128,18 @@
             "inherits": "default"
         },
         {
+            "name": "gnu-HPX",
+            "configurePreset": "gnu-HPX",
+            "inherits": "default"
+        },
+        {
             "name": "clang-OpenMP-Cuda",
             "configurePreset": "clang-OpenMP-Cuda",
             "inherits": "default"
         },
         {
-            "name": "gnu-nvidia-OpenMP-Cuda",
-            "configurePreset": "gnu-nvidia-OpenMP-Cuda",
+            "name": "clang-HPX-Cuda",
+            "configurePreset": "clang-HPX-Cuda",
             "inherits": "default"
         },
         {
