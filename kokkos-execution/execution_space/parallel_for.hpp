@@ -34,6 +34,7 @@ struct ParallelForSender {
     using closure_t = ParallelForClosure<Functor, ExecPolicy>;
     using execution_space = typename closure_t::execution_space;
 
+    parallel_for_t tag;
     closure_t clsr;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
@@ -67,6 +68,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
             "The policy's execution space type must be the same as the completion scheduler's execution space type.");
 
         return ParallelForSender<Sndr, functor_t, policy_t>{
+            {},
             {{std::move(label),
               std::move(functor),
               policy_t(Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec)}},
@@ -75,5 +77,17 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
 };
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
+
+#if !STDEXEC_HAS_BUILTIN(__builtin_structured_binding_size)
+namespace stdexec {
+
+//! See also https://cor3ntin.github.io/posts/clang21/#__builtin_structured_binding_size.
+template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+inline constexpr auto __structured_binding_size_v< // NOLINT(bugprone-reserved-identifier)
+    Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<Sndr, Functor, ExecPolicy>
+> = 3;
+
+} // namespace stdexec
+#endif
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP
