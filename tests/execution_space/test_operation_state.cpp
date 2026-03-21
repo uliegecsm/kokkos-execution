@@ -1,4 +1,5 @@
 #include "tests/utils/execution_space_context.hpp"
+#include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/sink_receiver.hpp"
 
@@ -47,6 +48,35 @@ consteval bool test_op_state_traits() {
     return true;
 }
 static_assert(test_op_state_traits());
+
+/**
+ * @test Check construction of operation state from a parallel for sender
+ *       when passing the sender as a @c const reference.
+ */
+constexpr bool test_op_state_passed_by_const_ref() {
+    using sndr_t =
+        decltype(stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()) | Kokkos::Execution::parallel_for("hello from pfor", Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10), Tests::Utils::Functors::Labeled<'a'>{}));
+
+    static_assert(!std::is_const_v<sndr_t>);
+
+    //! Connect the sender as a @c const reference.
+    using op_state_from_sndr_const_ref_t = stdexec::connect_result_t<const sndr_t&, Tests::Utils::SinkReceiver>;
+
+    static_assert(std::same_as<
+                  op_state_from_sndr_const_ref_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                      const typename OpStateTest::schedule_sender_t&,
+                      Tests::Utils::SinkReceiver,
+                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          Tests::Utils::Functors::Labeled<'a'>,
+                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+                      >
+                  >
+    >);
+
+    return true;
+}
+static_assert(test_op_state_passed_by_const_ref());
 
 //! @test Check construction, query for execution space instance, and start.
 TEST_F(OpStateTest, construct_query_and_start) {

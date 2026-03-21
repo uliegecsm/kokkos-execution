@@ -75,7 +75,13 @@ struct Scheduler {
 
         template <stdexec::receiver_of<completion_signatures> Rcvr>
         [[nodiscard]]
-        OpState<Rcvr> connect(Rcvr rcvr) noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
+        OpState<Rcvr> connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
+            return {std::move(rcvr)};
+        }
+
+        template <stdexec::receiver_of<completion_signatures> Rcvr>
+        [[nodiscard]]
+        OpState<Rcvr> connect(Rcvr rcvr) const & noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
             return {std::move(rcvr)};
         }
 
