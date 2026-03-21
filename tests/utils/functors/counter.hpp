@@ -1,7 +1,7 @@
 #ifndef KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_COUNTER_HPP
 #define KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_COUNTER_HPP
 
-#include <atomic>
+#include "Kokkos_Core.hpp"
 
 namespace Tests::Utils::Functors {
 
@@ -47,7 +47,8 @@ struct Counter {
         return *this;
     }
 
-    void operator()() const noexcept {
+    template <typename... Args>
+    KOKKOS_FUNCTION void operator()(Args&&...) const noexcept {
     }
 
     static void reset() {
