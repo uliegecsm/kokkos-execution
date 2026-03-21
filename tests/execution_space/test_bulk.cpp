@@ -54,6 +54,9 @@ consteval bool test_sndr_traits() {
                   >
     >);
 
+    //! Models the dispatching sender concept.
+    static_assert(Kokkos::Execution::Impl::dispatching_sender<bulk_sndr_t>);
+
     return true;
 }
 static_assert(test_sndr_traits());

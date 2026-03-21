@@ -5,6 +5,7 @@
 
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/sender_concepts.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 

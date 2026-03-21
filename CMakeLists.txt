@@ -86,6 +86,7 @@ target_sources(
             kokkos-execution/impl/completion_signatures.hpp
             kokkos-execution/impl/continues_on.hpp
             kokkos-execution/impl/env.hpp
+            kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/utils/ignore_warnings.hpp
 )

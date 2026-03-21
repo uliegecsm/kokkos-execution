@@ -38,12 +38,14 @@ struct TransformSenderFor<stdexec::then_t> {
     auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  sndr_t<Sndr, Functor, Env>,
+                 parallel_for_t,
                  typename sndr_t<Sndr, Functor, Env>::closure_t&&,
                  Sndr&&
         >) {
         auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
         return sndr_t<Sndr, Functor, Env>{
+            {},
             {{std::string(std::format("{}: then", Kokkos::Impl::TypeInfo<execution_space<Sndr, Env>>::name())),
               ThenWrapper<Functor>{std::forward<Functor>(functor)},
               policy_t<Sndr, Env>(schd.state->exec, 0, 1)}},

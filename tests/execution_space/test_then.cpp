@@ -33,7 +33,7 @@ class ThenTest
     using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
-//! @test Check traits of sender returned by @c then when customized for @c Kokkos::Execution::ExecutionSpaceImpl::Domain.
+//! @test Check traits of sender returned by @c then when customized for @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename ThenTest::schedule_sender_t;
@@ -44,6 +44,9 @@ consteval bool test_sndr_traits() {
         decltype(stdexec::then(std::declval<schd_sndr_t>(), std::declval<functor_t>())),
         stdexec::env<>
     >;
+
+    //! Models the dispatching sender concept.
+    static_assert(Kokkos::Execution::Impl::dispatching_sender<then_sndr_t>);
 
     //! The policy used in the parallel for created by the @c then sender has the expected launch bounds.
     using policy_t = typename then_sndr_t::closure_t::policy_t;

@@ -37,6 +37,7 @@ struct TransformSenderFor<stdexec::bulk_t> {
         Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  sndr_t<Sndr, Data, Env>,
+                 parallel_for_t,
                  typename sndr_t<Sndr, Data, Env>::closure_t&&,
                  Sndr&&
         >) {
@@ -45,6 +46,7 @@ struct TransformSenderFor<stdexec::bulk_t> {
         auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
         return sndr_t<Sndr, Data, Env>{
+            {},
             {{std::string(std::format("{}: bulk", Kokkos::Impl::TypeInfo<execution_space<Sndr, Env>>::name())),
               stdexec::__forward_like<Data>(functor),
               policy_t<Sndr, Env>(schd.state->exec, 0, shape)}},
