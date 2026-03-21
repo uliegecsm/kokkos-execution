@@ -26,8 +26,8 @@ struct NoOp {
 
     ~NoOp() = default;
 
-    KOKKOS_FUNCTION
-    void operator()() const noexcept(!MayThrowOnCall) {
+    template <typename... Args>
+    KOKKOS_FUNCTION void operator()(Args&&...) const noexcept(!MayThrowOnCall) {
     }
 };
 
