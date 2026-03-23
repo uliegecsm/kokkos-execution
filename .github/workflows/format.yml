@@ -16,7 +16,7 @@ jobs:
       image: ${{ inputs.CI_IMAGE }}:clang-22-OpenMP
     steps:
       - uses: actions/checkout@v6
-      - run: git ls-files *.hpp *.h *.cpp *.c | xargs clang-format-22 --dry-run --Werror
+      - run: git ls-files '*.hpp' '*.h' '*.cpp' '*.c' | xargs clang-format-22 --verbose --dry-run --Werror
 
   cmake:
     runs-on: [self-hosted, linux, docker, amd64]
