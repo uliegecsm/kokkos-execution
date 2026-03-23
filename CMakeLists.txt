@@ -79,6 +79,8 @@ target_sources(
             kokkos-execution/execution_space/parallel_for.hpp
             kokkos-execution/execution_space/schedule_from.hpp
             kokkos-execution/execution_space/scoped_region.hpp
+            kokkos-execution/execution_space/sender_concepts.hpp
+            kokkos-execution/execution_space/sender_introspection.hpp
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
             kokkos-execution/impl/attributes.hpp

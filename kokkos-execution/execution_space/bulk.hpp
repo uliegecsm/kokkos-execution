@@ -4,6 +4,8 @@
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
 #include "kokkos-execution/execution_space/parallel_for.hpp"
+#include "kokkos-execution/execution_space/sender_concepts.hpp"
+#include "kokkos-execution/execution_space/sender_introspection.hpp"
 #include "kokkos-execution/impl/bulk.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {

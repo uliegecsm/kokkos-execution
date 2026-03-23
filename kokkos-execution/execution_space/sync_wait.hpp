@@ -6,6 +6,7 @@
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
 #include "kokkos-execution/execution_space/get_exec.hpp"
+#include "kokkos-execution/execution_space/sender_concepts.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {

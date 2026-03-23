@@ -5,6 +5,7 @@
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
+#include "kokkos-execution/execution_space/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
