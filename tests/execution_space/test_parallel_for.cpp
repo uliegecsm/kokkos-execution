@@ -48,8 +48,9 @@ consteval bool test_sndr_traits() {
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_sndr_t = SndrAdptr<schd_sndr_t, functor_t, policy_t>;
 
-    //! Models the sender concept.
-    static_assert(stdexec::sender<pfor_sndr_t>);
+    //! Models the execution space completing sender concept.
+    static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<pfor_sndr_t>);
+    static_assert(std::same_as<Kokkos::Execution::ExecutionSpaceImpl::exec_of_t<pfor_sndr_t>, TEST_EXECUTION_SPACE>);
 
     //! Models the dispatching sender concept.
     static_assert(Kokkos::Execution::Impl::dispatching_sender<pfor_sndr_t>);
