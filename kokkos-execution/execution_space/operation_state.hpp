@@ -3,6 +3,7 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "kokkos-execution/execution_space/domain.hpp"
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
@@ -142,27 +143,29 @@ struct MayDelegateCompletionWithEvent<Rcvr, Exec, true> {
     }
 };
 
-template <stdexec::receiver Rcvr, Closure Clsr>
+template <stdexec::receiver Rcvr, Closure Clsr, Closure... Clsrs>
+requires(std::same_as<typename Clsr::execution_space, typename Clsrs::execution_space> && ...)
 struct OpStateBase
     : public stdexec::__immovable
     , public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::execution_space> {
     using execution_space = typename Clsr::execution_space;
     using receiver_t = Rcvr;
+    using closures_t = stdexec::__tuple<Clsr, Clsrs...>;
 
     using may_delegate_completion_with_event_t = MayDelegateCompletionWithEvent<Rcvr, execution_space>;
 
-    Clsr clsr;
+    closures_t clsrs;
 
-    constexpr explicit OpStateBase(Rcvr rcvr_, Clsr clsr_) noexcept(
+    constexpr explicit OpStateBase(Rcvr rcvr_, Clsr clsr_, Clsrs... clsrs_) noexcept(
         std::is_nothrow_constructible_v<may_delegate_completion_with_event_t, Rcvr>
-        && std::is_nothrow_move_constructible_v<Clsr>)
+        && std::is_nothrow_move_constructible_v<Clsr> && (std::is_nothrow_move_constructible_v<Clsrs> && ...))
         : may_delegate_completion_with_event_t{std::move(rcvr_)}
-        , clsr(std::move(clsr_)) {
+        , clsrs(std::move(clsr_), std::move(clsrs_)...) {
     }
 
     void propagate_completion_signal(stdexec::set_value_t) noexcept {
         try {
-            this->clsr.execute();
+            stdexec::__apply([](auto&... clsr) { (clsr.execute(), ...); }, clsrs);
         } catch (...) {
             this->propagate_completion_signal(stdexec::set_error, std::current_exception());
             return;
@@ -180,9 +183,10 @@ struct OpStateBase
         stdexec::set_stopped(std::move(this->rcvr));
     }
 
+    //! @note All @ref clsrs are assumed to reference the same execution space instance.
     [[nodiscard]]
     constexpr auto query(get_exec_t) const noexcept -> ExecutionSpaceRef<execution_space> {
-        return ExecutionSpaceRef<execution_space>{clsr.get_policy().space()};
+        return ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).get_policy().space()};
     }
 
     KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, this->rcvr)
@@ -214,29 +218,85 @@ struct OpStateReceiver {
         parent_op->rcvr)
 };
 
-template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure Clsr>
-struct OpState : public OpStateBase<Rcvr, Clsr> {
+template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure... Clsrs>
+requires(!Impl::dispatching_sender<Sndr>)
+struct OpState : public OpStateBase<Rcvr, Clsrs...> {
     using operation_state_concept = stdexec::operation_state_t;
 
-    using inner_opstate_t = stdexec::connect_result_t<Sndr, OpStateReceiver<OpStateBase<Rcvr, Clsr>>>;
+    using base_t = OpStateBase<Rcvr, Clsrs...>;
+
+    using inner_opstate_t = stdexec::connect_result_t<Sndr, OpStateReceiver<base_t>>;
+
+    static constexpr bool opstate_base_is_nothrow_constructible =
+        std::is_nothrow_constructible_v<base_t, Rcvr&&, Clsrs&&...>;
+
+    static constexpr bool inner_opstate_is_nothrow_constructible =
+        stdexec::__nothrow_connectable<Sndr&&, OpStateReceiver<base_t>>;
 
     inner_opstate_t inner_opstate;
 
     constexpr explicit OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         Rcvr rcvr_,
-        Clsr clsr_)
-        noexcept(
-            std::is_nothrow_constructible_v<OpStateBase<Rcvr, Clsr>, Rcvr&&, Clsr&&>
-            && stdexec::__nothrow_connectable<Sndr&&, OpStateReceiver<OpStateBase<Rcvr, Clsr>>>)
-        : OpStateBase<Rcvr, Clsr>(std::move(rcvr_), std::move(clsr_))
-        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), OpStateReceiver<OpStateBase<Rcvr, Clsr>>{this})) {
+        Clsrs... clsrs_) noexcept(opstate_base_is_nothrow_constructible && inner_opstate_is_nothrow_constructible)
+        : base_t(std::move(rcvr_), std::move(clsrs_)...)
+        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), OpStateReceiver<base_t>{this})) {
     }
 
     void start() & noexcept {
         stdexec::start(inner_opstate);
     }
 };
+
+template <typename Sndr, typename Rcvr, typename... Clsrs>
+struct MakeOpStateFn {
+    using type = OpState<Sndr, Rcvr, Clsrs...>;
+
+    // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
+    constexpr auto operator()(Sndr&& sndr, Rcvr rcvr, Clsrs... clsrs) const
+        noexcept(std::is_nothrow_constructible_v<type, Sndr&&, Rcvr&&, Clsrs&&...>) -> type {
+        return type(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsrs)...);
+    }
+};
+
+template <Impl::dispatching_sender Sndr, typename Rcvr, typename... Clsrs>
+struct MakeOpStateFn<Sndr, Rcvr, Clsrs...> {
+    using child_of_sndr_t = stdexec::__child_of<Sndr>;
+    using clsr_of_sndr_t = typename stdexec::transform_sender_result_t<Sndr, stdexec::env_of_t<Rcvr>>::closure_t;
+
+    using make_opstate_fn_t = MakeOpStateFn<child_of_sndr_t, Rcvr, clsr_of_sndr_t, Clsrs...>;
+    using type = typename make_opstate_fn_t::type;
+
+    static constexpr bool sndr_has_nothrow_transform_sender = stdexec::__detail::__has_nothrow_transform_sender<
+        Kokkos::Execution::ExecutionSpaceImpl::Domain,
+        stdexec::set_value_t,
+        Sndr&&,
+        stdexec::env_of_t<Rcvr>
+    >;
+
+    static constexpr bool is_nothrow_make_opstate =
+        std::is_nothrow_invocable_v<make_opstate_fn_t, child_of_sndr_t&&, Rcvr&&, clsr_of_sndr_t&&, Clsrs&&...>;
+
+    /**
+     * @note @c stdexec::__forward_like is used because @c stdexec propagates the value category
+     *       of the parent sender to its child.
+     *
+     * See https://github.com/NVIDIA/stdexec/blob/0a3afb8de52b4fde8ca7ab62ca09a23a8aa6a30f/include/stdexec/__detail/__sender_introspection.hpp#L244-L246.
+     */
+    // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
+    constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs... clsrs) const
+        noexcept(sndr_has_nothrow_transform_sender && is_nothrow_make_opstate) -> type {
+        auto trnsfrmd_sndr = stdexec::transform_sender(std::forward<Sndr>(sndr), stdexec::get_env(rcvr));
+        return make_opstate_fn_t{}(
+            stdexec::__forward_like<Sndr>(trnsfrmd_sndr.sndr),
+            std::forward<Rcvr>(rcvr),
+            std::move(trnsfrmd_sndr.clsr),
+            std::move(clsrs)...);
+    }
+};
+
+template <typename Sndr, typename Rcvr, typename... Clsrs>
+using opstate_t = typename MakeOpStateFn<Sndr, Rcvr, Clsrs...>::type;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 

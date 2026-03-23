@@ -148,4 +148,153 @@ TEST_F(OpStateTest, construct_query_and_start) {
     ASSERT_EQ(witness(), size / 2 * (size - 1) - 1);
 }
 
+//! @test Check construction of flattened operation state from two parallel for senders.
+consteval bool test_op_state_flattened_from_two() {
+    using sndr_t = decltype(Kokkos::Execution::parallel_for(
+        Kokkos::Execution::parallel_for(
+            stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+            "hello from pfor",
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+            Tests::Utils::Functors::Labeled<'a'>{}),
+        "hello again from pfor",
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+        Tests::Utils::Functors::Labeled<'b'>{}));
+
+    using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
+
+    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string,
+        Tests::Utils::Functors::Labeled<'a'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string,
+        Tests::Utils::Functors::Labeled<'b'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+
+    static_assert(std::same_as<
+                  op_state_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                      typename OpStateTest::schedule_sender_t,
+                      Tests::Utils::SinkReceiver,
+                      clsr_0_t,
+                      clsr_1_t
+                  >
+    >);
+
+    static_assert(!std::is_nothrow_constructible_v<op_state_t, sndr_t, Tests::Utils::SinkReceiver, clsr_0_t, clsr_1_t>);
+
+    static_assert(stdexec::__tuple_size_v<typename op_state_t::closures_t> == 2);
+
+    return true;
+}
+static_assert(test_op_state_flattened_from_two());
+
+//! @test Check construction of flattened operation state from three parallel for senders.
+consteval bool test_op_state_flattened_from_three() {
+    using sndr_t = decltype(Kokkos::Execution::parallel_for(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(
+                stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+                "hello from pfor",
+                Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+                Tests::Utils::Functors::Labeled<'a'>{}),
+            "hello again from pfor",
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+            Tests::Utils::Functors::Labeled<'b'>{}),
+        "hello one more time from pfor",
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+        Tests::Utils::Functors::Labeled<'c'>{}));
+
+    using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
+
+    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string,
+        Tests::Utils::Functors::Labeled<'a'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string,
+        Tests::Utils::Functors::Labeled<'b'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+    using clsr_2_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string,
+        Tests::Utils::Functors::Labeled<'c'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+
+    static_assert(std::same_as<
+                  op_state_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                      typename OpStateTest::schedule_sender_t,
+                      Tests::Utils::SinkReceiver,
+                      clsr_0_t,
+                      clsr_1_t,
+                      clsr_2_t
+                  >
+    >);
+
+    static_assert(
+        !std::is_nothrow_constructible_v<op_state_t, sndr_t, Tests::Utils::SinkReceiver, clsr_0_t, clsr_1_t, clsr_2_t>);
+
+    static_assert(stdexec::__tuple_size_v<typename op_state_t::closures_t> == 3);
+
+    return true;
+}
+static_assert(test_op_state_flattened_from_three());
+
+//! @test Check construction of flattened operation state from three parallel for senders with mixed tags.
+consteval bool test_op_state_flattened_from_three_mixed_tags() {
+    using sndr_t = decltype(stdexec::then(
+        stdexec::bulk(
+            Kokkos::Execution::parallel_for(
+                stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+                "hello from pfor",
+                Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<size_t>>(0, 10),
+                Tests::Utils::Functors::Labeled<'a'>{}),
+            stdexec::par,
+            10,
+            Tests::Utils::Functors::Labeled<'b'>{}),
+        Tests::Utils::Functors::Labeled<'c'>{}));
+
+    using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
+
+    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string,
+        Tests::Utils::Functors::Labeled<'a'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<size_t>>
+    >;
+    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string_view,
+        Tests::Utils::Functors::Labeled<'b'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+    using clsr_2_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        std::string_view,
+        Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'c'>>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
+    >;
+
+    static_assert(std::same_as<
+                  op_state_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                      typename OpStateTest::schedule_sender_t,
+                      Tests::Utils::SinkReceiver,
+                      clsr_0_t,
+                      clsr_1_t,
+                      clsr_2_t
+                  >
+    >);
+
+    static_assert(
+        !std::is_nothrow_constructible_v<op_state_t, sndr_t, Tests::Utils::SinkReceiver, clsr_0_t, clsr_1_t, clsr_2_t>);
+
+    static_assert(stdexec::__tuple_size_v<typename op_state_t::closures_t> == 3);
+
+    return true;
+}
+static_assert(test_op_state_flattened_from_three_mixed_tags());
+
 } // namespace Tests::ExecutionSpaceImpl
