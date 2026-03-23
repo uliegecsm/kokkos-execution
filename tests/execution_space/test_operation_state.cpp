@@ -54,8 +54,11 @@ static_assert(test_op_state_traits());
  *       when passing the sender as a @c const reference.
  */
 constexpr bool test_op_state_passed_by_const_ref() {
-    using sndr_t =
-        decltype(stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()) | Kokkos::Execution::parallel_for("hello from pfor", Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10), Tests::Utils::Functors::Labeled<'a'>{}));
+    using sndr_t = decltype(Kokkos::Execution::parallel_for(
+        stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+        "hello from pfor",
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+        Tests::Utils::Functors::Labeled<'a'>{}));
 
     static_assert(!std::is_const_v<sndr_t>);
 
