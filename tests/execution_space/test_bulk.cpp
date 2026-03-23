@@ -92,8 +92,11 @@ static_assert(test_sndr_no_throw_transformable());
  *       when passing the sender as a @c const reference.
  */
 constexpr bool test_op_state_passed_by_const_ref() {
-    using sndr_t =
-        decltype(stdexec::schedule(std::declval<typename BulkTest::context_t>().get_scheduler()) | stdexec::bulk(stdexec::par, 1, Tests::Utils::Functors::Labeled<'a'>{}));
+    using sndr_t = decltype(stdexec::bulk(
+        stdexec::schedule(std::declval<typename BulkTest::context_t>().get_scheduler()),
+        stdexec::par,
+        1,
+        Tests::Utils::Functors::Labeled<'a'>{}));
 
     static_assert(!std::is_const_v<sndr_t>);
 
