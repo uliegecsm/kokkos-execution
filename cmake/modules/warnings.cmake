@@ -18,7 +18,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # For Clang, diagnostic flags are listed at https://clang.llvm.org/docs/DiagnosticsReference.html.
     add_compile_options(
       -Werror=unused-private-field -Werror=unused-lambda-capture -Werror=unused-member-function
-      -Werror=delete-non-virtual-dtor
+      -Werror=delete-non-virtual-dtor -Werror=dangling-gsl
     )
   endif()
 

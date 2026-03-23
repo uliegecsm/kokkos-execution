@@ -7,51 +7,46 @@
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
 #include "kokkos-execution/execution_space/sender_introspection.hpp"
 #include "kokkos-execution/impl/bulk.hpp"
+#include "kokkos-execution/impl/dispatch_label.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 template <>
 struct TransformSenderFor<stdexec::bulk_t> {
-    template <typename Sndr, typename Env>
-    using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, const Env&>;
-
-    template <typename Sndr, typename Env>
-    using execution_space = typename schd_t<Sndr, Env>::execution_space;
-
-    template <typename Sndr, typename Env>
-    using policy_t = Kokkos::RangePolicy<execution_space<Sndr, Env>>;
-
-    template <typename Data>
-    using functor_t = typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t;
-
-    template <typename Sndr, typename Data, typename Env>
-    using sndr_t = ParallelForSender<Sndr, functor_t<Data>, policy_t<Sndr, Env>>;
+    template <typename Env, typename Data, typename Sndr>
+    using trnsfrmd_sndr_t = ParallelForSender<
+        Sndr,
+        std::string_view,
+        typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t,
+        Kokkos::RangePolicy<exec_of_t<Sndr, Env>>
+    >;
 
     template <
         typename Env,
         Kokkos::Execution::Impl::has_parallel_policy Data,
         execution_space_completing_sender<Env> Sndr
     >
+    requires requires { typename exec_of_t<Sndr, Env>; }
     auto operator()(
         const Env& env,
         stdexec::bulk_t,
         Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
         Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
-                 sndr_t<Sndr, Data, Env>,
+                 trnsfrmd_sndr_t<Env, Data, Sndr>,
                  parallel_for_t,
-                 typename sndr_t<Sndr, Data, Env>::closure_t&&,
+                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
         auto& [parallel_policy, shape, functor] = data;
 
         auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-        return sndr_t<Sndr, Data, Env>{
-            {},
-            {{std::string(std::format("{}: bulk", Kokkos::Impl::TypeInfo<execution_space<Sndr, Env>>::name())),
+        return trnsfrmd_sndr_t<Env, Data, Sndr>{
+            parallel_for_t{},
+            {{Impl::dispatch_label<exec_of_t<Sndr, Env>, ": bulk">(),
               stdexec::__forward_like<Data>(functor),
-              policy_t<Sndr, Env>(schd.state->exec, 0, shape)}},
+              Kokkos::RangePolicy<exec_of_t<Sndr, Env>>(schd.state->exec, 0, shape)}},
             std::forward<Sndr>(sndr)};
     }
 };

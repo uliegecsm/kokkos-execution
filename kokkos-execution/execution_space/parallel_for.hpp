@@ -13,15 +13,19 @@
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForClosure {
     using policy_t = ExecPolicy;
     using execution_space = typename policy_t::execution_space;
 
-    Kokkos::Execution::Impl::ParallelForData<Functor, policy_t> data;
+    Kokkos::Execution::Impl::ParallelForData<Label, Functor, policy_t> data;
 
     void execute() const & {
-        Kokkos::parallel_for(data.label, data.policy, data.functor);
+        if constexpr (std::convertible_to<Label, std::string>) {
+            Kokkos::parallel_for(data.label, data.policy, data.functor);
+        } else {
+            Kokkos::parallel_for(std::string{data.label}, data.policy, data.functor);
+        }
     }
 
     const policy_t& get_policy() const & noexcept {
@@ -29,11 +33,11 @@ struct ParallelForClosure {
     }
 };
 
-template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender {
     using sender_concept = stdexec::sender_t;
 
-    using closure_t = ParallelForClosure<Functor, ExecPolicy>;
+    using closure_t = ParallelForClosure<Label, Functor, ExecPolicy>;
     using execution_space = typename closure_t::execution_space;
 
     parallel_for_t tag;
@@ -54,26 +58,40 @@ struct ParallelForSender {
 
 template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
-    template <typename Env, typename Data, execution_space_completing_sender<Env> Sndr>
-    auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const noexcept {
-        auto [label, functor, policy] = std::forward<Data>(data);
+    template <typename Env, typename Data, typename Sndr>
+    using trnsfrmd_sndr_t = ParallelForSender<
+        Sndr,
+        typename std::remove_cvref_t<Data>::label_t,
+        typename std::remove_cvref_t<Data>::functor_t,
+        typename std::remove_cvref_t<Data>::policy_t
+    >;
 
-        using functor_t = decltype(functor);
-        using policy_t = decltype(policy);
-        using closure_t = ParallelForClosure<functor_t, policy_t>;
+    template <typename Env, typename Data, execution_space_completing_sender<Env> Sndr>
+    auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const
+        noexcept(std::is_nothrow_constructible_v<
+                 trnsfrmd_sndr_t<Env, Data, Sndr>,
+                 parallel_for_t,
+                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
+                 Sndr&&
+        >) {
+        auto [label, functor, policy] = std::forward<Data>(data);
 
         auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
         //! Only the execution space instance, not its type, can be bound lately.
         static_assert(
-            std::same_as<typename decltype(schd)::execution_space, typename closure_t::execution_space>,
+            std::same_as<
+                typename decltype(schd)::execution_space,
+                typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t::execution_space
+            >,
             "The policy's execution space type must be the same as the completion scheduler's execution space type.");
 
-        return ParallelForSender<Sndr, functor_t, policy_t>{
-            {},
+        return trnsfrmd_sndr_t<Env, Data, Sndr>{
+            parallel_for_t{},
             {{std::move(label),
               std::move(functor),
-              policy_t(Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec)}},
+              typename std::remove_cvref_t<Data>::policy_t(
+                  Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec)}},
             std::forward<Sndr>(sndr)};
     }
 };
@@ -84,9 +102,9 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
 namespace stdexec {
 
 //! See also https://cor3ntin.github.io/posts/clang21/#__builtin_structured_binding_size.
-template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 inline constexpr auto __structured_binding_size_v< // NOLINT(bugprone-reserved-identifier)
-    Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<Sndr, Functor, ExecPolicy>
+    Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<Sndr, Label, Functor, ExecPolicy>
 > = 3;
 
 } // namespace stdexec

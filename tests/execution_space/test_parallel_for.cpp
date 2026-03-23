@@ -38,15 +38,16 @@ class ParallelForTest
  * @test Check traits of sender returned by @ref Kokkos::Execution::parallel_for either uncustomized
  *       or customized for @ref Kokkos::Execution::ExecutionSpaceContext.
  */
-template <template <typename, typename, typename> class SndrAdptr>
+template <template <typename, typename, typename, typename> class SndrAdptr>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename ParallelForTest::schedule_sender_t;
 
     //! Parallel for sender.
+    using label_t = std::string;
     using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using pfor_sndr_t = SndrAdptr<schd_sndr_t, functor_t, policy_t>;
+    using pfor_sndr_t = SndrAdptr<schd_sndr_t, label_t, functor_t, policy_t>;
 
     //! Models the execution space completing sender concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<pfor_sndr_t>);
@@ -80,7 +81,7 @@ consteval bool test_sndr_traits() {
 
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
-                  Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<schd_sndr_t, functor_t, policy_t>
+                  Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>
     >);
 
     /**
@@ -92,7 +93,7 @@ consteval bool test_sndr_traits() {
      */
     static_assert(!std::is_nothrow_move_constructible_v<typename ParallelForTest::view_s_t>);
     static_assert(!std::is_nothrow_move_constructible_v<functor_t>);
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<functor_t, policy_t>;
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<label_t, functor_t, policy_t>;
     static_assert(!std::is_nothrow_move_constructible_v<closure_t>);
     static_assert(!stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
 
@@ -107,15 +108,18 @@ consteval bool test_sndr_decomposition() {
     using schd_sndr_t = typename ParallelForTest::schedule_sender_t;
 
     //! Parallel for sender.
+    using label_t = std::string;
     using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, functor_t, policy_t>;
+    using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>;
 
     //! Is decomposable into the expected algorithm tag, data, and child sender.
     static_assert(std::same_as<stdexec::tag_of_t<pfor_sndr_t>, Kokkos::Execution::parallel_for_t>);
 
-    static_assert(
-        std::same_as<stdexec::__data_of<pfor_sndr_t>, Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t>>);
+    static_assert(std::same_as<
+                  stdexec::__data_of<pfor_sndr_t>,
+                  Kokkos::Execution::Impl::ParallelForData<label_t, functor_t, policy_t>
+    >);
 
     static_assert(stdexec::__nbr_children_of<pfor_sndr_t> == 1);
     static_assert(std::same_as<stdexec::__child_of<pfor_sndr_t>, schd_sndr_t>);
@@ -136,7 +140,7 @@ template <typename ViewType, bool ExpectNoThrowMoveConstructible>
 consteval bool test_closure_traits() {
     using functor_t = Tests::Utils::Functors::SumIndices<ViewType>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<functor_t, policy_t>;
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<std::string, functor_t, policy_t>;
 
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);
