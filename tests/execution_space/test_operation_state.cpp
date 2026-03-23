@@ -27,7 +27,7 @@ consteval bool test_op_state_traits() {
     //! Parallel for closure.
     using functor_t = Tests::Utils::Functors::SumIndices<typename OpStateTest::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using clsr_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<functor_t, policy_t>;
+    using clsr_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<std::string, functor_t, policy_t>;
 
     //! Receiver.
     using rcvr_t = Tests::Utils::SinkReceiver;
@@ -71,6 +71,7 @@ constexpr bool test_op_state_passed_by_const_ref() {
                       const typename OpStateTest::schedule_sender_t&,
                       Tests::Utils::SinkReceiver,
                       Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          std::string,
                           Tests::Utils::Functors::Labeled<'a'>,
                           Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
                       >

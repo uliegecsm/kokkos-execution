@@ -124,6 +124,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         Kokkos::Execution::ExecutionSpaceImpl::OpStateReceiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
             Kokkos::Execution::ExecutionSpaceImpl::SyncWaitReceiver<host_execution_space>,
             Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                std::string_view,
                 Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'h'>>,
                 Kokkos::RangePolicy<host_execution_space, Kokkos::LaunchBounds<1>>
             >
@@ -164,6 +165,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         Kokkos::Execution::ExecutionSpaceImpl::OpStateReceiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
             sfrom_con_h_then_rcvr_t,
             Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                std::string_view,
                 Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'B'>>,
                 Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
             >
@@ -214,6 +216,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         Kokkos::Execution::ExecutionSpaceImpl::OpStateReceiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
             sfrom_con_B_then_sfrom_con_h_then_rcvr_t,
             Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                std::string_view,
                 Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'A'>>,
                 Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
             >

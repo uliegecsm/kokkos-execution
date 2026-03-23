@@ -9,7 +9,7 @@ namespace Kokkos::Execution {
 
 namespace Impl {
 
-template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender;
 
 } // namespace Impl
@@ -43,30 +43,32 @@ struct parallel_for_t {
 
     template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
     constexpr auto operator()(Sndr&& sndr, std::string label, ExecPolicy policy, Functor functor) const {
-        return Impl::ParallelForSender<Sndr, Functor, ExecPolicy>(
+        return Impl::ParallelForSender<Sndr, std::string, Functor, ExecPolicy>(
             {std::move(label), std::move(functor), std::move(policy)}, std::forward<Sndr>(sndr));
     }
 };
 
 namespace Impl {
-template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+
+template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForData {
+    using label_t = Label;
     using functor_t = Functor;
     using policy_t = ExecPolicy;
 
-    std::string label;
+    label_t label;
     functor_t functor;
     policy_t policy;
 };
 
-template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Functor, ExecPolicy>, Sndr> {
+template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Label, Functor, ExecPolicy>, Sndr> {
     using sender_concept = stdexec::sender_t;
 
-    using base_t = stdexec::__tuple<parallel_for_t, ParallelForData<Functor, ExecPolicy>, Sndr>;
+    using base_t = stdexec::__tuple<parallel_for_t, ParallelForData<Label, Functor, ExecPolicy>, Sndr>;
 
     ParallelForSender(
-        ParallelForData<Functor, ExecPolicy> data,
+        ParallelForData<Label, Functor, ExecPolicy> data,
         Sndr&& sndr) // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         : base_t{parallel_for_t{}, std::move(data), std::forward<Sndr>(sndr)} {
     }
