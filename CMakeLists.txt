@@ -58,6 +58,17 @@ endif()
 add_library(kokkosexecution INTERFACE)
 add_library(Kokkos::Execution ALIAS kokkosexecution)
 
+set(KOKKOS_DEVICE_HEADERS_CUDA "kokkos-execution/impl/Cuda/event.hpp")
+set(KOKKOS_DEVICE_HEADERS_HIP "kokkos-execution/impl/HIP/event.hpp")
+set(KOKKOS_DEVICE_HEADERS_HPX "kokkos-execution/impl/HPX/event.hpp")
+
+set(KOKKOS_DEVICES_HEADERS "")
+foreach(DEVICE IN LISTS Kokkos_DEVICES)
+  if(DEFINED KOKKOS_DEVICE_HEADER_${DEVICE})
+    list(APPEND KOKKOS_DEVICES_HEADERS ${KOKKOS_DEVICE_HEADER_${DEVICE}})
+  endif()
+endforeach()
+
 target_sources(
   kokkosexecution
   INTERFACE FILE_SET
@@ -89,9 +100,11 @@ target_sources(
             kokkos-execution/impl/continues_on.hpp
             kokkos-execution/impl/dispatch_label.hpp
             kokkos-execution/impl/env.hpp
+            kokkos-execution/impl/event.hpp
             kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/utils/ignore_warnings.hpp
+            ${KOKKOS_DEVICES_HEADERS}
 )
 
 target_compile_features(kokkosexecution INTERFACE cxx_std_20)
