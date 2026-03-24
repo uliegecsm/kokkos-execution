@@ -22,7 +22,7 @@ struct Event<Kokkos::Cuda> {
     mutable bool arrived = false;
 
     Event() = default;
-    
+
     explicit Event(const Kokkos::Cuda& exec) {
         record(exec);
     }

@@ -19,10 +19,10 @@ struct Event<Kokkos::HIP> {
     using mark_event_t = MarkEvent<Kokkos::HIP>;
 
     hipEvent_t event = nullptr;
-    mutablebool arrived = false;
+    mutable bool arrived = false;
 
     Event() = default;
-    
+
     explicit Event(const Kokkos::HIP& exec) {
         record(exec);
     }
