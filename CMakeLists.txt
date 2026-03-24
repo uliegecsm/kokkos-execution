@@ -44,6 +44,7 @@ cpmaddpackage(
   OPTIONS
   "STDEXEC_BUILD_TESTS OFF"
   "STDEXEC_BUILD_EXAMPLES OFF"
+  "STDEXEC_INSTALL ON"
 )
 
 # Compiler warnings.
