@@ -29,6 +29,7 @@
         KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED_COMPILER_SPECIFIC                                           \
         PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-copy")                                                                 \
         PRAGMA_DIAGNOSTIC_IGNORED("-Wempty-body")                                                                      \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wignored-qualifiers")                                                              \
         PRAGMA_DIAGNOSTIC_IGNORED("-Wshadow")                                                                          \
         PRAGMA_DIAGNOSTIC_IGNORED("-Wsuggest-override")                                                                \
         PRAGMA_DIAGNOSTIC_IGNORED("-Wswitch-default")                                                                  \
