@@ -21,12 +21,9 @@ struct Event<Kokkos::Cuda> {
     cudaEvent_t event = nullptr;
     mutable bool arrived = false;
 
-    Event() {
-        KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-    }
-
-    explicit Event(const Kokkos::Cuda& exec)
-        : Event() {
+    Event() = default;
+    
+    explicit Event(const Kokkos::Cuda& exec) {
         record(exec);
     }
 
@@ -53,14 +50,17 @@ struct Event<Kokkos::Cuda> {
     }
 
     void record(const Kokkos::Cuda& exec) {
+        if (event == nullptr) {
+            KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+        }
         KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventRecord(event, exec.cuda_stream()));
         arrived = false;
-        mark_event_t::record((void*) event, exec);
+        mark_event_t::record(static_cast<void*>(event), exec);
     }
 
     void wait() const {
         if (!arrived) {
-            mark_event_t::wait((void*) event);
+            mark_event_t::wait(static_cast<void*>(event));
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventSynchronize(event));
             arrived = true;
         }

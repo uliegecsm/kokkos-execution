@@ -19,14 +19,11 @@ struct Event<Kokkos::HIP> {
     using mark_event_t = MarkEvent<Kokkos::HIP>;
 
     hipEvent_t event = nullptr;
-    mutable bool arrived = false;
+    mutablebool arrived = false;
 
-    Event() {
-        KOKKOS_IMPL_HIP_SAFE_CALL(hipEventCreateWithFlags(&event, hipEventDisableTiming));
-    }
-
-    explicit Event(const Kokkos::HIP& exec)
-        : Event() {
+    Event() = default;
+    
+    explicit Event(const Kokkos::HIP& exec) {
         record(exec);
     }
 
@@ -53,14 +50,17 @@ struct Event<Kokkos::HIP> {
     }
 
     void record(const Kokkos::HIP& exec) {
+        if (event == nullptr) {
+            KOKKOS_IMPL_HIP_SAFE_CALL(hipEventCreateWithFlags(&event, hipEventDisableTiming));
+        }
         KOKKOS_IMPL_HIP_SAFE_CALL(hipEventRecord(event, exec.hip_stream()));
         arrived = false;
-        mark_event_t::record((void*) event, exec);
+        mark_event_t::record(static_cast<void*>(event), exec);
     }
 
     void wait() const {
         if (!arrived) {
-            mark_event_t::wait((void*) event);
+            mark_event_t::wait(static_cast<void*>(event));
             KOKKOS_IMPL_HIP_SAFE_CALL(hipEventSynchronize(event));
             arrived = true;
         }
