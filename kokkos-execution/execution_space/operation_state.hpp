@@ -21,6 +21,50 @@ concept Closure = requires(const Clsr& clsr) {
     requires std::same_as<std::remove_cvref_t<decltype(clsr.get_policy().space())>, typename Clsr::execution_space>;
 };
 
+/**
+ * @brief Synchronization at the boundary of the work enqueued on an execution space.
+ *
+ * Under special circumstances, the implementation is allowed to skip any synchronization of asynchronous work.
+ * Otherwise, synchronization must occur before invoking the downstream receiver. This situation may arise, for example,
+ * when the execution space scheduler is used in a @c stdexec::when_all branch. In the default implementation of @c stdexec::when_all,
+ * the branches are not terminated by a @c stdexec::schedule_from, so we'd be missing a synchronization.
+ */
+template <stdexec::receiver Rcvr, typename OpState>
+struct RequiresSynchronization {
+    static constexpr bool successor_handles_sync = stdexec::__is_instance_of<Rcvr, ScheduleFromReceiver>
+                                                || stdexec::__is_instance_of<Rcvr, SyncWaitReceiver>;
+
+    //! The synchronization will be handled by the successor.
+    constexpr bool operator()(const OpState&) const noexcept requires(successor_handles_sync)
+    {
+        return false;
+    }
+
+    /**
+     * If the receiver environment can be queried for @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,
+     * and if the successor enqueues work on the same execution space instance, no synchronization is needed.
+     */
+    bool operator()(const OpState& opstate) const noexcept
+        requires(!successor_handles_sync && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
+    {
+        if constexpr (
+            std::same_as<
+                std::remove_cvref_t<stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, get_exec_t>>,
+                stdexec::__query_result_t<OpState, get_exec_t>
+            >) {
+            return opstate.query(get_exec).get() != get_exec(stdexec::get_env(opstate.rcvr)).get();
+        }
+        return true;
+    }
+
+    //! As a fallback, synchronization is always required.
+    constexpr bool operator()(const OpState&) const noexcept
+        requires(!successor_handles_sync && !stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
+    {
+        return true;
+    }
+};
+
 template <stdexec::receiver Rcvr, Closure Clsr>
 struct OpStateBase : public stdexec::__immovable {
     using execution_space = typename Clsr::execution_space;
@@ -44,38 +88,7 @@ struct OpStateBase : public stdexec::__immovable {
             return;
         }
 
-        /**
-         * Sync at the boundary of the work enqueued on the execution space.
-         *
-         * If the receiver environment can be queried for @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,
-         * and if the successor enqueues work on the same execution space instance, no fence is needed.
-         *
-         * Otherwise, synchronization must occur before invoking the downstream receiver. This situation may arise, for example,
-         * when the execution space scheduler is used in a @c stdexec::when_all branch. In the default implementation of @c stdexec::when_all,
-         * the branches are not terminated by a @c stdexec::schedule_from, so we'd be missing a synchronization.
-         *
-         * @todo Explore event-based synchronization for cases in which the successor is still on the device,
-         *       but on a different execution space. The objective would be to avoid occupying the current host thread.
-         */
-        const bool skip = [&]() {
-            if constexpr (
-                stdexec::__is_instance_of<Rcvr, ScheduleFromReceiver>
-                | stdexec::__is_instance_of<Rcvr, SyncWaitReceiver>) {
-                return true;
-            } else {
-                if constexpr (stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>) {
-                    if constexpr (
-                        std::same_as<
-                            std::remove_cvref_t<decltype(get_exec(stdexec::get_env(rcvr)).get())>,
-                            execution_space
-                        >) {
-                        return this->query(get_exec).get() == get_exec(stdexec::get_env(rcvr)).get();
-                    }
-                }
-                return false;
-            }
-        }();
-        if (!skip) {
+        if (RequiresSynchronization<Rcvr, OpStateBase>{}(*this)) {
             this->query(get_exec)
                 .get()
                 .fence(std::format("{}: continuation", Kokkos::Impl::TypeInfo<execution_space>::name()));
