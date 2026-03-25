@@ -1,0 +1,172 @@
+diff --git core/src/Cuda/Kokkos_Cuda.hpp core/src/Cuda/Kokkos_Cuda.hpp
+index d4c0b13b0..a4bf6c241 100644
+--- core/src/Cuda/Kokkos_Cuda.hpp
++++ core/src/Cuda/Kokkos_Cuda.hpp
+@@ -122,9 +122,12 @@ class Cuda {
+   //! \name  Cuda space instances
+ 
+   KOKKOS_DEFAULTED_FUNCTION Cuda(const Cuda&) = default;
+-  KOKKOS_FUNCTION Cuda(Cuda&& other) : Cuda(static_cast<const Cuda&>(other)) {}
++  KOKKOS_FUNCTION Cuda(Cuda&& other) noexcept(
++      std::is_nothrow_copy_constructible_v<Cuda>)
++      : Cuda(static_cast<const Cuda&>(other)) {}
+   KOKKOS_DEFAULTED_FUNCTION Cuda& operator=(const Cuda&) = default;
+-  KOKKOS_FUNCTION Cuda& operator=(Cuda&& other) {
++  KOKKOS_FUNCTION Cuda& operator=(Cuda&& other) noexcept(
++      std::is_nothrow_copy_assignable_v<Cuda>) {
+     return *this = static_cast<const Cuda&>(other);
+   }
+   ~Cuda();
+diff --git core/src/HIP/Kokkos_HIP.hpp core/src/HIP/Kokkos_HIP.hpp
+index d2be49e13..176e1da6a 100644
+--- core/src/HIP/Kokkos_HIP.hpp
++++ core/src/HIP/Kokkos_HIP.hpp
+@@ -35,9 +35,12 @@ class HIP {
+   using scratch_memory_space = ScratchMemorySpace<HIP>;
+ 
+   KOKKOS_DEFAULTED_FUNCTION HIP(const HIP&) = default;
+-  KOKKOS_FUNCTION HIP(HIP&& other) : HIP(static_cast<const HIP&>(other)) {}
++  KOKKOS_FUNCTION HIP(HIP&& other) noexcept(
++      std::is_nothrow_copy_constructible_v<HIP>)
++      : HIP(static_cast<const HIP&>(other)) {}
+   KOKKOS_DEFAULTED_FUNCTION HIP& operator=(const HIP&) = default;
+-  KOKKOS_FUNCTION HIP& operator=(HIP&& other) {
++  KOKKOS_FUNCTION HIP& operator=(HIP&& other) noexcept(
++      std::is_nothrow_copy_assignable_v<HIP>) {
+     return *this = static_cast<const HIP&>(other);
+   }
+   ~HIP();
+diff --git core/src/HPX/Kokkos_HPX.hpp core/src/HPX/Kokkos_HPX.hpp
+index 8a9325086..cf44aa775 100644
+--- core/src/HPX/Kokkos_HPX.hpp
++++ core/src/HPX/Kokkos_HPX.hpp
+@@ -208,9 +208,12 @@ class HPX {
+                  m_next_instance_id++, std::move(sender))))) {}
+ 
+   KOKKOS_DEFAULTED_FUNCTION HPX(const HPX &) = default;
+-  KOKKOS_FUNCTION HPX(HPX &&other) : HPX(static_cast<const HPX &>(other)) {}
++  KOKKOS_FUNCTION HPX(HPX &&other) noexcept(
++      std::is_nothrow_copy_constructible_v<HPX>)
++      : HPX(static_cast<const HPX &>(other)) {}
+   KOKKOS_DEFAULTED_FUNCTION HPX &operator=(const HPX &) = default;
+-  KOKKOS_FUNCTION HPX &operator=(HPX &&other) {
++  KOKKOS_FUNCTION HPX &operator=(HPX &&other) noexcept(
++      std::is_nothrow_copy_assignable_v<HPX>) {
+     return *this = static_cast<const HPX &>(other);
+   }
+ 
+diff --git core/src/OpenACC/Kokkos_OpenACC.hpp core/src/OpenACC/Kokkos_OpenACC.hpp
+index c8fd1d936..468a9dba7 100644
+--- core/src/OpenACC/Kokkos_OpenACC.hpp
++++ core/src/OpenACC/Kokkos_OpenACC.hpp
+@@ -63,9 +63,12 @@ class OpenACC {
+   using scratch_memory_space = ScratchMemorySpace<OpenACC>;
+ 
+   OpenACC(const OpenACC&) = default;
+-  OpenACC(OpenACC&& other) : OpenACC(static_cast<const OpenACC&>(other)) {}
++  OpenACC(OpenACC&& other) noexcept(
++      std::is_nothrow_copy_constructible_v<OpenACC>)
++      : OpenACC(static_cast<const OpenACC&>(other)) {}
+   OpenACC& operator=(const OpenACC&) = default;
+-  OpenACC& operator=(OpenACC&& other) {
++  OpenACC& operator=(OpenACC&& other) noexcept(
++      std::is_nothrow_copy_assignable_v<OpenACC>) {
+     return *this = static_cast<const OpenACC&>(other);
+   }
+   ~OpenACC();
+diff --git core/src/OpenMP/Kokkos_OpenMP.hpp core/src/OpenMP/Kokkos_OpenMP.hpp
+index b058c8b1a..b3ca1c9ca 100644
+--- core/src/OpenMP/Kokkos_OpenMP.hpp
++++ core/src/OpenMP/Kokkos_OpenMP.hpp
+@@ -52,10 +52,12 @@ class OpenMP {
+   using scratch_memory_space = ScratchMemorySpace<OpenMP>;
+ 
+   KOKKOS_DEFAULTED_FUNCTION OpenMP(const OpenMP&) = default;
+-  KOKKOS_FUNCTION OpenMP(OpenMP&& other)
++  KOKKOS_FUNCTION OpenMP(OpenMP&& other) noexcept(
++      std::is_nothrow_copy_constructible_v<OpenMP>)
+       : OpenMP(static_cast<const OpenMP&>(other)) {}
+   KOKKOS_DEFAULTED_FUNCTION OpenMP& operator=(const OpenMP&) = default;
+-  KOKKOS_FUNCTION OpenMP& operator=(OpenMP&& other) {
++  KOKKOS_FUNCTION OpenMP& operator=(OpenMP&& other) noexcept(
++      std::is_nothrow_copy_assignable_v<OpenMP>) {
+     return *this = static_cast<const OpenMP&>(other);
+   }
+   ~OpenMP();
+diff --git core/src/SYCL/Kokkos_SYCL.hpp core/src/SYCL/Kokkos_SYCL.hpp
+index b09f86c1e..0cdf5ca20 100644
+--- core/src/SYCL/Kokkos_SYCL.hpp
++++ core/src/SYCL/Kokkos_SYCL.hpp
+@@ -44,9 +44,11 @@ class SYCL {
+   using scratch_memory_space = ScratchMemorySpace<SYCL>;
+ 
+   SYCL(const SYCL&) = default;
+-  SYCL(SYCL&& other) : SYCL(static_cast<const SYCL&>(other)) {}
++  SYCL(SYCL&& other) noexcept(std::is_nothrow_copy_constructible_v<SYCL>)
++      : SYCL(static_cast<const SYCL&>(other)) {}
+   SYCL& operator=(const SYCL&) = default;
+-  SYCL& operator=(SYCL&& other) {
++  SYCL& operator=(SYCL&& other) noexcept(
++      std::is_nothrow_copy_assignable_v<SYCL>) {
+     return *this = static_cast<const SYCL&>(other);
+   }
+   ~SYCL();
+diff --git core/src/Serial/Kokkos_Serial.hpp core/src/Serial/Kokkos_Serial.hpp
+index cf6f8dc06..82a287865 100644
+--- core/src/Serial/Kokkos_Serial.hpp
++++ core/src/Serial/Kokkos_Serial.hpp
+@@ -99,10 +99,12 @@ class Serial {
+   //@}
+ 
+   KOKKOS_DEFAULTED_FUNCTION Serial(const Serial&) = default;
+-  KOKKOS_FUNCTION Serial(Serial&& other)
++  KOKKOS_FUNCTION Serial(Serial&& other) noexcept(
++      std::is_nothrow_copy_constructible_v<Serial>)
+       : Serial(static_cast<const Serial&>(other)) {}
+   KOKKOS_DEFAULTED_FUNCTION Serial& operator=(const Serial&) = default;
+-  KOKKOS_FUNCTION Serial& operator=(Serial&& other) {
++  KOKKOS_FUNCTION Serial& operator=(Serial&& other) noexcept(
++      std::is_nothrow_copy_assignable_v<Serial>) {
+     return *this = static_cast<const Serial&>(other);
+   }
+   ~Serial();
+diff --git core/src/Threads/Kokkos_Threads.hpp core/src/Threads/Kokkos_Threads.hpp
+index 985b5f829..e5fe30aff 100644
+--- core/src/Threads/Kokkos_Threads.hpp
++++ core/src/Threads/Kokkos_Threads.hpp
+@@ -102,10 +102,12 @@ class Threads {
+   uint32_t impl_instance_id() const noexcept { return 1; }
+ 
+   KOKKOS_DEFAULTED_FUNCTION Threads(const Threads&) = default;
+-  KOKKOS_FUNCTION Threads(Threads&& other)
++  KOKKOS_FUNCTION Threads(Threads&& other) noexcept(
++      std::is_nothrow_copy_constructible_v<Threads>)
+       : Threads(static_cast<const Threads&>(other)) {}
+   KOKKOS_DEFAULTED_FUNCTION Threads& operator=(const Threads&) = default;
+-  KOKKOS_FUNCTION Threads& operator=(Threads&& other) {
++  KOKKOS_FUNCTION Threads& operator=(Threads&& other) noexcept(
++      std::is_nothrow_copy_assignable_v<Threads>) {
+     return *this = static_cast<const Threads&>(other);
+   }
+ 
+diff --git core/unit_test/TestExecutionSpace.hpp core/unit_test/TestExecutionSpace.hpp
+index 3b41a59d0..5214dd1bf 100644
+--- core/unit_test/TestExecutionSpace.hpp
++++ core/unit_test/TestExecutionSpace.hpp
+@@ -75,6 +75,16 @@ constexpr bool test_execspace_explicit_construction() {
+ 
+ static_assert(test_execspace_explicit_construction());
+ 
++consteval bool test_execspace_nothrow_copy_and_move() {
++  static_assert(std::is_nothrow_copy_constructible_v<TEST_EXECSPACE>);
++  static_assert(std::is_nothrow_copy_assignable_v<TEST_EXECSPACE>);
++  static_assert(std::is_nothrow_move_constructible_v<TEST_EXECSPACE>);
++  static_assert(std::is_nothrow_move_assignable_v<TEST_EXECSPACE>);
++  return true;
++}
++
++static_assert(test_execspace_nothrow_copy_and_move());
++
+ // We don't actually promise a tool-observable event and acknowledge that some
+ // backend mights not need a fence to ensure that all enqueued work has finished
+ // before an execution space instance is destroyed. Therefore we might want to
