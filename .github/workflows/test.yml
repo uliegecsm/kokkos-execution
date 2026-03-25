@@ -58,6 +58,10 @@ jobs:
             compiler:
               family: gnu
               version: 14
+          - kokkos_backends: [HPX]
+            compiler:
+              family: clang
+              version: 22
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang

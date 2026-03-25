@@ -52,6 +52,10 @@
             "inherits": ["default", "cxx-gnu"]
         },
         {
+            "name": "clang-HPX",
+            "inherits": ["default", "cxx-clang"]
+        },
+        {
             "name": "clang-OpenMP-Cuda",
             "inherits": ["default", "cxx-cuda-clang"]
         },
@@ -83,6 +87,11 @@
         {
             "name": "gnu-HPX",
             "configurePreset": "gnu-HPX",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-HPX",
+            "configurePreset": "clang-HPX",
             "inherits": "default"
         },
         {

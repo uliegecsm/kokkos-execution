@@ -141,6 +141,12 @@ jobs:
               version: 14
             base_image     : ubuntu:24.04
             platforms      : linux/amd64
+          - kokkos_backends: [HPX]
+            compiler:
+              family: clang
+              version: 22
+            base_image     : ubuntu:24.04
+            platforms      : linux/amd64
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
