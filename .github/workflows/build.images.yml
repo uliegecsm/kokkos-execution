@@ -177,7 +177,7 @@ jobs:
             base_image     : ubuntu:24.04
             platforms      : linux/arm64
             runs-on        : "['self-hosted', 'linux', 'docker', 'arm64']"
-          - kokkos_backends: [OpenMP, Cuda]
+          - kokkos_backends: [HPX, Cuda]
             compiler:
               family: clang
               version: 22
