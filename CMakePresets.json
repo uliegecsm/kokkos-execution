@@ -40,6 +40,15 @@
             "cacheVariables": {"KokkosExecution_ENABLE_CLANG_TIDY" : "ON"}
         },
         {
+            "name": "sanitize-address",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
+                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
+                "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address"
+            }
+        },
+        {
             "name": "cxx-cuda-clang",
             "hidden": true,
             "inherits": "cxx-clang",
@@ -58,16 +67,15 @@
         },
         {
             "name": "clang-OpenMP",
-            "inherits": ["default", "cxx-clang", "clang-tidy"],
-            "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
-                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
-                "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address"
-            }
+            "inherits": ["default", "cxx-clang", "clang-tidy", "sanitize-address"]
         },
         {
             "name": "gnu-HPX",
             "inherits": ["default", "cxx-gnu"]
+        },
+        {
+            "name": "clang-HPX",
+            "inherits": ["default", "cxx-clang", "sanitize-address"]
         },
         {
             "name": "clang-OpenMP-Cuda",
@@ -101,6 +109,11 @@
         {
             "name": "clang-OpenMP",
             "configurePreset": "clang-OpenMP",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-HPX",
+            "configurePreset": "clang-HPX",
             "inherits": "default"
         },
         {
@@ -145,6 +158,11 @@
         {
             "name": "gnu-HPX",
             "configurePreset": "gnu-HPX",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-HPX",
+            "configurePreset": "clang-HPX",
             "inherits": "default"
         },
         {

@@ -83,6 +83,14 @@
             }
         },
         {
+            "name": "fix-latomic",
+            "hidden": true,
+            "environment": {
+                "$comment": "https://github.com/kokkos/kokkos/issues/8977",
+                "LDFLAGS": "-latomic"
+            }
+        },
+        {
             "name": "gnu-OpenMP",
             "inherits": ["default", "cxx-gnu", "OpenMP"]
         },
@@ -95,16 +103,16 @@
             "inherits": ["default", "cxx-gnu", "HPX"]
         },
         {
+            "name": "clang-HPX",
+            "inherits": ["default", "cxx-clang", "HPX", "fix-latomic"]
+        },
+        {
             "name": "clang-OpenMP-Cuda",
             "inherits": ["default", "cxx-cuda-clang", "OpenMP", "Cuda"]
         },
         {
             "name": "clang-HPX-Cuda",
-            "inherits": ["default", "cxx-cuda-clang", "HPX", "Cuda"],
-            "environment": {
-                "$comment": "https://github.com/kokkos/kokkos/issues/8977",
-                "LDFLAGS": "-latomic"
-            }
+            "inherits": ["default", "cxx-cuda-clang", "HPX", "Cuda", "fix-latomic"]
         },
         {
             "name": "rocm-OpenMP-HIP",
@@ -130,6 +138,11 @@
         {
             "name": "gnu-HPX",
             "configurePreset": "gnu-HPX",
+            "inherits": "default"
+        },
+        {
+            "name": "clang-HPX",
+            "configurePreset": "clang-HPX",
             "inherits": "default"
         },
         {
