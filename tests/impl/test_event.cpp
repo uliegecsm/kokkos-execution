@@ -7,6 +7,7 @@
 
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
+#include "tests/utils/functors/no_op.hpp"
 
 /**
  * @addtogroup unittests
@@ -149,5 +150,26 @@ TEST_F(EventTest, record_and_wait_and_record_and_wait) {
         GTEST_SKIP() << Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name() << " does not support events.";
     }
 }
+
+#if defined(KOKKOS_ENABLE_HPX)
+/**
+ * @test Before https://github.com/kokkos/kokkos/commit/d71a3b7287e7a4c06b1595332eedc98cf4c76157,
+ *       using @ref Kokkos::Execution::Impl::Event with @c Kokkos::Experimental::HPX instances that have
+ *       not been created with the "independent" mode always crashes because the @c Kokkos::Experimental::HPX::instance_data
+ *       destructor would not fence.
+ *       Therefore, the event would create a "split" sender (with a shared state), that the @c Kokkos::Experimental::HPX::instance_data
+ *       shares as well. Since @ref Kokkos::Execution::Impl::Event will synchronize only its own split shared state, and since the
+ *       @c Kokkos::Experimental::HPX::instance_data would never synchronize its own if no one calls the @c fence on the @c Kokkos::Experimental::HPX
+ *       instance, the shared state is alive past the @c Kokkos::finalize and @c Kokkos appropriately shouts.
+ */
+TEST(EventTestHPX, cleanup_when_using_default_instance) {
+    const Kokkos::Experimental::HPX exec{};
+
+    Kokkos::parallel_for(Kokkos::RangePolicy(exec, 0, 1), Tests::Utils::Functors::NoOp{});
+    Kokkos::Execution::Impl::Event<Kokkos::Experimental::HPX> event{exec};
+
+    event.wait();
+}
+#endif
 
 } // namespace Tests::Impl

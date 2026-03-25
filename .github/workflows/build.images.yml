@@ -238,7 +238,7 @@ jobs:
         with:
             context: .
             platforms: ${{ matrix.platforms }}
-            push: ${{ github.ref == 'refs/heads/main' }}
+            push: true #${{ github.ref == 'refs/heads/main' }}
             file: docker/dockerfile.backend
             tags: ${{ steps.compute-tag.outputs.tag }}
             cache-from: type=registry,ref=${{ steps.compute-tag.outputs.tag }}
