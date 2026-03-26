@@ -15,6 +15,10 @@ option(KokkosExecution_ENABLE_DEBUG_LOGGING "Enable debug logging" OFF)
 option(KokkosExecution_ENABLE_DOCS "Enable documentation" OFF)
 option(KokkosExecution_ENABLE_TESTS "Enable testing" ON)
 
+foreach(KE_OPTION IN ITEMS CLANG_TIDY DEBUG_LOGGING DOCS TESTS)
+  message(STATUS "KokkosExecution_ENABLE_${KE_OPTION} is ${KokkosExecution_ENABLE_${KE_OPTION}}.")
+endforeach()
+
 # Read the dependencies file.
 file(READ dependencies.json DEPENDENCIES_JSON)
 
