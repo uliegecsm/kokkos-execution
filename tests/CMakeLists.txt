@@ -1,5 +1,5 @@
 # Find kokkos-utils.
-find_package(KokkosUtils CONFIG REQUIRED)
+find_package(KokkosUtils 0.0.4 CONFIG REQUIRED)
 
 # Helpers.
 include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
