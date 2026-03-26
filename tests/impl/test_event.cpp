@@ -23,12 +23,9 @@ namespace Tests::Impl {
 
 using namespace Kokkos::utils::callbacks;
 
-class EventTest
-    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
-    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+//! Fixture that does not set any @ref Kokkos::utils::callbacks::Manager callback.
+class EventTestNoCallback : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE> {
    public:
-    using recorder_listener_t = RecorderListener<ProfileEvent>;
-
     /**
      * Events must be supported for:
      *  - @c Kokkos::Cuda
@@ -53,6 +50,14 @@ class EventTest
     }();
 };
 
+//! Fixture that enables callbacks with @ref Kokkos::utils::tests::scoped::callbacks::Manager.
+class EventTest
+    : public EventTestNoCallback
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
+    using recorder_listener_t = RecorderListener<ProfileEvent>;
+};
+
 //! @test Check that the specialization of @ref Kokkos::Execution::Impl::Event satisfies @ref Kokkos::Execution::Impl::event.
 template <Kokkos::ExecutionSpace Exec>
 consteval bool test_models_event() {
@@ -70,6 +75,15 @@ consteval bool test_support_events() {
 }
 static_assert(test_support_events<TEST_EXECUTION_SPACE>());
 
+#define KOKKOS_EXECUTION_TESTS_IMPL_EVENT(_fixture_, _name_, _statement_)                                              \
+    TEST_F(_fixture_, _name_) {                                                                                        \
+        if constexpr (EventTest::has_support<TEST_EXECUTION_SPACE>) {                                                  \
+            test_event_##_name_ _statement_;                                                                           \
+        } else {                                                                                                       \
+            GTEST_SKIP() << Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name() << " does not support events.";       \
+        }                                                                                                              \
+    }
+
 //! @test Record an event and wait for it. Check that it marks both steps.
 template <Kokkos::ExecutionSpace Exec>
 void test_event_record_and_wait(const Exec& exec) {
@@ -85,13 +99,7 @@ void test_event_record_and_wait(const Exec& exec) {
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
 }
 
-TEST_F(EventTest, record_and_wait) {
-    if constexpr (EventTest::has_support<TEST_EXECUTION_SPACE>) {
-        test_event_record_and_wait(exec);
-    } else {
-        GTEST_SKIP() << Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name() << " does not support events.";
-    }
-}
+KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait, (exec))
 
 //! @test Record an event and wait for it many times. Check that it marks both steps once, and subsequent waits are just "for free".
 template <Kokkos::ExecutionSpace Exec>
@@ -112,13 +120,7 @@ void test_event_record_and_wait_many_times(const Exec& exec) {
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
 }
 
-TEST_F(EventTest, record_and_wait_many_times) {
-    if constexpr (EventTest::has_support<TEST_EXECUTION_SPACE>) {
-        test_event_record_and_wait_many_times(exec);
-    } else {
-        GTEST_SKIP() << Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name() << " does not support events.";
-    }
-}
+KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait_many_times, (exec))
 
 //! @test Record an event and wait for it. Repeat the record/wait steps but reusing the same instance.
 template <Kokkos::ExecutionSpace Exec>
@@ -142,12 +144,18 @@ void test_event_record_and_wait_and_record_and_wait(const Exec& exec) {
     ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
 }
 
-TEST_F(EventTest, record_and_wait_and_record_and_wait) {
-    if constexpr (EventTest::has_support<TEST_EXECUTION_SPACE>) {
-        test_event_record_and_wait_and_record_and_wait(exec);
-    } else {
-        GTEST_SKIP() << Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name() << " does not support events.";
-    }
+KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait_and_record_and_wait, (exec))
+
+//! @test Similar to @ref test_event_record_and_wait but does not use any event listener.
+template <Kokkos::ExecutionSpace Exec>
+void test_event_record_and_wait_no_check(const Exec& exec) {
+    ASSERT_THAT(Kokkos::utils::callbacks::Manager::is_initialized(), ::testing::IsFalse());
+
+    Kokkos::Execution::Impl::Event<Exec> event;
+    event.record(exec);
+    event.wait();
 }
+
+KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTestNoCallback, record_and_wait_no_check, (exec))
 
 } // namespace Tests::Impl
