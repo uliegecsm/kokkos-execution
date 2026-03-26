@@ -84,18 +84,14 @@ consteval bool test_sndr_traits() {
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>
     >);
 
-    /**
-     * It is not no throw connectable because the @ref Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure
-     * is not no throw move constructible. This is so because it holds a functor that holds a @c Kokkos::View,
-     * and the latter are not no throw move constructible.
-     *
-     * See also https://github.com/kokkos/kokkos/pull/8792.
-     */
-    static_assert(!std::is_nothrow_move_constructible_v<typename ParallelForTest::view_s_t>);
-    static_assert(!std::is_nothrow_move_constructible_v<functor_t>);
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<label_t, functor_t, policy_t>;
-    static_assert(!std::is_nothrow_move_constructible_v<closure_t>);
+// FIXME: https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
+#if defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)
+    //! It is not nothrow connectable.
     static_assert(!stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
+#else
+    //! It is nothrow connectable.
+    static_assert(stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
+#endif
 
     return true;
 }
@@ -149,7 +145,12 @@ consteval bool test_closure_traits() {
 
     return true;
 }
+// FIXME: https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
+#if defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)
 static_assert(test_closure_traits<typename ParallelForTest::view_s_t, false>());
+#else
+static_assert(test_closure_traits<typename ParallelForTest::view_s_t, true>());
+#endif
 static_assert(test_closure_traits<std::span<int>, true>());
 
 //! @test Check @ref Kokkos::Execution::parallel_for with a team policy.
