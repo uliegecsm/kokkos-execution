@@ -19,7 +19,6 @@ struct Event<Kokkos::Cuda> {
     using mark_event_t = MarkEvent<Kokkos::Cuda>;
 
     cudaEvent_t event = nullptr;
-    mutable bool arrived = false;
 
     Event() = default;
 
@@ -30,8 +29,7 @@ struct Event<Kokkos::Cuda> {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
-        : event(std::exchange(other.event, nullptr))
-        , arrived(std::exchange(other.arrived, false)) {
+        : event(std::exchange(other.event, nullptr)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
@@ -39,7 +37,6 @@ struct Event<Kokkos::Cuda> {
                 KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventDestroy(event));
             }
             event = std::exchange(other.event, nullptr);
-            arrived = std::exchange(other.arrived, false);
         }
         return *this;
     }
@@ -54,15 +51,13 @@ struct Event<Kokkos::Cuda> {
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
         }
         KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventRecord(event, exec.cuda_stream()));
-        arrived = false;
         mark_event_t::record(static_cast<void*>(event), exec);
     }
 
     void wait() const {
-        if (!arrived) {
-            mark_event_t::wait(static_cast<void*>(event));
+        mark_event_t::wait(static_cast<void*>(event));
+        if (cudaEventQuery(event) != cudaSuccess) {
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventSynchronize(event));
-            arrived = true;
         }
     }
 };
