@@ -47,6 +47,12 @@ cat << EOF > ${WORK_DIR}/install_test.cpp
 #include "kokkos-execution/execution_space.hpp"
 
 int main() {
+    const Kokkos::ScopeGuard guard{};
+    {
+        const Kokkos::DefaultExecutionSpace exec {};
+        const Kokkos::Execution::ExecutionSpaceContext ctx{exec};
+        stdexec::sync_wait(stdexec::schedule(ctx.get_scheduler()) | stdexec::then(KOKKOS_LAMBDA(){}));
+    }
     return EXIT_SUCCESS;
 }
 EOF
