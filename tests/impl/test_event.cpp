@@ -227,13 +227,6 @@ void test_event_default_instance() {
     ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(default_exec));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
-
-#if defined(KOKKOS_ENABLE_HPX)
-    if constexpr (std::same_as<Exec, Kokkos::Experimental::HPX>) {
-        //! @todo Remove this fence after https://github.com/kokkos/kokkos/pull/8992.
-        default_exec.fence();
-    }
-#endif
 }
 
 KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, default_instance, <TEST_EXECUTION_SPACE>())
