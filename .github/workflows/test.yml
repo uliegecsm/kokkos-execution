@@ -46,10 +46,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - kokkos_backends: [OpenMP]
-            compiler:
-              family: gnu
-              version: 14
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
@@ -58,10 +58,9 @@ jobs:
             compiler:
               family: gnu
               version: 14
-          - kokkos_backends: [HPX]
-            compiler:
-              family: clang
-              version: 22
+          - {kokkos_backends: [HPX], compiler: {family: clang, version: 22}}
+          - {kokkos_backends: [HPX], compiler: {family: clang, version: 22}, cxxflags: "-fsanitize=address"}
+          - {kokkos_backends: [HPX], compiler: {family: clang, version: 22}, cxxflags: "-fsanitize=leak"}
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
@@ -91,6 +90,7 @@ jobs:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
+    env: ${{ matrix.env || fromJSON('{}') }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -98,7 +98,8 @@ jobs:
       - run : |
           ccache --verbose --show-stats
       - run: |
-          cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
+          cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
+            -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}"
       - run: |
           cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
       - run: |
