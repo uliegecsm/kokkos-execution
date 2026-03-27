@@ -7,6 +7,7 @@
 
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
+#include "tests/utils/functors/no_op.hpp"
 
 /**
  * @addtogroup unittests
@@ -18,6 +19,10 @@
  *
  * The tests can be found in @ref tests/impl/test_event.cpp.
  */
+
+#if !defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+#    error "This is not supported."
+#endif
 
 namespace Tests::Impl {
 
@@ -55,7 +60,8 @@ class EventTest
     : public EventTestNoCallback
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t = RecorderListener<ProfileEvent>;
+    using recorder_listener_t =
+        RecorderListener<Kokkos::Execution::Impl::RecordEvent, Kokkos::Execution::Impl::WaitEvent>;
 };
 
 //! @test Check that the specialization of @ref Kokkos::Execution::Impl::Event satisfies @ref Kokkos::Execution::Impl::event.
@@ -94,12 +100,28 @@ void test_event_record_and_wait(const Exec& exec) {
     });
 
     ASSERT_EQ(recorded_events.size(), 2);
-    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_EVENT_RECORD(exec));
-    const auto event_id = extract_event_record_id(recorded_events.at(0));
-    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
 }
 
 KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait, (exec))
+
+//! @test Record an event but don't wait for it.
+template <Kokkos::ExecutionSpace Exec>
+void test_event_record_but_dont_wait(const Exec& exec) {
+    const auto recorded_events = EventTest::recorder_listener_t::record([&exec]() {
+        Kokkos::Execution::Impl::Event<Exec> event;
+        Kokkos::parallel_for(Kokkos::RangePolicy(exec, 0, 1), Tests::Utils::Functors::NoOp{});
+        event.record(exec);
+
+        exec.fence();
+    });
+
+    ASSERT_EQ(recorded_events.size(), 1);
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
+}
+
+KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_but_dont_wait, (exec))
 
 //! @test Record an event and wait for it many times. It marks all wait events.
 template <Kokkos::ExecutionSpace Exec>
@@ -115,13 +137,12 @@ void test_event_record_and_wait_many_times(const Exec& exec) {
     });
 
     ASSERT_THAT(recorded_events, ::testing::SizeIs(6));
-    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_EVENT_RECORD(exec));
-    const auto event_id = extract_event_record_id(recorded_events.at(0));
-    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
-    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
-    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
-    ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
-    ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
 }
 
 KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait_many_times, (exec))
@@ -139,13 +160,11 @@ void test_event_record_and_wait_and_record_and_wait(const Exec& exec) {
 
     ASSERT_THAT(recorded_events, ::testing::SizeIs(4));
 
-    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_EVENT_RECORD(exec));
-    auto event_id = extract_event_record_id(recorded_events.at(0));
-    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
 
-    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_EVENT_RECORD(exec));
-    event_id = extract_event_record_id(recorded_events.at(2));
-    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_EVENT_WAIT(TEST_EXECUTION_SPACE, event_id));
+    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec));
+    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
 }
 
 KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, record_and_wait_and_record_and_wait, (exec))
@@ -161,5 +180,62 @@ void test_event_record_and_wait_no_check(const Exec& exec) {
 }
 
 KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTestNoCallback, record_and_wait_no_check, (exec))
+
+//! @test Events created before or after a work dispatch have distinct identifiers.
+template <Kokkos::ExecutionSpace Exec>
+void test_event_uniqueness(const Exec& exec) {
+    const auto recorded_events = EventTest::recorder_listener_t::record([&exec]() {
+        Kokkos::Execution::Impl::Event<Exec> event_before, event_after;
+        event_before.record(exec);
+        Kokkos::parallel_for(Kokkos::RangePolicy(exec, 0, 1), Tests::Utils::Functors::NoOp{});
+        event_after.record(exec);
+
+        exec.fence();
+    });
+
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
+
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_RECORD_EVENT(exec));
+
+    ASSERT_NE(
+        std::get<Kokkos::Execution::Impl::RecordEvent>(recorded_events.at(0)).event_id,
+        std::get<Kokkos::Execution::Impl::RecordEvent>(recorded_events.at(1)).event_id);
+}
+
+KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, uniqueness, (exec))
+
+//! @test Check that event record/wait works for the default instance.
+template <Kokkos::ExecutionSpace Exec>
+void test_event_default_instance() {
+    using recorder_listener_with_fence_t = RecorderListener<
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent,
+        Kokkos::utils::callbacks::BeginFenceEvent
+    >;
+
+    static_assert(Kokkos::Execution::Impl::support_events<Exec>);
+
+    const Exec default_exec{};
+
+    const auto recorded_events = recorder_listener_with_fence_t::record([&default_exec]() {
+        Kokkos::parallel_for(Kokkos::RangePolicy(default_exec, 0, 1), Tests::Utils::Functors::NoOp{});
+        const Kokkos::Execution::Impl::Event<Exec> event{default_exec};
+        event.wait();
+    });
+
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(default_exec));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
+
+#if defined(KOKKOS_ENABLE_HPX)
+    if constexpr (std::same_as<Exec, Kokkos::Experimental::HPX>) {
+        //! @todo Remove this fence after https://github.com/kokkos/kokkos/pull/8992.
+        default_exec.fence();
+    }
+#endif
+}
+
+KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, default_instance, <TEST_EXECUTION_SPACE>())
 
 } // namespace Tests::Impl

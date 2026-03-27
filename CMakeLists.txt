@@ -15,7 +15,12 @@ option(KokkosExecution_ENABLE_DEBUG_LOGGING "Enable debug logging" OFF)
 option(KokkosExecution_ENABLE_DOCS "Enable documentation" OFF)
 option(KokkosExecution_ENABLE_TESTS "Enable testing" ON)
 
-foreach(KE_OPTION IN ITEMS CLANG_TIDY DEBUG_LOGGING DOCS TESTS)
+include(CMakeDependentOption)
+cmake_dependent_option(
+  KokkosExecution_ENABLE_EVENT_DISPATCH "Enable event dispatch à la Kokkos Tools" ON KokkosExecution_ENABLE_TESTS OFF
+)
+
+foreach(KE_OPTION IN ITEMS CLANG_TIDY DEBUG_LOGGING DOCS TESTS EVENT_DISPATCH)
   message(STATUS "KokkosExecution_ENABLE_${KE_OPTION} is ${KokkosExecution_ENABLE_${KE_OPTION}}.")
 endforeach()
 
@@ -121,6 +126,12 @@ target_link_libraries(kokkosexecution INTERFACE Kokkos::kokkoscore STDEXEC::stde
 if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   target_compile_definitions(kokkosexecution INTERFACE KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
   target_link_libraries(kokkosexecution INTERFACE $<BUILD_INTERFACE:plog::plog>)
+endif()
+
+if(KokkosExecution_ENABLE_EVENT_DISPATCH)
+  find_package(KokkosUtils CONFIG REQUIRED)
+  target_compile_definitions(kokkosexecution INTERFACE KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+  target_link_libraries(kokkosexecution INTERFACE $<BUILD_INTERFACE:Kokkos::kokkosutils>)
 endif()
 
 # Install.

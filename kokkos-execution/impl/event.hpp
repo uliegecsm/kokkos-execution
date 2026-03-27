@@ -6,6 +6,10 @@
 
 #include "Kokkos_Core.hpp"
 
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+#    include "kokkos-utils/callbacks/Manager.hpp"
+#endif
+
 /**
  * @file
  *
@@ -36,24 +40,37 @@ struct SupportEvents : std::false_type { };
 template <typename Exec>
 concept support_events = SupportEvents<Exec>::value;
 
-//! Helper for marking event record or wait.
-template <Kokkos::ExecutionSpace Exec>
-struct MarkEvent {
-    static constexpr auto name = Kokkos::Impl::TypeInfo<Exec>::name();
+static constexpr auto invalid_event_id = Kokkos::Experimental::finite_max_v<uint64_t>;
 
-    //! Mark that an event has been recorded in @p exec.
-    template <typename EventIDType>
-    static void record(const EventIDType& event_id, const Exec& exec) {
-        Kokkos::Profiling::markEvent(
-            std::format("{}: event {} recorded on {}", name, event_id, Kokkos::Tools::Experimental::device_id(exec)));
-    }
+//! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when an event is recorded on an execution space instance.
+struct RecordEvent {
+    uint32_t dev_id = 0;
+    uint64_t event_id = 0;
 
-    //! Mark that an event is being waited for.
-    template <typename EventIDType>
-    static void wait(const EventIDType& event_id) {
-        Kokkos::Profiling::markEvent(std::format("{}: waiting for event {}", name, event_id));
-    }
+    constexpr auto operator<=>(const RecordEvent&) const = default;
 };
+
+template <Kokkos::ExecutionSpace Exec>
+void record_event(const Exec& exec, uint64_t& event_id) {
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+    event_id = Kokkos::utils::callbacks::get_next_event_id();
+    Kokkos::utils::callbacks::dispatch(
+        RecordEvent{.dev_id = Kokkos::Tools::Experimental::device_id(exec), .event_id = event_id});
+#endif
+}
+
+//! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when an event is being waited for.
+struct WaitEvent {
+    uint64_t event_id = 0;
+
+    constexpr auto operator<=>(const WaitEvent&) const = default;
+};
+
+inline void wait_event(const uint64_t event_id) {
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+    Kokkos::utils::callbacks::dispatch(WaitEvent{.event_id = event_id});
+#endif
+}
 
 } // namespace Kokkos::Execution::Impl
 

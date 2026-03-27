@@ -20,10 +20,8 @@ struct SupportEvents<Kokkos::Experimental::HPX> : std::true_type { };
 
 template <>
 struct Event<Kokkos::Experimental::HPX> {
-    using mark_event_t = MarkEvent<Kokkos::Experimental::HPX>;
-
     std::shared_ptr<hpx::lcos::local::event> m_event = nullptr;
-    void* m_id = nullptr; //! Used to keep a stable event ID across moves.
+    uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
 
@@ -35,12 +33,12 @@ struct Event<Kokkos::Experimental::HPX> {
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept
         : m_event(std::move(other.m_event))
-        , m_id(std::exchange(other.m_id, nullptr)) {
+        , m_event_id(std::exchange(other.m_event_id, invalid_event_id)) {
     }
     Event& operator=(Event&& other) noexcept {
         if (this != &other) {
             m_event = std::move(other.m_event);
-            m_id = std::exchange(other.m_id, nullptr);
+            m_event_id = std::exchange(other.m_event_id, invalid_event_id);
         }
         return *this;
     }
@@ -64,12 +62,11 @@ struct Event<Kokkos::Experimental::HPX> {
             true,  /* is_light_weight_policy */
             [event = m_event](const auto) { event->set(); },
             1);
-        m_id = (void*) std::addressof(*m_event);
-        mark_event_t::record(m_id, exec);
+        record_event(exec, m_event_id);
     }
 
     void wait() const {
-        mark_event_t::wait(m_id);
+        wait_event(m_event_id);
         if (!m_event->occurred()) {
             m_event->wait();
         }
