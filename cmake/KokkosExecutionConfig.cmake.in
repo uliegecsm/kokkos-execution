@@ -1,5 +1,6 @@
 @PACKAGE_INIT@
 
+set(KokkosExecution_ENABLE_EVENT_DISPATCH @KokkosExecution_ENABLE_EVENT_DISPATCH@)
 set(KokkosExecution_ENABLE_DEBUG_LOGGING @KokkosExecution_ENABLE_DEBUG_LOGGING@)
 
 include(CMakeFindDependencyMacro)
@@ -8,11 +9,19 @@ find_dependency(Kokkos COMPONENTS kokkoscore)
 
 find_dependency(stdexec)
 
+if(KokkosExecution_ENABLE_EVENT_DISPATCH)
+  find_dependency(KokkosUtils)
+endif()
+
 if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   find_dependency(plog)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/KokkosExecutionTargets.cmake")
+
+if(KokkosExecution_ENABLE_EVENT_DISPATCH)
+  target_link_libraries(Kokkos::kokkosexecution INTERFACE Kokkos::kokkosutils)
+endif()
 
 if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   target_link_libraries(Kokkos::kokkosexecution INTERFACE plog::plog)

@@ -4,7 +4,9 @@
 #include "kokkos-execution/stdexec.hpp"
 
 #include "kokkos-execution/execution_space/get_exec.hpp"
+#include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/event.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -65,44 +67,117 @@ struct RequiresSynchronization {
     }
 };
 
-template <stdexec::receiver Rcvr, Closure Clsr>
-struct OpStateBase : public stdexec::__immovable {
-    using execution_space = typename Clsr::execution_space;
+//! The execution space supports events and the receiver is queryable for a delegation scheduler.
+template <typename Rcvr, typename Exec>
+concept delegate_completion_with_event =
+    Kokkos::Execution::Impl::support_events<Exec>
+    && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, stdexec::get_delegation_scheduler_t>;
 
+template <
+    stdexec::receiver Rcvr,
+    Kokkos::ExecutionSpace Exec,
+    bool Delegate = delegate_completion_with_event<Rcvr, Exec>
+>
+struct MayDelegateCompletionWithEvent;
+
+template <stdexec::receiver Rcvr, Kokkos::ExecutionSpace Exec>
+struct WaitEventReceiver {
+    using receiver_concept = stdexec::receiver_t;
+    using event_t = Impl::Event<Exec>;
+
+    MayDelegateCompletionWithEvent<Rcvr, Exec>* opstate;
+    event_t event;
+
+    void set_value() && noexcept {
+        try {
+            event.wait();
+            opstate->storage.__destroy();
+            stdexec::set_value(std::move(opstate->rcvr));
+        } catch (...) {
+            opstate->storage.__destroy();
+            stdexec::set_error(std::move(opstate->rcvr), std::current_exception());
+        }
+    }
+};
+
+template <stdexec::receiver Rcvr, Kokkos::ExecutionSpace Exec>
+struct MayDelegateCompletionWithEvent<Rcvr, Exec, false> {
+    static constexpr auto label = Impl::dispatch_label<Exec, ": after dispatch">();
+
+    Rcvr rcvr;
+
+    template <typename OpState>
+    void delegate(OpState* const opstate) noexcept {
+        if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
+            opstate->query(get_exec).get().fence(std::string(label));
+        }
+        stdexec::set_value(std::move(this->rcvr));
+    }
+};
+
+template <stdexec::receiver Rcvr, Kokkos::ExecutionSpace Exec>
+struct MayDelegateCompletionWithEvent<Rcvr, Exec, true> {
+    using receiver_t = WaitEventReceiver<Rcvr, Exec>;
+    using opstate_t = stdexec::connect_result_t<
+        stdexec::schedule_result_t<
+            stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, stdexec::get_delegation_scheduler_t>
+        >,
+        receiver_t
+    >;
+
+    Rcvr rcvr;
+    stdexec::__manual_lifetime<opstate_t> storage{};
+
+    template <typename OpState>
+    void delegate(OpState* const opstate) noexcept {
+        if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
+            storage.__construct_from(
+                stdexec::connect,
+                stdexec::schedule(stdexec::get_delegation_scheduler(stdexec::get_env(this->rcvr))),
+                receiver_t{.opstate = opstate, .event = typename receiver_t::event_t{opstate->query(get_exec).get()}});
+            stdexec::start(storage.__get());
+        } else {
+            stdexec::set_value(std::move(this->rcvr));
+        }
+    }
+};
+
+template <stdexec::receiver Rcvr, Closure Clsr>
+struct OpStateBase
+    : public stdexec::__immovable
+    , public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::execution_space> {
+    using execution_space = typename Clsr::execution_space;
     using receiver_t = Rcvr;
 
-    receiver_t rcvr;
+    using may_delegate_completion_with_event_t = MayDelegateCompletionWithEvent<Rcvr, execution_space>;
+
     Clsr clsr;
 
-    constexpr explicit OpStateBase(Rcvr rcvr_, Clsr clsr_)
-        noexcept(std::is_nothrow_move_constructible_v<Rcvr> && std::is_nothrow_move_constructible_v<Clsr>)
-        : rcvr(std::move(rcvr_))
+    constexpr explicit OpStateBase(Rcvr rcvr_, Clsr clsr_) noexcept(
+        std::is_nothrow_constructible_v<may_delegate_completion_with_event_t, Rcvr>
+        && std::is_nothrow_move_constructible_v<Clsr>)
+        : may_delegate_completion_with_event_t{std::move(rcvr_)}
         , clsr(std::move(clsr_)) {
     }
 
     void propagate_completion_signal(stdexec::set_value_t) noexcept {
         try {
-            clsr.execute();
+            this->clsr.execute();
         } catch (...) {
             this->propagate_completion_signal(stdexec::set_error, std::current_exception());
             return;
         }
 
-        if (RequiresSynchronization<Rcvr, OpStateBase>{}(*this)) {
-            this->query(get_exec)
-                .get()
-                .fence(std::format("{}: continuation", Kokkos::Impl::TypeInfo<execution_space>::name()));
-        }
-        stdexec::set_value(std::move(rcvr));
+        may_delegate_completion_with_event_t::delegate(this);
     }
 
     template <typename Error>
     void propagate_completion_signal(stdexec::set_error_t, Error&& error) noexcept {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(error));
+        stdexec::set_error(std::move(this->rcvr), std::forward<Error>(error));
     }
 
     void propagate_completion_signal(stdexec::set_stopped_t) noexcept {
-        stdexec::set_stopped(std::move(rcvr));
+        stdexec::set_stopped(std::move(this->rcvr));
     }
 
     [[nodiscard]]
@@ -110,7 +185,7 @@ struct OpStateBase : public stdexec::__immovable {
         return ExecutionSpaceRef<execution_space>{clsr.get_policy().space()};
     }
 
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, rcvr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, this->rcvr)
 };
 
 template <typename ParentOp>
