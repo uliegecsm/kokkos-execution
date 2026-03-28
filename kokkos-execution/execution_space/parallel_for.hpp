@@ -47,10 +47,10 @@ struct ParallelForSender {
     KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, stdexec::set_error_t(std::exception_ptr))
 
     template <stdexec::receiver Rcvr>
-    constexpr auto connect(Rcvr rcvr) && noexcept(
-        std::is_nothrow_constructible_v<OpState<Sndr, Rcvr, closure_t>, Sndr&&, Rcvr&&, closure_t&&>)
-        -> OpState<Sndr, Rcvr, closure_t> {
-        return OpState<Sndr, Rcvr, closure_t>(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
+    constexpr auto connect(Rcvr rcvr) && noexcept(noexcept(
+        MakeOpStateFn<Sndr, Rcvr, closure_t>{}(std::declval<Sndr>(), std::declval<Rcvr>(), std::declval<closure_t>())))
+        -> opstate_t<Sndr, Rcvr, closure_t> {
+        return MakeOpStateFn<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
     }
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
