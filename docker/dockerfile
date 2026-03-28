@@ -21,7 +21,16 @@ RUN --mount=target=/requirements/requirements.python.txt,type=bind,source=requir
     apt-helpers clean
 EOF
 
-FROM requirements-python AS requirements-compiler-gnu-base
+FROM requirements-python AS requirements-system
+
+RUN --mount=target=/requirements/requirements.system.txt,type=bind,source=requirements/requirements.system.txt <<EOF
+    set -ex
+
+    apt-helpers install-packages --clean --update \
+        --requirement /requirements/requirements.system.txt
+EOF
+
+FROM requirements-system AS requirements-compiler-gnu
 
 ARG COMPILER_VERSION
 
@@ -42,13 +51,11 @@ RUN <<EOF
     g++ -dumpfullversion -dumpversion
 EOF
 
-FROM requirements-compiler-gnu-base AS requirements-compiler-gnu
-
-FROM requirements-python AS requirements-compiler-rocm
+FROM requirements-system AS requirements-compiler-rocm
 
 ENV PATH=/opt/rocm/bin:${PATH}
 
-FROM requirements-python AS requirements-compiler-clang
+FROM requirements-system AS requirements-compiler-clang
 
 ARG COMPILER_VERSION
 
@@ -76,16 +83,7 @@ RUN <<EOF
         clang-format=clang-format-${COMPILER_VERSION}
 EOF
 
-FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-system
-
-RUN --mount=target=/requirements/requirements.system.txt,type=bind,source=requirements/requirements.system.txt <<EOF
-    set -ex
-
-    apt-helpers install-packages --clean --update \
-        --requirement /requirements/requirements.system.txt
-EOF
-
-FROM requirements-system AS requirements-cmake
+FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-cmake
 
 ARG TARGETARCH
 ARG CMAKE_VERSION
