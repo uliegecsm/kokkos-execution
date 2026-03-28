@@ -52,9 +52,11 @@ consteval bool test_sndr_traits() {
                   bulk_sndr_t,
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
                       schd_sndr_t,
-                      std::string_view,
-                      functor_t,
-                      Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+                      Kokkos::Execution::Impl::ParallelForData<
+                          functor_t,
+                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+                          Kokkos::Execution::Impl::Label
+                      >
                   >
     >);
 
@@ -120,18 +122,19 @@ constexpr bool test_op_state_passed_by_const_ref() {
     //! Connect the sender as a @c const reference.
     using op_state_from_sndr_const_ref_t = stdexec::connect_result_t<const sndr_t&, Tests::Utils::SinkReceiver>;
 
-    static_assert(std::same_as<
-                  op_state_from_sndr_const_ref_t,
-                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
-                      const typename BulkTest::schedule_sender_t&,
-                      Tests::Utils::SinkReceiver,
-                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-                          std::string_view,
-                          Tests::Utils::Functors::Labeled<'a'>,
-                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-                      >
-                  >
-    >);
+    static_assert(
+        std::same_as<
+            op_state_from_sndr_const_ref_t,
+            Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                const typename BulkTest::schedule_sender_t&,
+                Tests::Utils::SinkReceiver,
+                Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
+                    Tests::Utils::Functors::Labeled<'a'>,
+                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+                    Kokkos::Execution::Impl::Label
+                >>
+            >
+        >);
 
     return true;
 }
