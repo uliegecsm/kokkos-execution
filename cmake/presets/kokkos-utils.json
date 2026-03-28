@@ -34,6 +34,12 @@
             "cacheVariables": {"CMAKE_CXX_COMPILER": "hipcc"}
         },
         {
+            "$comment": "Inherit from this preset to use the Intel compiler family.",
+            "name": "cxx-intel",
+            "hidden": true,
+            "cacheVariables": {"CMAKE_CXX_COMPILER" : "icpx"}
+        },
+        {
             "$comment": "Use Clang for host and device code.",
             "name": "cxx-cuda-clang",
             "hidden": true,
@@ -70,6 +76,10 @@
         {
             "name": "rocm-OpenMP-HIP",
             "inherits": ["default", "cxx-hip-rocm"]
+        },
+        {
+            "name": "intel-OpenMP-SYCL",
+            "inherits": ["default", "cxx-intel"]
         }
     ],
     "buildPresets": [
@@ -116,6 +126,11 @@
         {
             "name": "rocm-OpenMP-HIP",
             "configurePreset": "rocm-OpenMP-HIP",
+            "inherits": "default"
+        },
+        {
+            "name": "intel-OpenMP-SYCL",
+            "configurePreset": "intel-OpenMP-SYCL",
             "inherits": "default"
         }
     ]

@@ -42,6 +42,7 @@ class WhenAllTest
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<
+        EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
         BeginParallelForEvent,
         Kokkos::Execution::Impl::RecordEvent,

@@ -1,7 +1,9 @@
 # This file contains setup w.r.t. compiler flags related to warnings.
 include_guard(GLOBAL)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES
+                                                                                   "IntelLLVM"
+)
   # For GNU GCC, warnings are listed at https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html.
   add_compile_options(
     -Wall
@@ -15,7 +17,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     -Werror
   )
 
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
     # For Clang, diagnostic flags are listed at https://clang.llvm.org/docs/DiagnosticsReference.html.
     add_compile_options(
       -Werror=unused-private-field -Werror=unused-lambda-capture -Werror=unused-member-function

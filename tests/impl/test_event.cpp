@@ -36,6 +36,7 @@ class EventTestNoCallback : public Tests::Utils::ExecutionSpaceContextTest<TEST_
      *  - @c Kokkos::Cuda
      *  - @c Kokkos::HIP
      *  - @c Kokkos::Experimental::HPX
+     *  - @c Kokkos::SYCL
      */
     template <Kokkos::ExecutionSpace Exec>
     static constexpr bool has_support = []() {
@@ -51,6 +52,10 @@ class EventTestNoCallback : public Tests::Utils::ExecutionSpaceContextTest<TEST_
         if constexpr (std::same_as<Exec, Kokkos::Experimental::HPX>)
             return true;
 #endif
+#if defined(KOKKOS_ENABLE_SYCL)
+        if constexpr (std::same_as<Exec, Kokkos::SYCL>)
+            return true;
+#endif
         return false;
     }();
 };
@@ -60,8 +65,11 @@ class EventTest
     : public EventTestNoCallback
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t =
-        RecorderListener<Kokkos::Execution::Impl::RecordEvent, Kokkos::Execution::Impl::WaitEvent>;
+    using recorder_listener_t = RecorderListener<
+        EventDiscardMatcher<TEST_EXECUTION_SPACE>,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
 };
 
 //! @test Check that the specialization of @ref Kokkos::Execution::Impl::Event satisfies @ref Kokkos::Execution::Impl::event.
@@ -209,6 +217,7 @@ KOKKOS_EXECUTION_TESTS_IMPL_EVENT(EventTest, uniqueness, (exec))
 template <Kokkos::ExecutionSpace Exec>
 void test_event_default_instance() {
     using recorder_listener_with_fence_t = RecorderListener<
+        EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent,
         Kokkos::utils::callbacks::BeginFenceEvent
