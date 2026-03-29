@@ -30,60 +30,7 @@ RUN --mount=target=/requirements/requirements.system.txt,type=bind,source=requir
         --requirement /requirements/requirements.system.txt
 EOF
 
-FROM requirements-system AS requirements-compiler-gnu
-
-ARG COMPILER_VERSION
-
-RUN <<EOF
-    set -ex
-
-    apt-helpers install-packages --clean --update --packages gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION}
-
-    update-alternatives-helpers --prefix /usr/bin \
-        --display --level=10 \
-        --for-each-of \
-            gcc=gcc-${COMPILER_VERSION} \
-            g++=g++-${COMPILER_VERSION} \
-            $(uname -m)-linux-gnu-gcc=$(uname -m)-linux-gnu-gcc-${COMPILER_VERSION} \
-            $(uname -m)-linux-gnu-g++=$(uname -m)-linux-gnu-g++-${COMPILER_VERSION}
-
-    gcc -dumpfullversion -dumpversion
-    g++ -dumpfullversion -dumpversion
-EOF
-
-FROM requirements-system AS requirements-compiler-rocm
-
-ENV PATH=/opt/rocm/bin:${PATH}
-
-FROM requirements-system AS requirements-compiler-clang
-
-ARG COMPILER_VERSION
-
-RUN <<EOF
-    set -ex
-
-    apt-helpers install-packages --update --packages wget lsb-release gpg software-properties-common
-
-    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/llvm.asc
-    echo "deb https://apt.llvm.org/noble/ llvm-toolchain-noble-${COMPILER_VERSION} main" > /etc/apt/sources.list.d/llvm.list
-
-    apt-helpers install-packages --clean    \
-        --update --packages                 \
-        clang-${COMPILER_VERSION}           \
-        libclang-rt-${COMPILER_VERSION}-dev \
-        clang-tidy-${COMPILER_VERSION}      \
-        clang-format-${COMPILER_VERSION}    \
-        libomp-${COMPILER_VERSION}-dev
-
-    update-alternatives-helpers --prefix /usr/bin --level 10 \
-        --display --for-each-of                              \
-        clang=clang-${COMPILER_VERSION}                      \
-        clang++=clang++-${COMPILER_VERSION}                  \
-        clang-tidy=clang-tidy-${COMPILER_VERSION}            \
-        clang-format=clang-format-${COMPILER_VERSION}
-EOF
-
-FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-cmake
+FROM requirements-system AS requirements-cmake
 
 ARG TARGETARCH
 ARG CMAKE_VERSION
@@ -117,8 +64,61 @@ ADD https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CMAKE_PACKAGE_MA
 
 ENV PATH=/opt/cmake-${CMAKE_VERSION}/bin:${PATH}
 
+FROM requirements-cmake AS requirements-compiler-gnu
+
+ARG COMPILER_VERSION
+
+RUN <<EOF
+    set -ex
+
+    apt-helpers install-packages --clean --update --packages gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION}
+
+    update-alternatives-helpers --prefix /usr/bin \
+        --display --level=10 \
+        --for-each-of \
+            gcc=gcc-${COMPILER_VERSION} \
+            g++=g++-${COMPILER_VERSION} \
+            $(uname -m)-linux-gnu-gcc=$(uname -m)-linux-gnu-gcc-${COMPILER_VERSION} \
+            $(uname -m)-linux-gnu-g++=$(uname -m)-linux-gnu-g++-${COMPILER_VERSION}
+
+    gcc -dumpfullversion -dumpversion
+    g++ -dumpfullversion -dumpversion
+EOF
+
+FROM requirements-cmake AS requirements-compiler-rocm
+
+ENV PATH=/opt/rocm/bin:${PATH}
+
+FROM requirements-cmake AS requirements-compiler-clang
+
+ARG COMPILER_VERSION
+
+RUN <<EOF
+    set -ex
+
+    apt-helpers install-packages --update --packages wget lsb-release gpg software-properties-common
+
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/llvm.asc
+    echo "deb https://apt.llvm.org/noble/ llvm-toolchain-noble-${COMPILER_VERSION} main" > /etc/apt/sources.list.d/llvm.list
+
+    apt-helpers install-packages --clean    \
+        --update --packages                 \
+        clang-${COMPILER_VERSION}           \
+        libclang-rt-${COMPILER_VERSION}-dev \
+        clang-tidy-${COMPILER_VERSION}      \
+        clang-format-${COMPILER_VERSION}    \
+        libomp-${COMPILER_VERSION}-dev
+
+    update-alternatives-helpers --prefix /usr/bin --level 10 \
+        --display --for-each-of                              \
+        clang=clang-${COMPILER_VERSION}                      \
+        clang++=clang++-${COMPILER_VERSION}                  \
+        clang-tidy=clang-tidy-${COMPILER_VERSION}            \
+        clang-format=clang-format-${COMPILER_VERSION}
+EOF
+
 # Compile Doxygen.
-FROM requirements-cmake AS doxygen-compile
+FROM requirements-compiler-${COMPILER_FAMILY} AS doxygen-compile
 
 ARG DOXYGEN_VERSION
 
@@ -141,7 +141,7 @@ RUN <<EOF
 EOF
 
 # Compile Google Test.
-FROM requirements-cmake AS google-test-compile
+FROM requirements-compiler-${COMPILER_FAMILY} AS google-test-compile
 
 ARG GOOGLETEST_VERSION
 
@@ -165,7 +165,7 @@ RUN <<EOF
     cmake --build build --target install
 EOF
 
-FROM requirements-cmake AS requirements-backend
+FROM requirements-compiler-${COMPILER_FAMILY} AS requirements-backend
 
 REPLACE_REQUIREMENTS_BACKEND
 
