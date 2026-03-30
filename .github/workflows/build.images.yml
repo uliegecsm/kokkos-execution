@@ -120,6 +120,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - compiler:
+              family: gnu
+              version: 14
+            base_image: ubuntu:24.04
+            platforms: linux/amd64
           - kokkos_backends: [OpenMP]
             compiler:
               family: gnu
@@ -226,7 +231,7 @@ jobs:
 
       - id : compute-tag
         run: |
-          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
+          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}${{ matrix.kokkos_backends && format('-{0}', join(matrix.kokkos_backends, '-')) || '' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-buildx-action@v4
@@ -249,7 +254,7 @@ jobs:
                 DOXYGEN_VERSION=${{ env.DOXYGEN_VERSION }}
                 GOOGLETEST_VERSION=${{ env.GOOGLETEST_VERSION }}
                 KOKKOS_ARCHS=${{ matrix.kokkos_archs && join(matrix.kokkos_archs, ',') || '' }}
-                KOKKOS_PRESET=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
+                KOKKOS_PRESET=${{ matrix.compiler.family }}${{ matrix.kokkos_backends && format('-{0}', join(matrix.kokkos_backends, '-')) || '' }}
                 KOKKOS_SHA=${{ env.KOKKOS_SHA }}
                 KOKKOS_USERNAME=${{ env.KOKKOS_USERNAME }}
                 KOKKOS_UTILS_SHA=${{ env.KOKKOS_UTILS_SHA }}

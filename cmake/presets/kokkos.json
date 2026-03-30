@@ -91,6 +91,10 @@
             }
         },
         {
+            "name": "gnu",
+            "inherits": ["default", "cxx-gnu"]
+        },
+        {
             "name": "gnu-OpenMP",
             "inherits": ["default", "cxx-gnu", "OpenMP"]
         },
@@ -124,6 +128,11 @@
             "name": "default",
             "configurePreset": "default",
             "inheritConfigureEnvironment": true
+        },
+        {
+            "name": "gnu",
+            "configurePreset": "gnu",
+            "inherits": "default"
         },
         {
             "name": "gnu-OpenMP",
