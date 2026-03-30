@@ -11,7 +11,7 @@
 
 /**
  * @file
- * 
+ *
  * Sender that statically asserts the scheduler type at connect time.
  */
 

@@ -46,7 +46,7 @@ static_assert(test_scheduler_concept());
 
 /**
  * @test Check that querying the completion scheduler from a schedule sender of a scheduler returns the scheduler.
- * 
+ *
  * See https://eel.is/c++draft/exec.sched#5.
  */
 TEST(Scheduler, round_trip_property) {

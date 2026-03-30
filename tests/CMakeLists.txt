@@ -27,9 +27,7 @@ function(add_one_test)
       message(FATAL_ERROR "No execution space mapping for device '${DEVICE}'.")
     endif()
 
-    set(aot_args_EXECUTABLE_NAME
-        "${gprr_PARENT_RELPATH_REPR}_${aot_args_NAME}.${DEVICE}"
-    )
+    set(aot_args_EXECUTABLE_NAME "${gprr_PARENT_RELPATH_REPR}_${aot_args_NAME}.${DEVICE}")
 
     # Create test executable.
     add_executable(${aot_args_EXECUTABLE_NAME})
