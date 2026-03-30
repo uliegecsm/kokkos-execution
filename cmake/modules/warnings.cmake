@@ -7,6 +7,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     -Wall
     -Wextra
     -Wdangling-else
+    -Wpedantic
     -Wshadow
     -Wswitch-default
     -Wsuggest-override
