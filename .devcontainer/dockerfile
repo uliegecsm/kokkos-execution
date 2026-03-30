@@ -1,3 +1,4 @@
 FROM ghcr.io/uliegecsm/kokkos-execution/kokkos-execution:clang-22-OpenMP
 
-RUN apt update && apt --yes --no-install-recommends install gpg gnupg2
+RUN apt-helpers install-packages --update --clean --packages gpg gnupg2
+RUN pip install pre-commit
