@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    runs-on: [self-hosted, linux, docker, amd64]
+    runs-on: ubuntu-slim
     outputs:
       REGISTRY: ${{ env.REGISTRY }}
       CI_BUILDER: ${{ steps.common.outputs.CI_BUILDER }}
