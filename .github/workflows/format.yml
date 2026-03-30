@@ -1,31 +1,16 @@
 on:
   workflow_call:
-    inputs:
-      CI_IMAGE:
-        required: true
-        type: string
 
 permissions:
   contents: read
   packages: read
 
 jobs:
-  clang:
-    runs-on: [self-hosted, linux, docker, amd64]
-    container:
-      image: ${{ inputs.CI_IMAGE }}:clang-22-OpenMP
+  pre-commit:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - run: git ls-files '*.hpp' '*.h' '*.cpp' '*.c' | xargs clang-format-22 --verbose --dry-run --Werror
-
-  cmake:
-    runs-on: [self-hosted, linux, docker, amd64]
-    container:
-      image: ${{ inputs.CI_IMAGE }}:clang-22-OpenMP
-    steps:
-      - uses: actions/checkout@v6
-      - run: |
-          cmake-format --config-files=.cmake-format.py \
-            --log-level=debug \
-            --check \
-            $(git ls-files CMakeLists.txt '*.cmake')
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6.2.0
+      with:
+        python-version: '3.14'
+    - uses: pre-commit/action@v3.0.1

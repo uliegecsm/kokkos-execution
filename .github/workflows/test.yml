@@ -34,10 +34,7 @@ jobs:
       pull-requests: read
 
   format:
-    needs: [build-images]
     uses: ./.github/workflows/format.yml
-    with:
-      CI_IMAGE: ${{ needs.build-images.outputs.CI_IMAGE }}
 
   build-and-test:
     needs: [build-images, format]
