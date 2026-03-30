@@ -36,8 +36,36 @@ jobs:
   format:
     uses: ./.github/workflows/format.yml
 
+  build-and-test-smoke:
+    needs: [build-images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - {compiler: {family: gnu, version: 14}}
+    container:
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}
+      - run : |
+          ccache --set-config=max_size=100M
+          ccache --set-config=compression=true
+          ccache --set-config=base_dir=$GITHUB_WORKSPACE
+          ccache --set-config=cache_dir=$GITHUB_WORKSPACE/.ccache
+      - run: ccache --verbose --show-stats
+      - run: cmake -S . --preset=${{ matrix.compiler.family }}
+      - run: cmake --build --preset=${{ matrix.compiler.family }} -j4
+      - run: ctest --preset=${{ matrix.compiler.family }}
+      - run: bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}
+
   build-and-test:
-    needs: [build-images, format]
+    needs: [build-images, format, build-and-test-smoke]
     runs-on: ${{ matrix.runs-on && fromJSON(matrix.runs-on) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
@@ -134,7 +162,7 @@ jobs:
   # The deploy job is heavily inspired from https://github.com/actions/deploy-pages.
   deploy:
     # The deployment only happens if the library can be built and the documentation generated.
-    needs: [build-and-test, documentation]
+    needs: [build-and-test-smoke, build-and-test, documentation]
     runs-on: ubuntu-latest
 
     # The deployment only happens for 'main' branch.
