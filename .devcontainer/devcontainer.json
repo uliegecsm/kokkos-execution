@@ -1,21 +1,23 @@
 {
     "dockerFile": "dockerfile",
-    "extensions" : [
-        "ms-vscode.cmake-tools",
-        "ms-vscode.cpptools",
-        "eamodio.gitlens",
-        "mhutchie.git-graph",
-        "ms-azuretools.vscode-docker",
-        "ms-python.python",
-    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cmake-tools",
+                "ms-vscode.cpptools",
+                "eamodio.gitlens",
+                "mhutchie.git-graph",
+                "ms-azuretools.vscode-docker",
+                "ms-python.python"
+            ]
+        }
+    },
     "runArgs": [
-        "--privileged",
+        "--privileged"
     ],
     "remoteEnv": {
-        // Enforce an absolute path for ccache.
         "CCACHE_DIR" : "${containerWorkspaceFolder}/.ccache/",
-        // Increase ccache cache size.
-        "CCACHE_MAXSIZE" : "15G",
+        "CCACHE_MAXSIZE" : "15G"
     },
-    "onCreateCommand": "git config --global --add safe.directory $PWD"
+    "onCreateCommand": "git config --global --add safe.directory $PWD && pre-commit install"
 }
