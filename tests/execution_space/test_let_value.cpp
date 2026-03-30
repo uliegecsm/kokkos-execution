@@ -50,7 +50,8 @@ TEST_F(LetValueTest, scoped_allocation) {
     //! Allocate a @c Kokkos view only when the sender is running, put it in the value channel.
     auto allocate = stdexec::schedule(esc.get_scheduler())
                   | stdexec::let_value([this]() noexcept -> stdexec::sender auto {
-                        return stdexec::just(view_of_5_t{Kokkos::view_alloc(exec, "scratch")});
+                        return stdexec::just(
+                            view_of_5_t{Kokkos::view_alloc(exec, "scratch", Kokkos::WithoutInitializing)});
                     });
 
     static_assert(
@@ -75,22 +76,39 @@ TEST_F(LetValueTest, scoped_allocation) {
 
     //! Use the scratch view to make some meaningful computation.
     auto run = std::move(allocate) // NOLINT(performance-move-const-arg)
-             | stdexec::let_value(
-                   [&esc, &data, &stc](
-                       Kokkos::utils::concepts::ViewOfRank<1> auto const & scratch) noexcept -> stdexec::sender auto {
-                       return stdexec::schedule(esc.get_scheduler())
-                            | stdexec::bulk(
-                                  stdexec::par,
-                                  5,
-                                  KOKKOS_LAMBDA<std::integral T>(const T index) {
-                                      scratch(index) = index;
-                                      Kokkos::atomic_add(data.data(), scratch(index));
-                                  })
-                            | stdexec::continues_on(stc.get_scheduler())
-                            | stdexec::then([scratch]() mutable -> Kokkos::utils::concepts::ViewOfRank<1> auto {
-                                  return std::move(scratch);
-                              });
-                   });
+             /**
+              * The operation state of @c stdexec::let_value stores the arguments in a decayed tuple
+              * and passes references to them when invoking the lambda.
+              *
+              * - https://github.com/NVIDIA/stdexec/blob/f662722de0de4b4795c56fe8546ecf9412ec5a3f/include/stdexec/__detail/__let.hpp#L315
+              * - https://github.com/NVIDIA/stdexec/blob/f662722de0de4b4795c56fe8546ecf9412ec5a3f/include/stdexec/__detail/__let.hpp#L355
+              * - https://github.com/NVIDIA/stdexec/blob/f662722de0de4b4795c56fe8546ecf9412ec5a3f/include/stdexec/__detail/__let.hpp#L358
+              */
+             | stdexec::let_value([&esc, &data, &stc](auto&& scratch) noexcept -> stdexec::sender auto {
+                   static_assert(std::same_as<decltype(scratch), view_of_5_t&>);
+                   EXPECT_EQ(scratch.use_count(), 1);
+                   return stdexec::schedule(esc.get_scheduler())
+                        | stdexec::bulk(
+                              stdexec::par,
+                              5,
+                              KOKKOS_LAMBDA<std::integral T>(const T index) {
+                                  /**
+                                   * The use count includes the views in the @c stdexec::let_value operation state and the @c stdexec::bulk closure.
+                                   *
+                                   * There is also a copy in the @c Kokkos parallel region, but it is not included in the use count
+                                   * because of @c Kokkos::parallel_for uses @c Kokkos::Impl::construct_with_shared_allocation_tracking_disabled.
+                                   */
+                                  KOKKOS_IF_ON_HOST(EXPECT_EQ(scratch.use_count(), 2);)
+                                  scratch(index) = index;
+                                  Kokkos::atomic_add(data.data(), scratch(index));
+                              })
+                        | stdexec::continues_on(stc.get_scheduler())
+                        | stdexec::then([&scratch]() mutable -> Kokkos::utils::concepts::ViewOfRank<1> auto {
+                              //! The use count includes the views in the @c stdexec::let_value operation state and the @c stdexec::bulk closure.
+                              EXPECT_EQ(scratch.use_count(), 2);
+                              return std::move(scratch);
+                          });
+               });
 
     static_assert(Tests::Utils::has_completion_signatures<
                   decltype(run),
@@ -100,15 +118,36 @@ TEST_F(LetValueTest, scoped_allocation) {
 
     //! Check the result of the computation.
     auto check = std::move(run) // NOLINT(performance-move-const-arg)
-               | stdexec::let_value(
-                     [&esc, &data](
-                         Kokkos::utils::concepts::ViewOfRank<1> auto const & scratch) noexcept -> stdexec::sender auto {
-                         return stdexec::schedule(esc.get_scheduler())
-                              | stdexec::bulk(
-                                    stdexec::par, 5, KOKKOS_LAMBDA<std::integral T>(const T index) {
-                                        Kokkos::atomic_add(data.data(), scratch(index));
-                                    });
-                     });
+               | stdexec::let_value([&esc, &data](auto&& scratch) noexcept -> stdexec::sender auto {
+                     static_assert(std::same_as<decltype(scratch), view_of_5_t&>);
+                     /**
+                      * The implementation of @c stdexec::let_value uses a single variant to store the predecessor and successor operation states.
+                      *
+                      * The predecessor operation state is still alive when the lambda is invoked to construct the successor sender. The predecessor
+                      * operation state is destroyed only when the successor sender is connected and assigned to the variant.
+                      *
+                      * - https://github.com/NVIDIA/stdexec/blob/f662722de0de4b4795c56fe8546ecf9412ec5a3f/include/stdexec/__detail/__let.hpp#L357-L365
+                      * - https://github.com/NVIDIA/stdexec/blob/f662722de0de4b4795c56fe8546ecf9412ec5a3f/include/stdexec/__detail/__let.hpp#L382-L384
+                      *
+                      * The use count includes the views in the "run" @c stdexec::bulk closure and the "check" @c stdexec::let_value operation state.
+                      *
+                      * The "run" @c stdexec::then lambda moved the view held by the "run" @c stdexec::let_value operation state, so it no longer
+                      * contributes to the use count at this point.
+                      */
+                     EXPECT_EQ(scratch.use_count(), 2);
+                     return stdexec::schedule(esc.get_scheduler())
+                          | stdexec::bulk(
+                                stdexec::par, 5, KOKKOS_LAMBDA<std::integral T>(const T index) {
+                                    Kokkos::atomic_add(data.data(), scratch(index));
+                                    /**
+                                     * The use count includes the views in the "check" @c stdexec::let_value operation state and the @c stdexec::bulk closure
+                                     *
+                                     * There is also a copy in the @c Kokkos parallel region, but it is not included in the use count
+                                     * because of @c Kokkos::parallel_for uses @c Kokkos::Impl::construct_with_shared_allocation_tracking_disabled.
+                                     */
+                                    KOKKOS_IF_ON_HOST(EXPECT_EQ(scratch.use_count(), 2);)
+                                });
+                 });
 
     static_assert(Tests::Utils::has_completion_signatures<
                   decltype(check),
