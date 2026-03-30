@@ -13,7 +13,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     -Wsuggest-override
     -Woverloaded-virtual
     -Werror
-    -pedantic-errors
   )
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
