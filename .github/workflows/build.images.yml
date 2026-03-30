@@ -26,9 +26,7 @@ jobs:
     secrets: inherit
 
   setup-skips:
-    runs-on: [self-hosted, linux, docker, amd64]
-    container:
-      image: alpine/git:2.52.0@sha256:3b7890cb947afd3f71adab55aa6b549ad0f8ddc4b9ed28b027563d73d49d8e11
+    runs-on: ubuntu-slim
     outputs:
       build-builder: ${{ steps.build-builder.outputs.build-builder }}
       build-images: ${{ steps.build-images.outputs.build-images }}
@@ -37,7 +35,6 @@ jobs:
       pull-requests: read
     steps:
       - uses: actions/checkout@v6
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - id: build-builder-changed-files
         uses: tj-actions/changed-files@v47
