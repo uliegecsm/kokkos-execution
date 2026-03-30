@@ -38,7 +38,7 @@ jobs:
 
   build-and-test:
     needs: [build-images, format]
-    runs-on: ${{ fromJSON(matrix.runs-on || '["self-hosted", "linux", "docker", "amd64"]') }}
+    runs-on: ${{ matrix.runs-on && fromJSON(matrix.runs-on) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -46,7 +46,7 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}, docker_run_args: "--security-opt seccomp=unconfined", no-aslr: true}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
@@ -92,15 +92,24 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: true
-      - run : |
-          ccache --verbose --show-stats
+      - if: runner.environment == 'github-hosted'
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}
+      - if: runner.environment == 'github-hosted'
+        run : |
+          ccache --set-config=max_size=100M
+          ccache --set-config=compression=true
+          ccache --set-config=base_dir=$GITHUB_WORKSPACE
+          ccache --set-config=cache_dir=$GITHUB_WORKSPACE/.ccache
+      - run: ccache --verbose --show-stats
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}"
       - run: |
           cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
       - run: |
-          ${{ matrix.no-aslr && 'setarch --addr-no-randomize' || '' }} \
           ctest --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
       - run: |
           bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
