@@ -3,3 +3,5 @@
 # kokkos-execution
 
 Customization of `std::execution` for `Kokkos`.
+
+The documentation is available [here](https://uliegecsm.github.io/kokkos-execution/).
