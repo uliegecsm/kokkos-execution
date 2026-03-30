@@ -121,3 +121,30 @@ jobs:
           cmake -S . --preset=gnu-OpenMP -DKokkosExecution_ENABLE_DOCS=ON
       - run: |
           cmake --build --preset=gnu-OpenMP -j4 --target=docs
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build-with-gnu-OpenMP/docs/html
+
+  # The deploy job is heavily inspired from https://github.com/actions/deploy-pages.
+  deploy:
+    # The deployment only happens if the library can be built and the documentation generated.
+    needs: [build-and-test, documentation]
+    runs-on: ubuntu-latest
+
+    # The deployment only happens for 'main' branch.
+    if: ${{ ! failure() && ! cancelled() && github.ref == 'refs/heads/main' }}
+
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment.
+    permissions:
+      pages: write
+      id-token: write
+
+    # Deploy to the github-pages environment.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages.
+        id  : deployment
+        uses: actions/deploy-pages@v4
