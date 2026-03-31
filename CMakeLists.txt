@@ -99,6 +99,7 @@ target_sources(
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
             kokkos-execution/graph/domain.hpp
+            kokkos-execution/graph/events.hpp
             kokkos-execution/graph/graph_fwd.hpp
             kokkos-execution/graph/sender_concepts.hpp
             kokkos-execution/graph/sync_wait.hpp
