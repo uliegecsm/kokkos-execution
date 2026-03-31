@@ -30,13 +30,13 @@ enum class Kind : std::uint8_t {
     POP
 };
 
-template <Kind kind, stdexec::receiver Rcvr, stdexec::__is_instance_of<Scheduler> Schd>
+template <Kind kind, stdexec::__is_instance_of<Scheduler> Schd, stdexec::receiver Rcvr>
 struct RegionReceiver {
     using receiver_concept = stdexec::receiver_t;
 
-    Rcvr rcvr;
     std::string name;
     Schd schd;
+    Rcvr rcvr;
 
     template <typename Tag, typename... Args>
     void complete(Tag tag, Args&&... args) && noexcept {
@@ -73,18 +73,26 @@ struct RegionSender {
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(RegionSender)
 
-    template <stdexec::receiver Rcvr>
-    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
-        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+    template <typename Rcvr>
+    using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, stdexec::env_of_t<Rcvr>>;
 
-        using recv_t = RegionReceiver<kind, Rcvr, std::remove_cvref_t<decltype(schd)>>;
+    template <typename Rcvr>
+    using rcvr_t = RegionReceiver<kind, schd_t<Rcvr>, Rcvr>;
+
+    template <stdexec::receiver Rcvr>
+    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(
+        std::is_nothrow_constructible_v<rcvr_t<Rcvr>, std::string&&, schd_t<Rcvr>&&, Rcvr&&>
+        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) {
+        auto schd =
+            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::get_env(rcvr));
 
         return stdexec::connect(
-            std::move(sndr), recv_t{.rcvr = std::move(rcvr), .name = std::move(name), .schd = std::move(schd)});
+            std::forward<Sndr>(sndr),
+            rcvr_t<Rcvr>{.name = std::move(name), .schd = std::move(schd), .rcvr = std::move(rcvr)});
     }
 
-    Sndr sndr;
     std::string name{};
+    Sndr sndr;
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 };
@@ -92,7 +100,7 @@ struct RegionSender {
 struct Push {
     template <stdexec::sender Sndr, typename T>
     auto operator()(Sndr&& sndr, T&& name) const noexcept -> RegionSender<Kind::PUSH, Sndr> {
-        return RegionSender<Kind::PUSH, Sndr>{.sndr = std::forward<Sndr>(sndr), .name = std::forward<T>(name)};
+        return {.name = std::forward<T>(name), .sndr = std::forward<Sndr>(sndr)};
     }
 
     template <typename T>
@@ -104,7 +112,7 @@ struct Push {
 struct Pop {
     template <stdexec::sender Sndr>
     auto operator()(Sndr&& sndr) const noexcept -> RegionSender<Kind::POP, Sndr> {
-        return RegionSender<Kind::POP, Sndr>{.sndr = std::forward<Sndr>(sndr)};
+        return {.sndr = std::forward<Sndr>(sndr)};
     }
 
     auto operator()() const noexcept {
