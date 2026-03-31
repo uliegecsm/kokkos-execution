@@ -102,6 +102,7 @@ target_sources(
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
             kokkos-execution/execution_space/when_all.hpp
+            kokkos-execution/graph/bulk.hpp
             kokkos-execution/graph/domain.hpp
             kokkos-execution/graph/events.hpp
             kokkos-execution/graph/get_graph.hpp

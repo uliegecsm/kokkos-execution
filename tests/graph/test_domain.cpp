@@ -32,9 +32,9 @@ TEST(DomainTest, not_default_domain_like_then) {
     >());
 }
 
-//! @test It will be default-like for @c stdexec::bulk_t (since it does not customize it).
-TEST(DomainTest, default_domain_like_bulk) {
-    static_assert(Tests::Utils::check_if_default_domain_like_for<
+//! @test It will always be non-default-like for @c stdexec::bulk_t (since it customizes it).
+TEST(DomainTest, not_default_domain_like_bulk) {
+    static_assert(!Tests::Utils::check_if_default_domain_like_for<
                   Kokkos::Execution::GraphImpl::Domain,
                   stdexec::bulk_t,
                   typename DomainTest::schedule_sender_t,
@@ -52,9 +52,9 @@ TEST(DomainTest, has_transform_sender_for_then) {
     >());
 }
 
-//! @test It has no transform for a @c stdexec::bulk_t sender.
-TEST(DomainTest, has_no_transform_sender_for_bulk) {
-    static_assert(!Tests::Utils::check_if_domain_has_transform_sender_for<
+//! @test It has a transform for a @c stdexec::bulk_t sender.
+TEST(DomainTest, has_transform_sender_for_bulk) {
+    static_assert(Tests::Utils::check_if_domain_has_transform_sender_for<
                   Kokkos::Execution::GraphImpl::Domain,
                   stdexec::bulk_t,
                   typename DomainTest::schedule_sender_t,

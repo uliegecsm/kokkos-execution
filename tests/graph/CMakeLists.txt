@@ -1,3 +1,4 @@
+add_one_test(NAME bulk)
 add_one_test(NAME domain)
 add_one_test(NAME events)
 add_one_test(NAME scheduler)

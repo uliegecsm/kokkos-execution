@@ -5,6 +5,7 @@
 
 #include "Kokkos_Core.hpp"
 
+#include "kokkos-execution/graph/bulk.hpp"
 #include "kokkos-execution/graph/domain.hpp"
 #include "kokkos-execution/graph/sync_wait.hpp"
 #include "kokkos-execution/graph/then.hpp"
