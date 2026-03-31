@@ -127,10 +127,10 @@ struct ScopedRegion {
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 
-namespace Kokkos::Profiling {
+namespace Kokkos::Execution::Profiling {
 inline constexpr Kokkos::Execution::ExecutionSpaceImpl::Push push{};
 inline constexpr Kokkos::Execution::ExecutionSpaceImpl::Pop pop{};
 inline constexpr Kokkos::Execution::ExecutionSpaceImpl::ScopedRegion scoped_region{};
-} // namespace Kokkos::Profiling
+} // namespace Kokkos::Execution::Profiling
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_SCOPED_REGION_HPP
