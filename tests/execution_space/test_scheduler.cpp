@@ -22,7 +22,7 @@ namespace Tests::ExecutionSpaceImpl {
 using execution_space_context_t = Kokkos::Execution::ExecutionSpaceContext<TEST_EXECUTION_SPACE>;
 using execution_space_scheduler_t = Kokkos::Execution::ExecutionSpaceImpl::Scheduler<TEST_EXECUTION_SPACE>;
 using execution_space_schedule_sender_t = typename execution_space_scheduler_t::Sender;
-using execution_space_scheduler_attrs_t = typename execution_space_schedule_sender_t::Attributes;
+using execution_space_schedule_sender_attrs_t = typename execution_space_schedule_sender_t::Attributes;
 
 //! @test @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler models the @c stdexec::scheduler concept.
 static_assert(Tests::Utils::check_scheduler<execution_space_scheduler_t>());
@@ -57,8 +57,10 @@ static_assert(test_scheduler_schedule());
  *       @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender::Attributes.
  */
 consteval bool test_schedule_sender_attrs() {
-    static_assert(
-        std::same_as<stdexec::env_of_t<execution_space_schedule_sender_t>, const execution_space_scheduler_attrs_t&>);
+    static_assert(std::same_as<
+                  stdexec::env_of_t<execution_space_schedule_sender_t>,
+                  const execution_space_schedule_sender_attrs_t&
+    >);
 
     return true;
 }
@@ -87,10 +89,10 @@ consteval bool test_scheduler_queries() {
 static_assert(test_scheduler_queries());
 
 //! @test Check queries of @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender::Attributes.
-consteval bool test_scheduler_attrs_queries() {
+consteval bool test_schedule_sender_attrs_queries() {
     static_assert(std::same_as<
                   stdexec::__query_result_t<
-                      execution_space_scheduler_attrs_t,
+                      execution_space_schedule_sender_attrs_t,
                       stdexec::get_completion_scheduler_t<stdexec::set_value_t>
                   >,
                   execution_space_scheduler_t
@@ -98,7 +100,7 @@ consteval bool test_scheduler_attrs_queries() {
 
     static_assert(std::same_as<
                   stdexec::__query_result_t<
-                      execution_space_scheduler_attrs_t,
+                      execution_space_schedule_sender_attrs_t,
                       stdexec::get_completion_domain_t<stdexec::set_value_t>
                   >,
                   Kokkos::Execution::ExecutionSpaceImpl::Domain
@@ -106,6 +108,6 @@ consteval bool test_scheduler_attrs_queries() {
 
     return true;
 }
-static_assert(test_scheduler_attrs_queries());
+static_assert(test_schedule_sender_attrs_queries());
 
 } // namespace Tests::ExecutionSpaceImpl
