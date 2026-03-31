@@ -4,6 +4,7 @@
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
+#include "tests/utils/sink_receiver.hpp"
 
 /**
  * @addtogroup unittests
@@ -34,8 +35,21 @@ class ScopedRegionTest
     >;
 };
 
+//! @test Check traits of sender returned by @ref Kokkos::Execution::Profiling::scoped_region.
+consteval bool test_sndr_traits() {
+    using schd_sndr_t = typename ScopedRegionTest::schedule_sender_t;
+
+    using scoped_region_sndr_t =
+        decltype(std::declval<schd_sndr_t>() | Kokkos::Execution::Profiling::scoped_region("the name of my nice scoped region", stdexec::then(KOKKOS_LAMBDA(){})));
+
+    static_assert(stdexec::__nothrow_connectable<scoped_region_sndr_t, Tests::Utils::SinkReceiver>);
+
+    return true;
+}
+static_assert(test_sndr_traits());
+
 /**
- * @test Check that @ref Kokkos::Profiling::scoped_region works as intended.
+ * @test Check that @ref Kokkos::Execution::Profiling::scoped_region works as intended.
  *
  * The push/pop events and the preceding fences must be placed appropriately.
  */
@@ -45,7 +59,7 @@ TEST_F(ScopedRegionTest, many) {
     const context_t esc{exec};
 
     auto chain = stdexec::schedule(esc.get_scheduler())
-               | Kokkos::Profiling::scoped_region(
+               | Kokkos::Execution::Profiling::scoped_region(
                      "the name of my nice scoped region", THEN_INCREMENT(data) | THEN_INCREMENT(data));
 
     ASSERT_THAT(

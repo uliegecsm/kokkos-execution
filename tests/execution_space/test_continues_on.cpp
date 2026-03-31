@@ -7,6 +7,7 @@
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/kokkos.hpp"
+#include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
 
 /**
@@ -35,10 +36,26 @@ class ContinuesOnTest
         RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
 };
 
-//! @test Check traits of the sender created by the customized @c continues_on.
-TEST_F(ContinuesOnTest, traits) {
-    static_assert(Tests::Utils::check_continues_on<decltype(context_t{exec}.get_scheduler())>());
+//! @test Check traits of the sender created by the customized @c stdexec::schedule_from.
+consteval bool test_schedule_from_sndr_traits() {
+    using schd_t = typename ContinuesOnTest::scheduler_t;
+    using schd_sndr_t = typename ContinuesOnTest::schedule_sender_t;
+
+    using schedule_from_sndr_t = Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromSender<schd_t, schd_sndr_t>;
+
+    static_assert(stdexec::__nothrow_connectable<schedule_from_sndr_t, Tests::Utils::SinkReceiver>);
+
+    return true;
 }
+static_assert(test_schedule_from_sndr_traits());
+
+//! @test Check traits of the sender created by the customized @c stdexec::continues_on.
+consteval bool test_continues_on_sndr_traits() {
+    static_assert(Tests::Utils::check_continues_on<typename ContinuesOnTest::scheduler_t>());
+
+    return true;
+}
+static_assert(test_continues_on_sndr_traits());
 
 //! @test Check that the @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec_t query is forwarded as expected.
 TEST_F(ContinuesOnTest, queryable_get_exec) {
