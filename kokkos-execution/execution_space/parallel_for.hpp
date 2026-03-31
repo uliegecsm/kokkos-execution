@@ -102,4 +102,14 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 
+// NOLINTBEGIN(bugprone-reserved-identifier)
+namespace stdexec::__detail {
+template <typename Tag, stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+extern __mtype<
+    Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<Tag, __demangle_t<Sndr>, Label, Functor, ExecPolicy>
+>
+    __demangle_v<Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<Tag, Sndr, Label, Functor, ExecPolicy>>;
+} // namespace stdexec::__detail
+// NOLINTEND(bugprone-reserved-identifier)
+
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP

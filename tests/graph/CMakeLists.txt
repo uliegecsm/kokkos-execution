@@ -1,6 +1,8 @@
 add_one_test(NAME bulk)
+add_one_test(NAME continues_on)
 add_one_test(NAME domain)
 add_one_test(NAME events)
+add_one_test(NAME inter_op)
 add_one_test(NAME parallel_for)
 add_one_test(NAME scheduler)
 add_one_test(NAME sync_wait)
