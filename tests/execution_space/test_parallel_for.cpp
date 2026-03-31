@@ -31,6 +31,7 @@ class ParallelForTest
    public:
     using recorder_listener_t =
         RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
+    using variant_t = typename recorder_listener_t::event_variant_t;
 
     static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
@@ -237,8 +238,11 @@ TEST_F(ParallelForTest, closure_object_creation_overloads) {
     using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
 
     ASSERT_THAT(
-        recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, "passing label, execution policy and functor"));
-    ASSERT_THAT(recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()));
+        recorded_events,
+        ElementAt<variant_t>(ievent++, MATCHER_FOR_BEGIN_PFOR(exec, "passing label, execution policy and functor")));
+    ASSERT_THAT(
+        recorded_events,
+        ElementAt<variant_t>(ievent++, MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name())));
 
     if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::DefaultExecutionSpace>) {
         ASSERT_THAT(
