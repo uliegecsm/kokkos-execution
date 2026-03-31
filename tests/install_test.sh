@@ -63,6 +63,8 @@ if [ "${COMPILER_FAMILY}" = "clang" ];then
     export CXX=clang++
 elif [ "${COMPILER_FAMILY}" = "rocm" ];then
     export CXX=hipcc
+elif [ "${COMPILER_FAMILY}" = "intel" ];then
+    export CXX=icpx
 fi
 
 cmake -S . -B build --warn-uninitialized

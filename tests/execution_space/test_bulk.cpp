@@ -30,7 +30,8 @@ class BulkTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t =
+        RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
 };
 
 //! @test Check traits of sender returned by @c bulk when customized for @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.

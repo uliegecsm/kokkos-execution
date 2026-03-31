@@ -45,6 +45,11 @@ endif()
 string(JSON CPM_VERSION GET "${DEPENDENCIES_JSON}" "github" "cpm")
 include(/opt/cpm-${CPM_VERSION}/CPM.cmake)
 
+if(SYCL IN_LIST Kokkos_DEVICES AND CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+  include(cmake/functions/patch.cmake)
+  apply_patch(${CMAKE_SOURCE_DIR}/external/stdexec-icpx-ice-when-all.patch ${CMAKE_SOURCE_DIR}/external/stdexec)
+endif()
+
 cpmaddpackage(
   NAME
   stdexec
@@ -104,6 +109,7 @@ target_sources(
             kokkos-execution/impl/HIP/event.hpp
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/sender_concepts.hpp
+            kokkos-execution/impl/SYCL/event.hpp
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/utils/ignore_warnings.hpp
 )

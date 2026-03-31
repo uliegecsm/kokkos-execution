@@ -117,6 +117,53 @@ RUN <<EOF
         clang-format=clang-format-${COMPILER_VERSION}
 EOF
 
+FROM requirements-cmake AS requirements-compiler-intel
+
+ARG COMPILER_VERSION
+
+RUN <<EOF
+    set -ex
+
+    apt-helpers install-packages --update --packages gpg wget
+
+    wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+        | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+    echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+        | tee /etc/apt/sources.list.d/oneAPI.list
+
+    apt-helpers install-packages --update --clean --packages intel-oneapi-compiler-dpcpp-cpp-${COMPILER_VERSION}
+EOF
+
+ENV PATH=/opt/intel/oneapi/compiler/${COMPILER_VERSION}/bin/:$PATH
+ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/${COMPILER_VERSION}/lib:$LD_LIBRARY_PATH
+
+ARG UNIFIED_RUNTIME_VERSION=6.3.0
+
+RUN --mount=type=tmpfs,target=/tmp/build <<EOF
+    set -ex
+
+    cd /tmp/build
+
+    wget https://github.com/intel/llvm/archive/refs/tags/v${UNIFIED_RUNTIME_VERSION}.tar.gz
+
+    tar -xf v${UNIFIED_RUNTIME_VERSION}.tar.gz
+
+    cd llvm-${UNIFIED_RUNTIME_VERSION}/unified-runtime
+
+    cmake -S . -B build \
+      -DCMAKE_C_COMPILER=gcc \
+      -DCMAKE_CXX_COMPILER=g++ \
+      -DUR_BUILD_TESTS=OFF \
+      -DUR_ENABLE_TRACING=ON \
+      -DUR_BUILD_ADAPTER_CUDA=ON \
+      -DUR_BUILD_ADAPTER_OPENCL=OFF \
+      -DCMAKE_BUILD_TYPE=Release
+
+    cmake --build build -j4
+
+    cp -r build/lib/* /opt/intel/oneapi/compiler/${COMPILER_VERSION}/lib/
+EOF
+
 # Compile Doxygen.
 FROM requirements-compiler-${COMPILER_FAMILY} AS doxygen-compile
 
@@ -194,7 +241,7 @@ RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kok
 
     cp /cmake/presets/kokkos.json CMakePresets.json
 
-    cmake -S . --preset=${KOKKOS_PRESET} \
+    cmake -S . --preset=${KOKKOS_PRESET} -LA \
         $([ -n "$KOKKOS_ARCHS" ] && echo $KOKKOS_ARCHS | tr ',' '\n' | sed 's/^/-DKokkos_ARCH_/; s/$/=ON/') \
         -DCMAKE_INSTALL_PREFIX=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
 

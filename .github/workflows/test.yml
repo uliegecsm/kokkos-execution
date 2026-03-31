@@ -111,6 +111,12 @@ jobs:
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'amd_gfx1201', 'gpu:0']"
             docker_run_args: --device /dev/kfd --device /dev/dri
             tag_suffix     : -zen5-amd_gfx1201
+          - kokkos_backends: [OpenMP, SYCL]
+            compiler:
+              family: intel
+              version: 2025.3
+            runs-on: "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
+            tag_suffix: -volta70
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.

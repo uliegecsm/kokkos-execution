@@ -36,7 +36,8 @@ class ForkJoinTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t =
+        RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
 
     static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };

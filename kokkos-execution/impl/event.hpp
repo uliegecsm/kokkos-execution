@@ -83,5 +83,8 @@ inline void wait_event(const uint64_t event_id) {
 #if defined(KOKKOS_ENABLE_HPX)
 #    include "kokkos-execution/impl/HPX/event.hpp"
 #endif
+#if defined(KOKKOS_ENABLE_SYCL)
+#    include "kokkos-execution/impl/SYCL/event.hpp"
+#endif
 
 #endif // KOKKOS_EXECUTION_IMPL_EVENT_HPP
