@@ -63,6 +63,7 @@ jobs:
         with:
           files: |
             .github/workflows/build.images.yml
+            dependencies.json
             docker/dockerfile
 
       - id: build-images
