@@ -15,6 +15,9 @@ namespace Kokkos::Execution::GraphImpl {
 template <typename Tag>
 struct ApplySenderFor;
 
+template <typename Tag>
+struct TransformSenderFor;
+
 struct Domain;
 
 template <Kokkos::ExecutionSpace Exec>

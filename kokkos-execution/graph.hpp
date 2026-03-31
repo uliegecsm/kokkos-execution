@@ -7,6 +7,7 @@
 
 #include "kokkos-execution/graph/domain.hpp"
 #include "kokkos-execution/graph/sync_wait.hpp"
+#include "kokkos-execution/graph/then.hpp"
 #include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution {

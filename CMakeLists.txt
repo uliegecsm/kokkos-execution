@@ -104,9 +104,13 @@ target_sources(
             kokkos-execution/execution_space/when_all.hpp
             kokkos-execution/graph/domain.hpp
             kokkos-execution/graph/events.hpp
+            kokkos-execution/graph/get_graph.hpp
+            kokkos-execution/graph/get_node.hpp
             kokkos-execution/graph/graph_fwd.hpp
+            kokkos-execution/graph/operation_state.hpp
             kokkos-execution/graph/sender_concepts.hpp
             kokkos-execution/graph/sync_wait.hpp
+            kokkos-execution/graph/then.hpp
             kokkos-execution/impl/attributes.hpp
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signatures.hpp
@@ -118,6 +122,7 @@ target_sources(
             kokkos-execution/impl/HIP/event.hpp
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
+            kokkos-execution/impl/make_opstate.hpp
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/sender_introspection.hpp
