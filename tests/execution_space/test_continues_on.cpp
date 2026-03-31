@@ -392,7 +392,7 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
 }
 
 //! @test Check @c noexcept specification of sender transformation.
-consteval bool test_sndr_no_throw_transformable() {
+consteval bool test_sndr_nothrow_transformable() {
     using sndr_continues_on_t =
         decltype(stdexec::just() | stdexec::continues_on(std::declval<typename ContinuesOnTest::scheduler_t>()));
 
@@ -437,6 +437,6 @@ consteval bool test_sndr_no_throw_transformable() {
 
     return true;
 }
-static_assert(test_sndr_no_throw_transformable());
+static_assert(test_sndr_nothrow_transformable());
 
 } // namespace Tests::ExecutionSpaceImpl
