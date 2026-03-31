@@ -62,11 +62,15 @@ struct ScheduleFromSender {
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender)
 
-    template <stdexec::receiver Rcvr>
-    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
-        using recv_t = ScheduleFromReceiver<Schd, Rcvr>;
+    template <typename Rcvr>
+    using rcvr_t = ScheduleFromReceiver<Schd, Rcvr>;
 
-        return stdexec::connect(std::forward<Sndr>(sndr), recv_t{.schd = std::move(schd), .rcvr = std::move(rcvr)});
+    template <stdexec::receiver Rcvr>
+    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(
+        std::is_nothrow_constructible_v<rcvr_t<Rcvr>, Schd&&, Rcvr&&>
+        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) {
+        return stdexec::connect(
+            std::forward<Sndr>(sndr), rcvr_t<Rcvr>{.schd = std::move(schd), .rcvr = std::move(rcvr)});
     }
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
@@ -78,7 +82,7 @@ struct ScheduleFromSender {
 template <>
 struct TransformSenderFor<stdexec::schedule_from_t> {
     template <typename Sndr, typename Env>
-    using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, const Env&>;
+    using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env>;
 
     template <typename Sndr, typename Env>
     using sndr_t = ScheduleFromSender<schd_t<Sndr, Env>, Sndr>;
