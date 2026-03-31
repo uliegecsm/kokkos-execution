@@ -17,7 +17,7 @@
  * --------------------------------------------------------------------------------
  *
  * This group of tests check that @ref Kokkos::Execution::ExecutionSpaceContext properly customizes
- * @c then.
+ * @c stdexec::then.
  *
  * The tests can be found in @ref tests/execution_space/test_then.cpp.
  */
@@ -40,7 +40,7 @@ class ThenTest
     using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
-//! @test Check traits of sender returned by @c then when customized for @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
+//! @test Check traits of sender returned by @c stdexec::then when customized for @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename ThenTest::schedule_sender_t;
@@ -75,7 +75,7 @@ static_assert(Tests::Utils::check_continues_on_after_just_stopped<
 >());
 
 /**
- * @test Check that @ref Kokkos::Execution::ExecutionSpaceContext does its duty well when used with @c then
+ * @test Check that @ref Kokkos::Execution::ExecutionSpaceContext does its duty well when used with @c stdexec::then
  *       within a chain started with @c stdexec::schedule.
  */
 TEST_F(ThenTest, then_schedule) {

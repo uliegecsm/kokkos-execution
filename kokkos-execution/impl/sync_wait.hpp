@@ -90,14 +90,14 @@ struct SyncWait {
     using result_t = stdexec::__sync_wait::__value_tuple_for_t<Sndr>;
 
     template <typename Sndr>
-    static constexpr bool is_nothrow_connectable = stdexec::__nothrow_connectable<
-        Sndr,
-        Receiver<
-            typename stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, env>::execution_space,
-            sends_error<Sndr>,
-            result_t<Sndr>
-        >
+    using receiver_t = Receiver<
+        typename stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, env>::execution_space,
+        sends_error<Sndr>,
+        result_t<Sndr>
     >;
+
+    template <typename Sndr>
+    static constexpr bool is_nothrow_connectable = stdexec::__nothrow_connectable<Sndr, receiver_t<Sndr>>;
 
     /**
      * According to https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#spec-execution.senders.consumers.sync_wait,
@@ -114,10 +114,13 @@ struct SyncWait {
         std::optional<result_t<Sndr&&>> result{};
 
         Receiver rcvr{
-            .state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::env{})
+            .state = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+                         stdexec::get_env(sndr), env{.schd = runloop_state.loop.get_scheduler()})
                          .state,
             .runloop_state = std::addressof(runloop_state),
             .result = std::addressof(result)};
+
+        static_assert(std::same_as<decltype(rcvr), receiver_t<Sndr&&>>);
 
         auto op_state = stdexec::connect(std::forward<Sndr>(sndr), std::move(rcvr));
 
@@ -130,6 +133,23 @@ struct SyncWait {
                 std::rethrow_exception(std::move(runloop_state.error));
 
         return result;
+    }
+};
+
+/**
+ * @brief Customize @c stdexec::sync_wait.
+ *
+ * References:
+ *  - https://github.com/NVIDIA/stdexec/blob/e8a6a7b25fbc2463e1dfe0ee20973b1fe622bfcf/include/nvexec/stream_context.cuh#L247-L251
+ *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#spec-execution.senders.consumers.sync_wait
+ *  - https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#design-dispatch
+ */
+template <template <typename...> typename SndrTrait>
+struct ApplySenderFor {
+    template <typename Sndr>
+    requires SndrTrait<Sndr, env>::value
+    auto operator()(Sndr&& sndr) const noexcept(std::is_nothrow_invocable_v<SyncWait, Sndr&&>) {
+        return SyncWait{}(std::forward<Sndr>(sndr));
     }
 };
 

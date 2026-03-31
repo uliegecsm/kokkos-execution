@@ -3,25 +3,15 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-#    include "plog/Log.h"
-#endif
-
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
+#include "kokkos-execution/impl/domain.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-struct Domain : public stdexec::default_domain {
-    template <typename Tag, stdexec::sender Sndr, typename... Args>
-    requires stdexec::__callable<ApplySenderFor<Tag>, Sndr&&, Args&&...>
-    static auto apply_sender(Tag, Sndr&& sndr, Args&&... args)
-        noexcept(stdexec::__nothrow_callable<ApplySenderFor<Tag>, Sndr&&, Args&&...>) {
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": apply_sender for tag "
-                   << Kokkos::Impl::TypeInfo<Tag>::name();
-#endif
-        return ApplySenderFor<Tag>{}(std::forward<Sndr>(sndr), std::forward<Args>(args)...);
-    }
+struct Domain
+    : public stdexec::default_domain
+    , public Impl::ApplySender<Domain, ApplySenderFor> {
+    using Impl::ApplySender<Domain, ApplySenderFor>::apply_sender;
 
     template <stdexec::sender Sndr, typename Env>
     requires stdexec::__applicable<TransformSenderFor<stdexec::tag_of_t<Sndr>>, Sndr&&, const Env&>
