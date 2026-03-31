@@ -71,5 +71,6 @@ target_link_libraries(test_common PUBLIC GTest::gtest Kokkos::kokkoscore)
 
 # Include subdirectories.
 add_subdirectory(execution_space)
+add_subdirectory(graph)
 add_subdirectory(impl)
 add_subdirectory(utils)
