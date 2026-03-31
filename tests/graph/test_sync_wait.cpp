@@ -41,9 +41,9 @@ static_assert(Tests::Utils::check_nothrow_apply_sender<
  * Improperly customized @c stdexec::sync_wait should result in a missing synchronization.
  */
 TEST_F(SyncWaitTest, sync_wait) {
-    const context_t esc{exec};
+    const context_t gctx{exec};
 
-    auto sndr = stdexec::schedule(esc.get_scheduler());
+    auto sndr = stdexec::schedule(gctx.get_scheduler());
 
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { // NOLINT(performance-move-const-arg)

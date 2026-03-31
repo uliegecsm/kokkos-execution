@@ -5,8 +5,8 @@
 
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
-#include "kokkos-execution/execution_space/sender_introspection.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
+#include "kokkos-execution/impl/sender_introspection.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -25,7 +25,7 @@ struct ThenWrapper {
 template <>
 struct TransformSenderFor<stdexec::then_t> {
     template <typename Sndr, typename Env>
-    using policy_t = Kokkos::RangePolicy<exec_of_t<Sndr, Env>, Kokkos::LaunchBounds<1>>;
+    using policy_t = Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>, Kokkos::LaunchBounds<1>>;
 
     template <typename Env, typename Functor, typename Sndr>
     using trnsfrmd_sndr_t = ParallelForSender<Sndr, std::string_view, ThenWrapper<Functor>, policy_t<Sndr, Env>>;
@@ -43,7 +43,7 @@ struct TransformSenderFor<stdexec::then_t> {
 
         return trnsfrmd_sndr_t<Env, Functor, Sndr>{
             parallel_for_t{},
-            {{Impl::dispatch_label<exec_of_t<Sndr, Env>, ": then">(),
+            {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
               ThenWrapper<Functor>{std::forward<Functor>(functor)},
               policy_t<Sndr, Env>(schd.state->exec, 0, 1)}},
             std::forward<Sndr>(sndr)};

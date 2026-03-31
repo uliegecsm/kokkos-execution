@@ -16,7 +16,7 @@ concept has_completion_signatures = stdexec::__mset_eq<Signatures, stdexec::__co
 
 template <typename Sndr, typename Tag, typename... Env>
 concept has_completion_scheduler_for =
-    std::invocable<stdexec::get_completion_scheduler_t<Tag>, const stdexec::env_of_t<Sndr>&, const Env&...>;
+    std::invocable<stdexec::get_completion_scheduler_t<Tag>, stdexec::env_of_t<Sndr>, Env...>;
 
 /**
  * @brief A stricter variant of @c stdexec::operation_state.

@@ -12,6 +12,7 @@
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/sender_introspection.hpp"
 
 /**
  * @file
@@ -74,7 +75,7 @@ struct RegionSender {
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(RegionSender)
 
     template <typename Rcvr>
-    using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, stdexec::env_of_t<Rcvr>>;
+    using schd_t = Impl::completion_scheduler_of_t<stdexec::set_value_t, Sndr, stdexec::env_of_t<Rcvr>>;
 
     template <typename Rcvr>
     using rcvr_t = RegionReceiver<kind, schd_t<Rcvr>, Rcvr>;

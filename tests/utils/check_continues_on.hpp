@@ -5,6 +5,8 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "kokkos-execution/impl/sender_introspection.hpp"
+
 #include "tests/utils/stdexec.hpp"
 
 namespace Tests::Utils {
@@ -47,12 +49,17 @@ consteval bool check_continues_on() {
     >);
 
     //! It must advertise a valid completion scheduler.
-    if constexpr (stdexec::__minvocable_q<stdexec::__completion_scheduler_of_t, stdexec::set_value_t, sndr_t>) {
-        static_assert(std::same_as<stdexec::__completion_scheduler_of_t<stdexec::set_value_t, sndr_t>, Schd>);
+    if constexpr (
+        stdexec::__minvocable_q<Kokkos::Execution::Impl::completion_scheduler_of_t, stdexec::set_value_t, sndr_t>) {
+        static_assert(
+            std::same_as<Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, sndr_t>, Schd>);
         //! Handle the case of dependent senders.
     } else {
-        static_assert(
-            std::same_as<stdexec::__completion_scheduler_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>, Schd>);
+        static_assert(stdexec::dependent_sender<sndr_t>);
+        static_assert(std::same_as<
+                      Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>,
+                      Schd
+        >);
     }
 
     return true;

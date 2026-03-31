@@ -5,9 +5,9 @@
 
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
-#include "kokkos-execution/execution_space/sender_introspection.hpp"
 #include "kokkos-execution/impl/bulk.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
+#include "kokkos-execution/impl/sender_introspection.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -18,7 +18,7 @@ struct TransformSenderFor<stdexec::bulk_t> {
         Sndr,
         std::string_view,
         typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t,
-        Kokkos::RangePolicy<exec_of_t<Sndr, Env>>
+        Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>
     >;
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
@@ -40,9 +40,9 @@ struct TransformSenderFor<stdexec::bulk_t> {
 
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
             parallel_for_t{},
-            {{Impl::dispatch_label<exec_of_t<Sndr, Env>, ": bulk">(),
+            {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),
               stdexec::__forward_like<Data>(functor),
-              Kokkos::RangePolicy<exec_of_t<Sndr, Env>>(schd.state->exec, 0, shape)}},
+              Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>(schd.state->exec, 0, shape)}},
             std::forward<Sndr>(sndr)};
     }
 };
