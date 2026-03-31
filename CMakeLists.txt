@@ -83,6 +83,7 @@ target_sources(
             ${CMAKE_CURRENT_SOURCE_DIR}/
             FILES
             kokkos-execution/execution_space.hpp
+            kokkos-execution/graph.hpp
             kokkos-execution/parallel_for.hpp
             kokkos-execution/stdexec.hpp
             kokkos-execution/execution_space/bulk.hpp
@@ -98,6 +99,7 @@ target_sources(
             kokkos-execution/execution_space/sender_introspection.hpp
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
+            kokkos-execution/graph/domain.hpp
             kokkos-execution/impl/attributes.hpp
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signatures.hpp
