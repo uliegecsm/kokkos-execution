@@ -1,4 +1,5 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
+#include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
@@ -18,40 +19,47 @@
 
 namespace Tests::ExecutionSpaceImpl {
 
-using ExecutionSpaceContextTest = Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>;
+using namespace Kokkos::utils::callbacks;
+
+class SyncWaitTest
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
+    using recorder_listener_t = RecorderListener<
+        EventDiscardMatcher<TEST_EXECUTION_SPACE>,
+        BeginFenceEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
+};
 
 /**
  * @test Ensure that @c sync_wait is properly customized.
  *
  * Improperly customized @c sync_wait should result in a missing synchronization.
  */
-TEST_F(ExecutionSpaceContextTest, sync_wait) {
+TEST_F(SyncWaitTest, sync_wait) {
     const context_t esc{exec};
 
-    auto chain = stdexec::schedule(esc.get_scheduler());
-
-    Kokkos::utils::callbacks::Manager::initialize();
+    auto sndr = stdexec::schedule(esc.get_scheduler());
 
     ASSERT_THAT(
-        Kokkos::utils::callbacks::RecorderListener<Kokkos::utils::callbacks::BeginFenceEvent>::record(
-            [chain = std::move(chain)]() mutable {                       // NOLINT(performance-move-const-arg)
-                const auto value = stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-                static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
-                ASSERT_TRUE(value.has_value());
-            }),
+        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { // NOLINT(performance-move-const-arg)
+            const auto value = stdexec::sync_wait(std::move(sndr));      // NOLINT(performance-move-const-arg)
+            static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
+            ASSERT_TRUE(value.has_value());
+        }),
         testing::ElementsAre(MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
-
-    Kokkos::utils::callbacks::Manager::finalize();
 }
 
 //! @test Check that @ref Kokkos::Execution::ExecutionSpaceImpl::SyncWait properly rethrows if needed.
-TEST_F(ExecutionSpaceContextTest, rethrows) {
+TEST_F(SyncWaitTest, rethrows) {
     const context_t esc{exec};
 
-    auto chain = stdexec::schedule(esc.get_scheduler()) | stdexec::then(Tests::Utils::Functors::ThrowsWhenCopied{});
+    auto sndr = stdexec::schedule(esc.get_scheduler()) | stdexec::then(Tests::Utils::Functors::ThrowsWhenCopied{});
 
     ASSERT_THAT(
-        Tests::Utils::Functors::MutableMoveToSyncWait{.sndr = std::move(chain)},
+        Tests::Utils::Functors::MutableMoveToSyncWait{.sndr = std::move(sndr)},
         testing::ThrowsMessage<std::runtime_error>(testing::StrEq("ThrowsWhenCopied: Throwing in copy constructor!")));
 }
 

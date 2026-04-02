@@ -83,23 +83,25 @@ TEST_F(TransferWhenAllTest, Y) {
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
-    } else if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
-        ASSERT_EQ(recorded_events.size(), 6);
-        ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")));
-        ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")));
-        ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec_B));
-        ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
-        ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")));
-        ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
     } else {
-        ASSERT_THAT(
-            recorded_events,
-            testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+        ASSERT_THAT(recorded_events, [&]() {
+            if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+                return testing::ElementsAre(
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                    MATCHER_FOR_RECORD_EVENT(exec_B),
+                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
+            } else {
+                return testing::ElementsAre(
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
+            }
+        }());
     }
 
     ASSERT_EQ(data(), 3);
