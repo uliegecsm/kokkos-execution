@@ -20,10 +20,11 @@ struct FwdWithExec { };
 struct FwdWithoutExec { };
 
 //! Receiver for @c continues_on.
-template <stdexec::receiver Rcvr, typename FwdPolicy = FwdWithExec>
+template <stdexec::scheduler Schd, stdexec::receiver Rcvr, typename FwdPolicy = FwdWithExec>
 struct ContinuesOnReceiver {
     using receiver_concept = stdexec::receiver_t;
 
+    Schd schd;
     Rcvr rcvr;
 
     void set_value() && noexcept {
@@ -37,6 +38,11 @@ struct ContinuesOnReceiver {
 
     void set_stopped() && noexcept {
         stdexec::set_stopped(std::move(rcvr));
+    }
+
+    [[nodiscard]]
+    constexpr auto query(get_exec_t) const noexcept -> ExecutionSpaceRef<typename Schd::execution_space> {
+        return ExecutionSpaceRef<typename Schd::execution_space>{schd.state->exec};
     }
 
     [[nodiscard]]
@@ -58,42 +64,52 @@ struct ContinuesOnReceiver {
 };
 
 //! Sender for @c continues_on.
-template <stdexec::sender Sndr>
+template <stdexec::scheduler Schd, stdexec::sender Sndr>
 struct ContinuesOnSender {
     using sender_concept = stdexec::sender_t;
 
+    Schd schd;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ContinuesOnSender)
 
-    template <
-        stdexec::receiver Rcvr,
-        typename FwdPolicy = std::conditional_t<
+    template <typename Rcvr>
+    static consteval auto select_fwd_policy() {
+        if constexpr (
             std::same_as<
                 stdexec::__detail::__completing_domain_t<stdexec::set_value_t, Sndr, stdexec::env_of_t<Rcvr>>,
                 Domain
             >
-                || has_when_all_child_with_at_least_one_child_completing_on_v<
-                    stdexec::set_value_t,
-                    Domain,
-                    Sndr,
-                    stdexec::env_of_t<Rcvr>
-                >
-                || has_fork_join_child_with_at_least_one_child_completing_on_v<
-                    stdexec::set_value_t,
-                    Domain,
-                    Sndr,
-                    stdexec::env_of_t<Rcvr>
-                >,
-            FwdWithExec,
-            FwdWithoutExec
-        >
-    >
-    auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>)
-        -> stdexec::connect_result_t<Sndr, ContinuesOnReceiver<Rcvr, FwdPolicy>> {
-        using recv_t = ContinuesOnReceiver<Rcvr, FwdPolicy>;
+            || has_when_all_child_with_at_least_one_child_completing_on_v<
+                stdexec::set_value_t,
+                Domain,
+                Sndr,
+                stdexec::env_of_t<Rcvr>
+            >
+            || has_fork_join_child_with_at_least_one_child_completing_on_v<
+                stdexec::set_value_t,
+                Domain,
+                Sndr,
+                stdexec::env_of_t<Rcvr>
+            >) {
+            return FwdWithExec{};
+        } else {
+            return FwdWithoutExec{};
+        }
+    }
 
-        return stdexec::connect(std::forward<Sndr>(sndr), recv_t{.rcvr = std::move(rcvr)});
+    template <typename Rcvr>
+    using fwd_policy_t = decltype(select_fwd_policy<Rcvr>());
+
+    template <typename Rcvr>
+    using rcvr_t = ContinuesOnReceiver<Schd, Rcvr, fwd_policy_t<Rcvr>>;
+
+    template <stdexec::receiver Rcvr>
+    auto connect(Rcvr rcvr) && noexcept(
+        std::is_nothrow_constructible_v<rcvr_t<Rcvr>, Schd&&, Rcvr&&>
+        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) -> stdexec::connect_result_t<Sndr&&, rcvr_t<Rcvr>> {
+        return stdexec::connect(
+            std::forward<Sndr>(sndr), rcvr_t<Rcvr>{.schd = std::forward<Schd>(schd), .rcvr = std::move(rcvr)});
     }
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
@@ -102,9 +118,9 @@ struct ContinuesOnSender {
 template <>
 struct TransformSenderFor<stdexec::continues_on_t> {
     template <typename Env, stdexec::__is_instance_of<Scheduler> Schd, stdexec::sender Sndr>
-    auto operator()(const Env&, stdexec::continues_on_t, Schd&&, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<ContinuesOnSender<Sndr>, Sndr&&>) {
-        return ContinuesOnSender<Sndr>{.sndr = std::forward<Sndr>(sndr)};
+    auto operator()(const Env&, stdexec::continues_on_t, Schd&& schd, Sndr&& sndr) const
+        noexcept(std::is_nothrow_constructible_v<ContinuesOnSender<Schd, Sndr>, Schd&&, Sndr&&>) {
+        return ContinuesOnSender<Schd, Sndr>{.schd = std::forward<Schd>(schd), .sndr = std::forward<Sndr>(sndr)};
     }
 };
 

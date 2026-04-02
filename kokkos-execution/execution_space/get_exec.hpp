@@ -29,6 +29,8 @@ inline constexpr get_exec_t get_exec{};
  */
 template <Kokkos::ExecutionSpace Exec>
 struct ExecutionSpaceRef {
+    using execution_space = Exec;
+
     Exec const * m_exec_ptr;
 
     explicit constexpr ExecutionSpaceRef(const Exec& exec) noexcept

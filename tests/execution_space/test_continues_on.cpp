@@ -156,7 +156,10 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         exec_h);
 
     //! Our customization of @c continues_on forwards the environment.
-    using con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnReceiver<then_rcvr_t>;
+    using con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnReceiver<
+        Kokkos::Execution::ExecutionSpaceImpl::Scheduler<host_execution_space>,
+        then_rcvr_t
+    >;
     static_assert(std::same_as<decltype(op_state.inner_opstate.rcvr.rcvr), con_h_then_rcvr_t>);
     static_assert(stdexec::__queryable_with<
                   stdexec::env_of_t<con_h_then_rcvr_t>,
@@ -202,7 +205,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         exec_B);
 
     using con_B_then_sfrom_con_h_then_rcvr_t =
-        Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnReceiver<then_sfrom_con_h_then_rcvr_t>;
+        Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnReceiver<scheduler_t, then_sfrom_con_h_then_rcvr_t>;
     static_assert(
         std::same_as<decltype(op_state.inner_opstate.inner_opstate.rcvr.rcvr), con_B_then_sfrom_con_h_then_rcvr_t>);
     static_assert(stdexec::__queryable_with<
