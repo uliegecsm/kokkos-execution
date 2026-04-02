@@ -60,7 +60,7 @@ TEST_F(InterOpTest, transition_to_inline_scheduler) {
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
         });
 
-    EXPECT_THAT(
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -92,7 +92,7 @@ TEST_F(InterOpTest, transition_from_inline_scheduler) {
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
         });
 
-    EXPECT_THAT(
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -127,7 +127,7 @@ TEST_F(InterOpTest, transition_from_inline_scheduler_and_back) {
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
         });
 
-    EXPECT_THAT(
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -161,7 +161,7 @@ TEST_F(InterOpTest, transition_to_static_thread_pool) {
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
         });
 
-    EXPECT_THAT(
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -195,7 +195,7 @@ TEST_F(InterOpTest, transition_from_static_thread_pool) {
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
         });
 
-    EXPECT_THAT(
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -232,7 +232,7 @@ TEST_F(InterOpTest, transition_from_static_thread_pool_and_back) {
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
         });
 
-    EXPECT_THAT(
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -269,7 +269,7 @@ TEST_F(InterOpTest, transition_to_static_thread_pool_and_back) {
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
         });
 
-    EXPECT_THAT(
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
