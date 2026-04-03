@@ -70,15 +70,9 @@ struct Receiver {
         runloop_state->loop.finish();
     }
 
-    //! Make others aware of which execution space instance it will synchronize.
     [[nodiscard]]
-    constexpr auto get_env() const noexcept -> stdexec::__join_env_t<
-        stdexec::prop<ExecutionSpaceImpl::get_exec_t, ExecutionSpaceImpl::ExecutionSpaceRef<Exec>>,
-        env
-    > {
-        return stdexec::__env::__join(
-            stdexec::prop{ExecutionSpaceImpl::get_exec, ExecutionSpaceImpl::ExecutionSpaceRef{state->exec}},
-            env{runloop_state->loop.get_scheduler()});
+    constexpr auto get_env() const noexcept -> env {
+        return {.schd = runloop_state->loop.get_scheduler()};
     }
 };
 

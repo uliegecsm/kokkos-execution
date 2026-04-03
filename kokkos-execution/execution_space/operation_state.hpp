@@ -227,11 +227,7 @@ struct OpStateReceiver {
         parent_op->propagate_completion_signal(stdexec::set_stopped);
     }
 
-    KOKKOS_EXECUTION_UPSERT_EXEC(
-        typename ParentOp::execution_space,
-        parent_op->query(get_exec).get(),
-        typename ParentOp::receiver_t,
-        parent_op->rcvr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(typename ParentOp::receiver_t, parent_op->rcvr)
 };
 
 template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure... Clsrs>

@@ -44,7 +44,11 @@ class TransferWhenAllTest
     >;
 };
 
-//! @test Two branches on different execution space instances A and B of the same type, followed by a @c stdexec::then on instance A.
+/**
+ * @test Two branches on different execution space instances A and B of the same type, followed by a @c stdexec::then on instance A.
+ *
+ * @todo Too many synchronizations.
+ */
 TEST_F(TransferWhenAllTest, Y) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
@@ -75,34 +79,27 @@ TEST_F(TransferWhenAllTest, Y) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
-    if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
-        ASSERT_THAT(
-            recorded_events,
-            testing::ElementsAre(
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec_A),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec_B),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(3)),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
-    } else {
-        ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
-                return testing::ElementsAre(
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
-                    MATCHER_FOR_RECORD_EVENT(exec_B),
-                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
-            } else {
-                return testing::ElementsAre(
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
-            }
-        }());
-    }
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
+        }
+    }());
 
     ASSERT_EQ(data(), 3);
 }

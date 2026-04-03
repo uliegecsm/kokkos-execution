@@ -1,6 +1,8 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
@@ -32,7 +34,9 @@ class ScopedRegionTest
         BeginFenceEvent,
         BeginParallelForEvent,
         PushRegionEvent,
-        PopRegionEvent
+        PopRegionEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
     >;
 };
 
@@ -53,26 +57,44 @@ static_assert(test_sndr_traits());
  * @test Check that @ref Kokkos::Execution::Profiling::scoped_region works as intended.
  *
  * The push/pop events and the preceding fences must be placed appropriately.
+ *
+ * @todo Too many synchronizations.
  */
 TEST_F(ScopedRegionTest, many) {
     const view_s_t data(Kokkos::view_alloc("data - shared space", exec));
 
     const context_t esc{exec};
 
-    auto chain = stdexec::schedule(esc.get_scheduler())
-               | Kokkos::Execution::Profiling::scoped_region(
-                     "the name of my nice scoped region", THEN_INCREMENT(data) | THEN_INCREMENT(data));
+    auto sndr = stdexec::schedule(esc.get_scheduler())
+              | Kokkos::Execution::Profiling::scoped_region(
+                    "the name of my nice scoped region", THEN_INCREMENT(data) | THEN_INCREMENT(data));
 
-    ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
-            MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
-            MATCHER_FOR_POP_REGION(),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
+                MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
+                MATCHER_FOR_POP_REGION(),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
+                MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
+                MATCHER_FOR_POP_REGION(),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        }
+    }());
 }
 
 } // namespace Tests::ExecutionSpaceImpl

@@ -1,6 +1,8 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
@@ -35,7 +37,9 @@ class ThenTest
         BeginFenceEvent,
         BeginParallelForEvent,
         AllocateDataEvent,
-        DeallocateDataEvent
+        DeallocateDataEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
     >;
     using variant_t = typename recorder_listener_t::event_variant_t;
 };
@@ -113,6 +117,8 @@ TEST_F(ThenTest, then_schedule) {
 /**
  * @test Similar to @ref Tests::ExecutionSpaceImpl::ThenTest_then_schedule_Test, but the chain is scheduled
  *       with a @c starts_on.
+ *
+ * @todo Too many synchronizations.
  */
 TEST_F(ThenTest, then_starts_on) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -155,12 +161,24 @@ TEST_F(ThenTest, then_starts_on) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on)),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on));
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        }
+    }());
 
     ASSERT_EQ(data(), 2);
 }

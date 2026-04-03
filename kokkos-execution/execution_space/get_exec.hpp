@@ -3,8 +3,6 @@
 
 #include "Kokkos_Core.hpp"
 
-#include "kokkos-execution/impl/env.hpp"
-
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 /**
@@ -12,9 +10,7 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
  *
  * See also https://github.com/NVIDIA/cccl/blob/6e592beda9c50aeb3cc62dd1036d509f540ccbe7/libcudacxx/include/cuda/__stream/get_stream.h.
  */
-struct get_exec_t
-    : public stdexec::__query<get_exec_t>
-    , stdexec::forwarding_query_t {
+struct get_exec_t : public stdexec::__query<get_exec_t> {
     using stdexec::__query<get_exec_t>::operator();
 };
 
@@ -29,9 +25,11 @@ inline constexpr get_exec_t get_exec{};
  */
 template <Kokkos::ExecutionSpace Exec>
 struct ExecutionSpaceRef {
-    Exec const * m_exec_ptr;
+    using execution_space = Exec;
 
-    explicit constexpr ExecutionSpaceRef(const Exec& exec) noexcept
+    execution_space const * m_exec_ptr;
+
+    explicit constexpr ExecutionSpaceRef(const execution_space& exec) noexcept
         : m_exec_ptr(&exec) {
     }
 
@@ -42,7 +40,7 @@ struct ExecutionSpaceRef {
     ExecutionSpaceRef& operator=(ExecutionSpaceRef&&) noexcept = default;
     ~ExecutionSpaceRef() noexcept = default;
 
-    const Exec& get() const noexcept {
+    const execution_space& get() const noexcept {
         return *m_exec_ptr;
     }
 
@@ -53,24 +51,6 @@ struct ExecutionSpaceRef {
         return *this;
     }
 };
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define KOKKOS_EXECUTION_UPSERT_EXEC_TYPE(_exec_type_, _rcvr_type_)                                                    \
-    Impl::upsert_in_env_or_join_t<                                                                                     \
-        Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,                                                             \
-        stdexec::__fwd_env_t<stdexec::env_of_t<_rcvr_type_>>,                                                          \
-        Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef<_exec_type_>                                          \
-    >
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define KOKKOS_EXECUTION_UPSERT_EXEC(_exec_type_, _exec_, _rcvr_type_, _rcvr_)                                         \
-    [[nodiscard]]                                                                                                      \
-    constexpr auto get_env() const noexcept -> KOKKOS_EXECUTION_UPSERT_EXEC_TYPE(_exec_type_, _rcvr_type_) {           \
-        return Impl::upsert_in_env_or_join(                                                                            \
-            Kokkos::Execution::ExecutionSpaceImpl::get_exec,                                                           \
-            stdexec::__fwd_env(stdexec::get_env(_rcvr_)),                                                              \
-            Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef{_exec_});                                         \
-    }
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 

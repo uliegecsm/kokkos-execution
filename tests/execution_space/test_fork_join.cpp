@@ -8,6 +8,8 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/check_scheduler_type.hpp"
 #include "tests/utils/execution_space_context.hpp"
@@ -37,20 +39,29 @@ class ForkJoinTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t =
-        RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t = RecorderListener<
+        EventDiscardMatcher<TEST_EXECUTION_SPACE>,
+        BeginFenceEvent,
+        BeginParallelForEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
 
     static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
 
-//! @test Use @c experimental::execution::fork_join to produce a diamond-like topology.
+/**
+ * @test Use @c experimental::execution::fork_join to produce a diamond-like topology.
+ *
+ * @todo Too many synchronizations.
+ */
 TEST_F(ForkJoinTest, diamond) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
     experimental::execution::static_thread_pool pool{4};
     const context_t esc{exec};
 
-    auto chain =
+    auto sndr =
         stdexec::schedule(pool.get_scheduler())
         | stdexec::then(Tests::Utils::Functors::LoadCheckAdd<int, false>{.prev = 0, .value = 4, .data = data.data()})
         | experimental::execution::fork_join(
@@ -65,14 +76,26 @@ TEST_F(ForkJoinTest, diamond) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")));
+        }
+    }());
 
     ASSERT_EQ(data(), 14);
 }
@@ -81,6 +104,8 @@ TEST_F(ForkJoinTest, diamond) {
  * @test Use @c experimental::execution::fork_join after a @c stdexec::continues_on.
  *
  * Inspired by https://github.com/NVIDIA/stdexec/issues/1823.
+ *
+ * @todo Too many synchronizations.
  */
 TEST_F(ForkJoinTest, continues_on) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -98,11 +123,23 @@ TEST_F(ForkJoinTest, continues_on) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)), // NOLINT(performance-move-const-arg)
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(sndr)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        }
+    }());
 
     ASSERT_EQ(data(), 3);
 }
@@ -111,6 +148,8 @@ TEST_F(ForkJoinTest, continues_on) {
  * @test Use @c experimental::execution::fork_join after a @c stdexec::continues_on and a @c stdexec::bulk.
  *
  * Inspired by https://github.com/NVIDIA/stdexec/issues/1823.
+ *
+ * @todo Too many synchronizations.
  */
 TEST_F(ForkJoinTest, continues_on_bulk) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -126,12 +165,27 @@ TEST_F(ForkJoinTest, continues_on_bulk) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        }
+    }());
 
     ASSERT_EQ(data(), 3);
 }
