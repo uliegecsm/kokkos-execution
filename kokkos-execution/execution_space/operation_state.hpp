@@ -3,6 +3,10 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+#    include "plog/Log.h"
+#endif
+
 #include "kokkos-execution/execution_space/domain.hpp"
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
@@ -40,6 +44,9 @@ struct RequiresSynchronization {
     //! The synchronization will be handled by the successor.
     constexpr bool operator()(const OpState&) const noexcept requires(successor_handles_sync)
     {
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        PLOG_DEBUG << "The synchronization will be handled by the successor.";
+#endif
         return false;
     }
 
@@ -55,7 +62,13 @@ struct RequiresSynchronization {
                 std::remove_cvref_t<stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, get_exec_t>>,
                 stdexec::__query_result_t<OpState, get_exec_t>
             >) {
-            return opstate.query(get_exec).get() != get_exec(stdexec::get_env(opstate.rcvr)).get();
+            const auto& src = opstate.query(get_exec).get();
+            const auto& dst = get_exec(stdexec::get_env(opstate.rcvr)).get();
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+            PLOG_DEBUG << "The synchronization happens if " << Kokkos::Tools::Experimental::device_id(src)
+                       << " is not equal to " << Kokkos::Tools::Experimental::device_id(dst) << '.';
+#endif
+            return src != dst;
         }
         return true;
     }
@@ -64,6 +77,9 @@ struct RequiresSynchronization {
     constexpr bool operator()(const OpState&) const noexcept
         requires(!successor_handles_sync && !stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
     {
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        PLOG_DEBUG << "Synchronization always required.";
+#endif
         return true;
     }
 };
