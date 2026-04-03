@@ -122,7 +122,7 @@ consteval bool test_sndr_decomposition() {
     using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>;
 
     //! Is decomposable into the expected algorithm tag, data, and child sender.
-    static_assert(std::same_as<stdexec::tag_of_t<pfor_sndr_t>, Kokkos::Execution::parallel_for_t>);
+    static_assert(Kokkos::Execution::Impl::sender_with_tag<pfor_sndr_t, Kokkos::Execution::parallel_for_t>);
 
     static_assert(std::same_as<
                   stdexec::__data_of<pfor_sndr_t>,

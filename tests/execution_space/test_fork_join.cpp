@@ -91,6 +91,8 @@ TEST_F(ForkJoinTest, continues_on) {
             | stdexec::then(
                 Tests::Utils::Functors::LoadCheckAdd<int, on_device>{.prev = 0, .value = 3, .data = data.data()}));
 
+    static_assert(Kokkos::Execution::Impl::sender_with_tag<decltype(sndr), experimental::execution::fork_join_t>);
+
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
