@@ -80,6 +80,8 @@ TEST_F(SplitTest, within) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
+
     const auto recorded_events = recorder_listener_t::record(
         [chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); });
 

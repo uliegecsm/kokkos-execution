@@ -64,6 +64,8 @@ TEST_F(ForkJoinTest, diamond) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
+
     ASSERT_THAT(
         recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
         testing::ElementsAre(

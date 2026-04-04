@@ -78,11 +78,17 @@ struct EventDiscardMatcher {
         return event.name.find("Kokkos::SYCLInternal::USMObject") == std::string::npos;
     }
 
-    //! Filter out any Kokkos::utils::callbacks::AllocateDataEvent induced by https://github.com/kokkos/kokkos/blob/91584fc13aaf09330bc391466dbae0249895291f/core/src/SYCL/Kokkos_SYCL_Instance.cpp#L306.
+    //! Filter out any @ref Kokkos::utils::callbacks::AllocateDataEvent induced by https://github.com/kokkos/kokkos/blob/91584fc13aaf09330bc391466dbae0249895291f/core/src/SYCL/Kokkos_SYCL_Instance.cpp#L306.
     bool operator()(const Kokkos::utils::callbacks::AllocateDataEvent& event) const
         requires std::same_as<Exec, Kokkos::SYCL>
     {
         return event.alloc.name.find("Kokkos::SYCL::USMObject") == std::string::npos;
+    }
+#endif
+#if defined(KOKKOS_ENABLE_THREADS)
+    //! Filter out any @ref Kokkos::utils::callbacks::BeginFenceEvent induced by https://github.com/kokkos/kokkos/blob/301c37189a7fef46e68768ad9df160113f7ea052/core/src/Threads/Kokkos_Threads_ParallelFor_Range.hpp#L99.
+    bool operator()(const Kokkos::utils::callbacks::BeginFenceEvent& event) const {
+        return event.name.find("Kokkos::ThreadsInternal::fence: Unnamed Instance Fence") == std::string::npos;
     }
 #endif
 

@@ -47,6 +47,14 @@
             "inherits": ["cxx-clang"]
         },
         {
+            "$comment": "Inherit from this preset to use the Threads backend.",
+            "name": "Threads",
+            "hidden": true,
+            "cacheVariables": {
+                "Kokkos_ENABLE_THREADS": "ON"
+            }
+        },
+        {
             "$comment": "Inherit from this preset to use the OpenMP backend.",
             "name": "OpenMP",
             "hidden": true,
@@ -108,6 +116,10 @@
             "inherits": ["default", "cxx-gnu"]
         },
         {
+            "name": "gnu-Threads",
+            "inherits": ["default", "cxx-gnu", "Threads"]
+        },
+        {
             "name": "gnu-OpenMP",
             "inherits": ["default", "cxx-gnu", "OpenMP"]
         },
@@ -157,6 +169,11 @@
         {
             "name": "gnu",
             "configurePreset": "gnu",
+            "inherits": "default"
+        },
+        {
+            "name": "gnu-Threads",
+            "configurePreset": "gnu-Threads",
             "inherits": "default"
         },
         {
