@@ -22,9 +22,6 @@ struct Scheduler;
 template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
 struct ScheduleFromReceiver;
 
-template <Kokkos::ExecutionSpace Exec, typename... Values>
-struct SyncWaitReceiver;
-
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_EXECUTION_SPACE_FWD_HPP

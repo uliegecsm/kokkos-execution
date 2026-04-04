@@ -117,7 +117,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
 
     auto op_state = stdexec::connect(
         std::move(schs_A_then_con_B_then_con_h_then), // NOLINT(performance-move-const-arg)
-        Kokkos::Execution::ExecutionSpaceImpl::SyncWaitReceiver<host_execution_space>{
+        Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space>{
             .state = std::addressof(esc_h.m_state), .runloop_state = nullptr, .result = nullptr});
 
     //! Helper to check that an environment is as expected.
@@ -129,7 +129,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                     Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,
                     Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef<Exec>
                 >,
-                stdexec::__env::__fwd<Kokkos::Execution::Impl::env>
+                stdexec::__env::__fwd<Kokkos::Execution::Impl::SyncWait::env>
             >>
         >;
     };
@@ -140,7 +140,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
      */
     using then_rcvr_t =
         Kokkos::Execution::ExecutionSpaceImpl::OpStateReceiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-            Kokkos::Execution::ExecutionSpaceImpl::SyncWaitReceiver<host_execution_space>,
+            Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space>,
             Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
                 std::string_view,
                 Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'h'>>,

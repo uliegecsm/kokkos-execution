@@ -6,15 +6,11 @@
 #include "Kokkos_Core.hpp"
 
 #include "kokkos-execution/graph/domain.hpp"
+#include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution {
 
 namespace GraphImpl {
-
-template <Kokkos::ExecutionSpace Exec>
-struct State {
-    Exec exec;
-};
 
 //!  Scheduler for a @c Kokkos::Experimental::Graph.
 template <Kokkos::ExecutionSpace Exec>
@@ -57,7 +53,7 @@ struct Scheduler {
                 return {};
             }
 
-            State<Exec>* state;
+            Impl::State<Exec>* state;
         };
 
         template <stdexec::receiver_of<completion_signatures> Rcvr>
@@ -98,7 +94,7 @@ struct Scheduler {
     [[nodiscard]]
     friend bool operator==(const Scheduler&, const Scheduler&) noexcept = default;
 
-    State<Exec>* state;
+    Impl::State<Exec>* state;
 };
 
 } // namespace GraphImpl
@@ -106,7 +102,7 @@ struct Scheduler {
 //! Execution context using @c Kokkos::Experimental::Graph under the hood.
 template <Kokkos::ExecutionSpace Exec>
 struct GraphContext {
-    using state_t = GraphImpl::State<Exec>;
+    using state_t = Impl::State<Exec>;
 
     state_t m_state;
 

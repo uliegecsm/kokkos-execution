@@ -121,9 +121,7 @@ consteval bool test_delegate_completion_with_event() {
     return true;
 }
 static_assert(test_delegate_completion_with_event<Tests::Utils::SinkReceiver>());
-static_assert(test_delegate_completion_with_event<
-              Kokkos::Execution::ExecutionSpaceImpl::SyncWaitReceiver<TEST_EXECUTION_SPACE>
->());
+static_assert(test_delegate_completion_with_event<Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE>>());
 
 //! @test Check construction, query for execution space instance, and start.
 TEST_F(OpStateTest, construct_query_and_start) {
