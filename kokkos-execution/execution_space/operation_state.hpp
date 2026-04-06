@@ -12,6 +12,7 @@
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/event.hpp"
+#include "kokkos-execution/impl/immovable.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
 
@@ -100,7 +101,7 @@ struct MayDelegateCompletionWithEvent;
 
 template <stdexec::receiver Rcvr, Kokkos::ExecutionSpace Exec>
 struct WaitEventReceiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = stdexec::receiver_tag;
     using event_t = Impl::Event<Exec>;
 
     MayDelegateCompletionWithEvent<Rcvr, Exec>* opstate;
@@ -162,9 +163,7 @@ struct MayDelegateCompletionWithEvent<Rcvr, Exec, true> {
 
 template <stdexec::receiver Rcvr, Closure Clsr, Closure... Clsrs>
 requires(std::same_as<typename Clsr::execution_space, typename Clsrs::execution_space> && ...)
-struct OpStateBase
-    : public stdexec::__immovable
-    , public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::execution_space> {
+struct OpStateBase : public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::execution_space> {
     using execution_space = typename Clsr::execution_space;
     using receiver_t = Rcvr;
     using closures_t = stdexec::__tuple<Clsr, Clsrs...>;
@@ -211,7 +210,7 @@ struct OpStateBase
 
 template <typename ParentOp>
 struct OpStateReceiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = stdexec::receiver_tag;
 
     ParentOp* parent_op;
 
@@ -237,8 +236,10 @@ struct OpStateReceiver {
 
 template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure... Clsrs>
 requires(!Impl::dispatching_sender<Sndr>)
-struct OpState : public OpStateBase<Rcvr, Clsrs...> {
-    using operation_state_concept = stdexec::operation_state_t;
+struct OpState
+    : public Impl::Immovable
+    , public OpStateBase<Rcvr, Clsrs...> {
+    using operation_state_concept = stdexec::operation_state_tag;
 
     using base_t = OpStateBase<Rcvr, Clsrs...>;
 

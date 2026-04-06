@@ -36,7 +36,7 @@ struct check_scheduler_type_t {
 
 template <stdexec::sender Sndr, typename Tag, stdexec::scheduler Schd>
 struct CheckSchedulerTypeSender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = stdexec::sender_tag;
 
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 

@@ -32,7 +32,7 @@ enum class Kind : std::uint8_t {
 
 template <Kind kind, stdexec::__is_instance_of<Scheduler> Schd, stdexec::receiver Rcvr>
 struct RegionReceiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = stdexec::receiver_tag;
 
     std::string name;
     Schd schd;
@@ -69,7 +69,7 @@ struct RegionReceiver {
 
 template <Kind kind, stdexec::sender Sndr>
 struct RegionSender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = stdexec::sender_tag;
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(RegionSender)
 

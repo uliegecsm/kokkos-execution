@@ -7,7 +7,7 @@ namespace Tests::Utils {
 
 //! A receiver that can handle all completions and does nothing with them.
 struct SinkReceiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = stdexec::receiver_tag;
 
     void set_value(auto&&...) && noexcept {
     }

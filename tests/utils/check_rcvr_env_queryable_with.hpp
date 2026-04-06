@@ -36,7 +36,7 @@ struct check_rcvr_env_queryable_with_t {
 
 template <bool IsQueryable, stdexec::sender Sndr, typename... Queries>
 struct CheckRcvrEnvQueryableWithSender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = stdexec::sender_tag;
 
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 

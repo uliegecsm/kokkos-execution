@@ -15,7 +15,7 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 //! Receiver for @c schedule_from.
 template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
 struct ScheduleFromReceiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = stdexec::receiver_tag;
 
     Schd schd;
     Rcvr rcvr;
@@ -58,7 +58,7 @@ struct ScheduleFromReceiver {
 //! Sender for @c schedule_from.
 template <stdexec::scheduler Schd, stdexec::sender Sndr>
 struct ScheduleFromSender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = stdexec::sender_tag;
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender)
 

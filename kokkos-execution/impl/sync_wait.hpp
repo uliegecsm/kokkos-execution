@@ -33,7 +33,7 @@ struct State {
 //! Receiver for @c stdexec::sync_wait.
 template <Kokkos::ExecutionSpace Exec, typename... Values>
 struct Receiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = stdexec::receiver_tag;
 
     static constexpr auto label = Impl::dispatch_label<Exec, ": sync_wait">();
 

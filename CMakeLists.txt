@@ -110,6 +110,7 @@ target_sources(
             kokkos-execution/impl/event.hpp
             kokkos-execution/impl/HIP/event.hpp
             kokkos-execution/impl/HPX/event.hpp
+            kokkos-execution/impl/immovable.hpp
             kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/SYCL/event.hpp
             kokkos-execution/impl/state.hpp
