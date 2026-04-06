@@ -13,6 +13,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/event.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
+#include "kokkos-execution/impl/sync_wait.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -39,7 +40,7 @@ concept Closure = requires(const Clsr& clsr) {
 template <stdexec::receiver Rcvr, typename OpState>
 struct RequiresSynchronization {
     static constexpr bool successor_handles_sync = stdexec::__is_instance_of<Rcvr, ScheduleFromReceiver>
-                                                || stdexec::__is_instance_of<Rcvr, SyncWaitReceiver>;
+                                                || stdexec::__is_instance_of<Rcvr, Impl::SyncWait::Receiver>;
 
     //! The synchronization will be handled by the successor.
     constexpr bool operator()(const OpState&) const noexcept requires(successor_handles_sync)

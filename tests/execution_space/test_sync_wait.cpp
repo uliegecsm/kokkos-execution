@@ -52,7 +52,7 @@ TEST_F(SyncWaitTest, sync_wait) {
         testing::ElementsAre(MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 }
 
-//! @test Check that @ref Kokkos::Execution::ExecutionSpaceImpl::SyncWait properly rethrows if needed.
+//! @test Check that the @c stdexec::sync_wait of @ref Kokkos::Execution::ExecutionSpaceContext properly rethrows if needed.
 TEST_F(SyncWaitTest, rethrows) {
     const context_t esc{exec};
 

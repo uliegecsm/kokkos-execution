@@ -9,11 +9,11 @@ namespace Tests::Utils {
 struct SinkReceiver {
     using receiver_concept = stdexec::receiver_t;
 
-    void set_value(auto&&...) noexcept {
+    void set_value(auto&&...) && noexcept {
     }
-    void set_error(auto&&) noexcept {
+    void set_error(auto&&) && noexcept {
     }
-    void set_stopped() noexcept {
+    void set_stopped() && noexcept {
     }
 
     [[nodiscard]]

@@ -14,15 +14,11 @@
 #include "kokkos-execution/execution_space/scoped_region.hpp"
 #include "kokkos-execution/execution_space/sync_wait.hpp"
 #include "kokkos-execution/execution_space/then.hpp"
+#include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution {
 
 namespace ExecutionSpaceImpl {
-
-template <Kokkos::ExecutionSpace Exec>
-struct State {
-    Exec exec;
-};
 
 /**
  * @brief Scheduler for a @c Kokkos execution space.
@@ -70,7 +66,7 @@ struct Scheduler {
                 return {};
             }
 
-            State<Exec>* state;
+            Impl::State<Exec>* state;
         };
 
         template <stdexec::receiver_of<completion_signatures> Rcvr>
@@ -111,7 +107,7 @@ struct Scheduler {
     [[nodiscard]]
     friend bool operator==(const Scheduler&, const Scheduler&) noexcept = default;
 
-    State<Exec>* state;
+    Impl::State<Exec>* state;
 };
 
 } // namespace ExecutionSpaceImpl
@@ -125,7 +121,7 @@ struct Scheduler {
  */
 template <Kokkos::ExecutionSpace Exec>
 struct ExecutionSpaceContext {
-    using state_t = ExecutionSpaceImpl::State<Exec>;
+    using state_t = Impl::State<Exec>;
 
     state_t m_state;
 
