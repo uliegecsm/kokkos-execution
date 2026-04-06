@@ -1,7 +1,7 @@
 #ifndef KOKKOS_EXECUTION_IMPL_BULK_HPP
 #define KOKKOS_EXECUTION_IMPL_BULK_HPP
 
-#include "stdexec/execution.hpp"
+#include "kokkos-execution/stdexec.hpp"
 
 namespace Kokkos::Execution::Impl {
 

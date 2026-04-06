@@ -1,8 +1,9 @@
 #ifndef KOKKOS_EXECUTION_IMPL_COMPLETION_SIGNATURES_HPP
 #define KOKKOS_EXECUTION_IMPL_COMPLETION_SIGNATURES_HPP
 
+#include "kokkos-execution/stdexec.hpp"
+
 #include "exec/completion_signatures.hpp"
-#include "stdexec/execution.hpp"
 
 namespace Kokkos::Execution::Impl {
 

@@ -1,7 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_SCHEDULE_FROM_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_SCHEDULE_FROM_HPP
 
-#include "stdexec/execution.hpp"
+#include "kokkos-execution/stdexec.hpp"
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
