@@ -18,11 +18,6 @@ concept dispatching_sender = stdexec::sender<Sndr> && requires {
     >;
 };
 
-//! Concept for a sender that has a given tag.
-template <typename Sndr, typename Tag>
-concept sender_with_tag = stdexec::sender<Sndr> && requires { typename stdexec::tag_of_t<Sndr>; }
-                       && std::same_as<stdexec::tag_of_t<Sndr>, Tag>;
-
 } // namespace Kokkos::Execution::Impl
 
 #endif // KOKKOS_EXECUTION_IMPL_SENDER_CONCEPTS_HPP
