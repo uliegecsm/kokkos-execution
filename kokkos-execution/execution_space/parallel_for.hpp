@@ -35,7 +35,7 @@ struct ParallelForClosure {
 
 template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = stdexec::sender_tag;
 
     using closure_t = ParallelForClosure<Label, Functor, ExecPolicy>;
     using execution_space = typename closure_t::execution_space;

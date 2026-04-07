@@ -22,7 +22,7 @@ struct FwdWithoutExec { };
 //! Receiver for @c continues_on.
 template <stdexec::receiver Rcvr, typename FwdPolicy = FwdWithExec>
 struct ContinuesOnReceiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = stdexec::receiver_tag;
 
     Rcvr rcvr;
 
@@ -60,7 +60,7 @@ struct ContinuesOnReceiver {
 //! Sender for @c continues_on.
 template <stdexec::sender Sndr>
 struct ContinuesOnSender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = stdexec::sender_tag;
 
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 

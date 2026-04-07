@@ -35,7 +35,7 @@ struct Scheduler {
 
     template <stdexec::receiver Rcvr>
     struct OpState {
-        using operation_state_concept = stdexec::operation_state_t;
+        using operation_state_concept = stdexec::operation_state_tag;
 
         Rcvr rcvr;
 
@@ -46,7 +46,7 @@ struct Scheduler {
     };
 
     struct Sender {
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = stdexec::sender_tag;
 
         using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
 

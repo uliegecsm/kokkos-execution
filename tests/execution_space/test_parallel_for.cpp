@@ -86,7 +86,7 @@ consteval bool test_sndr_traits() {
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>
     >);
 
-//! FIXME: https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
+//! @bug https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
 #if defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)
     /**
      * It is not no throw connectable because the @ref Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure
@@ -157,7 +157,7 @@ consteval bool test_closure_traits() {
 
     return true;
 }
-//! FIXME: https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
+//! @bug https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
 #if defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)
 static_assert(test_closure_traits<typename ParallelForTest::view_s_t, false>());
 #else

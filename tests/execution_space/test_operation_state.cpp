@@ -38,7 +38,8 @@ consteval bool test_op_state_traits() {
     //! Models the operation state concept.
     static_assert(stdexec::operation_state<op_state_t>);
 
-    //! By inheriting from @c stdexec::__immovable, it is neither moveable nor copyable.
+    //! By inheriting from @ref Kokkos::Execution::Impl::Immovable, it is neither moveable nor copyable.
+    static_assert(std::derived_from<op_state_t, Kokkos::Execution::Impl::Immovable>);
     static_assert(!std::move_constructible<op_state_t>);
     static_assert(!std::is_move_assignable_v<op_state_t>);
 

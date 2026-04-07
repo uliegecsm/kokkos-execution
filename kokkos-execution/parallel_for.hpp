@@ -63,7 +63,7 @@ struct ParallelForData {
 
 template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Label, Functor, ExecPolicy>, Sndr> {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = stdexec::sender_tag;
 
     using base_t = stdexec::__tuple<parallel_for_t, ParallelForData<Label, Functor, ExecPolicy>, Sndr>;
 

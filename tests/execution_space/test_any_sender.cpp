@@ -42,36 +42,32 @@ class AnySenderTest
         RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
 };
 
-/**
- * @test In order to get the same synchronization behavior as if using fully typed senders,
- *       type erased senders must advertise the completion domain and scheduler and type erased receivers
- *       must advertise their @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec_t query.
- */
+//! @test Check when synchronization happens.
 TEST_F(AnySenderTest, then) {
-    using any_sender_t = experimental::execution::any_receiver_ref<
-        stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
-        Kokkos::Execution::ExecutionSpaceImpl::get_exec
-            .signature<Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef<TEST_EXECUTION_SPACE>() noexcept>
-    >::
-        template any_sender<
-            stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<scheduler_t() noexcept>,
-            stdexec::get_completion_domain<stdexec::set_value_t>.signature<Kokkos::Execution::ExecutionSpaceImpl::Domain() noexcept>
-        >;
+    using completion_signatures_t =
+        stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>;
+    using any_receiver_t = exec::any_receiver<completion_signatures_t>;
+    using any_sender_t = exec::any_sender<any_receiver_t>;
+
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, any_sender_t>,
+                  stdexec::indeterminate_domain<>
+    >);
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, any_sender_t, stdexec::env<>>,
+                  stdexec::default_domain
+    >);
+
+    static_assert(std::same_as<
+                  std::invoke_result_t<stdexec::get_completion_signatures_t, any_sender_t, stdexec::env<>>,
+                  completion_signatures_t
+    >);
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
 
     any_sender_t chain = stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data) | THEN_INCREMENT(data);
-
-    static_assert(std::same_as<
-                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(chain)>,
-                  Kokkos::Execution::ExecutionSpaceImpl::Domain
-    >);
-    static_assert(std::same_as<
-                  stdexec::__completion_scheduler_of_t<stdexec::set_value_t, decltype(chain)>,
-                  typename AnySenderTest::scheduler_t
-    >);
 
     auto continues_on = std::move(chain) | stdexec::continues_on(esc.get_scheduler());
 
@@ -94,8 +90,9 @@ TEST_F(AnySenderTest, then) {
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
 
     ASSERT_EQ(data(), 3);
 }
