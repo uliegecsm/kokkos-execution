@@ -82,10 +82,8 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
-          - kokkos_backends: [OpenMP]
-            compiler:
-              family: clang
-              version: 22
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "20"}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "23"}
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
@@ -137,10 +135,10 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/.ccache
-          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-${{ github.sha }}
+          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cxxstd || 20 }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-
-            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}-
+            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cxxstd || 20 }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-
+            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cxxstd || 20 }}-${{ join(matrix.kokkos_backends, '-') }}-
       - if: runner.environment == 'github-hosted'
         run : |
           ccache --set-config=max_size=100M
@@ -150,7 +148,8 @@ jobs:
       - run: ccache --verbose --show-stats
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
-            -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}"
+            -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
+            -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd || 20 }}
       - run: |
           cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
       - run: |
