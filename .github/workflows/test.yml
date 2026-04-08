@@ -52,7 +52,10 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/.ccache
-          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}
+          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ github.ref }}-
+            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-
       - run : |
           ccache --set-config=max_size=100M
           ccache --set-config=compression=true
@@ -134,7 +137,10 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/.ccache
-          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}
+          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-
+            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}-
       - if: runner.environment == 'github-hosted'
         run : |
           ccache --set-config=max_size=100M
