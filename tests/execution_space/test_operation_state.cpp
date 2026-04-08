@@ -2,6 +2,7 @@
 #include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/sink_receiver.hpp"
+#include "tests/utils/stdexec.hpp"
 
 /**
  * @addtogroup unittests
@@ -35,8 +36,8 @@ consteval bool test_op_state_traits() {
     //! Operation state.
     using op_state_t = Kokkos::Execution::ExecutionSpaceImpl::OpState<schd_sndr_t, rcvr_t, clsr_t>;
 
-    //! Models the operation state concept.
-    static_assert(stdexec::operation_state<op_state_t>);
+    //! Models the @ref Tests::Utils::operation_state concept.
+    static_assert(Tests::Utils::operation_state<op_state_t>);
 
     //! By inheriting from @ref Kokkos::Execution::Impl::Immovable, it is neither moveable nor copyable.
     static_assert(std::derived_from<op_state_t, Kokkos::Execution::Impl::Immovable>);
