@@ -86,6 +86,21 @@ struct EventDiscardMatcher {
     }
 #endif
 
+#if defined(KOKKOS_ENABLE_HPX)
+    /**
+     * Even after an HPX instance has been fenced, operation states created internally in HPX holding the enqueued work
+     * may still be alive and worker threads created internally in HPX may still touch and destroy them. The belated
+     * destruction of instances held in such operation states may lead to spurious fence events later on.
+     *
+     * See https://github.com/uliegecsm/kokkos-execution/issues/150.
+     */
+    bool operator()(const Kokkos::utils::callbacks::BeginFenceEvent& event) const
+        requires std::same_as<Exec, Kokkos::Experimental::HPX>
+    {
+        return event.name != "Kokkos::Experimental::HPX: fence on destruction";
+    }
+#endif
+
     template <Kokkos::utils::callbacks::Event EventType>
     constexpr bool operator()(const EventType&) const {
         return true;
