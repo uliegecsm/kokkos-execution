@@ -146,6 +146,8 @@ TEST_F(WhenAllTest, single_mixed_branch_followed_by_self) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
         testing::ElementsAre(
@@ -176,6 +178,8 @@ TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
     const auto recorded_events = recorder_listener_t::record(
         [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
@@ -229,6 +233,8 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
     auto sndr = std::move(w_a) | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
@@ -388,6 +394,8 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
     const auto recorded_events = recorder_listener_t::record(
         [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
 
@@ -438,6 +446,10 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
                 | Tests::Utils::check_rcvr_env_queryable_with<Kokkos::Execution::ExecutionSpaceImpl::get_exec_t>()
                 | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
         | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
     ASSERT_THAT(
         recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),

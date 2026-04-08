@@ -32,7 +32,8 @@ class InterOpTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t = RecorderListener<BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t =
+        RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
 
     static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
@@ -190,6 +191,8 @@ TEST_F(InterOpTest, transition_from_static_thread_pool) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
+
     const auto recorded_events = recorder_listener_t::record(
         [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
@@ -227,6 +230,8 @@ TEST_F(InterOpTest, transition_from_static_thread_pool_and_back) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
+
     const auto recorded_events = recorder_listener_t::record(
         [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
             stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
@@ -263,6 +268,8 @@ TEST_F(InterOpTest, transition_to_static_thread_pool_and_back) {
             Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{.prev = 8, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
 
     const auto recorded_events = recorder_listener_t::record(
         [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)

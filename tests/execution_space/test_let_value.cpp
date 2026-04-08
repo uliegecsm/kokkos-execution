@@ -157,6 +157,8 @@ TEST_F(LetValueTest, scoped_allocation) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(check)
+
     ASSERT_THAT(
         recorder_listener_t::record([check = std::move(check)]() mutable { // NOLINT(performance-move-const-arg)
             stdexec::sync_wait(std::move(check));                          // NOLINT(performance-move-const-arg)

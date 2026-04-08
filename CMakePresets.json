@@ -56,6 +56,10 @@
             "inherits": ["default", "cxx-gnu"]
         },
         {
+            "name": "gnu-Threads",
+            "inherits": ["default", "cxx-gnu"]
+        },
+        {
             "name": "gnu-OpenMP",
             "inherits": ["default", "cxx-gnu"],
             "cacheVariables": {"KokkosExecution_ENABLE_DEBUG_LOGGING": "ON"}
@@ -98,6 +102,11 @@
         {
             "name": "gnu",
             "configurePreset": "gnu",
+            "inherits": "default"
+        },
+        {
+            "name": "gnu-Threads",
+            "configurePreset": "gnu-Threads",
             "inherits": "default"
         },
         {
@@ -157,6 +166,11 @@
         {
             "name": "gnu",
             "configurePreset": "gnu",
+            "inherits": "default"
+        },
+        {
+            "name": "gnu-Threads",
+            "configurePreset": "gnu-Threads",
             "inherits": "default"
         },
         {

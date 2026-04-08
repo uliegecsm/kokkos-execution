@@ -71,6 +71,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - kokkos_backends: [Threads]
+            compiler:
+              family: gnu
+              version: 14
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
