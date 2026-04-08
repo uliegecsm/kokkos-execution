@@ -12,6 +12,8 @@
                 "deprecated": true
             },
             "cacheVariables": {
+                "CMAKE_CXX_STANDARD": "20",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
                 "CMAKE_BUILD_TYPE": "Release",
                 "KokkosExecution_ENABLE_TESTS": "ON"
             }
