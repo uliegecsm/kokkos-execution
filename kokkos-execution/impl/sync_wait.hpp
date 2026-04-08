@@ -25,21 +25,30 @@ struct env {
 };
 
 //! Inspired by https://github.com/NVIDIA/stdexec/blob/16076a81efa4477513e6ede9c2741fd034ecef99/include/stdexec/__detail/__sync_wait.hpp#L83-L86.
-struct State {
+template <typename HasErrorPtr>
+struct State;
+
+template <>
+struct State<std::true_type> {
     std::exception_ptr error;
     stdexec::run_loop loop;
 };
 
+template <>
+struct State<std::false_type> {
+    stdexec::run_loop loop;
+};
+
 //! Receiver for @c stdexec::sync_wait.
-template <Kokkos::ExecutionSpace Exec, typename... Values>
+template <Kokkos::ExecutionSpace Exec, typename HasErrorPtr = std::false_type, typename ResultType = std::tuple<>>
 struct Receiver {
     using receiver_concept = stdexec::receiver_tag;
 
     static constexpr auto label = Impl::dispatch_label<Exec, ": sync_wait">();
 
     Impl::State<Exec> const * state;
-    State* runloop_state;
-    std::optional<std::tuple<Values...>>* result;
+    State<HasErrorPtr>* runloop_state;
+    std::optional<ResultType>* result;
 
     template <typename... Args>
     void set_value(Args&&... args) && noexcept {
@@ -49,7 +58,8 @@ struct Receiver {
     }
 
     template <typename Error>
-    void set_error(Error&& err) && noexcept {
+    void set_error(Error&& err) && noexcept requires HasErrorPtr::value
+    {
         runloop_state->error = std::forward<Error>(err);
         state->exec.fence(std::string(label));
         runloop_state->loop.finish();
@@ -73,36 +83,51 @@ struct Receiver {
 };
 
 struct SyncWait {
+    template <typename Sndr>
+    using sends_error = std::bool_constant<stdexec::__sends<stdexec::set_error_t, Sndr, env>>;
+
+    template <typename Sndr>
+    using result_t = stdexec::__sync_wait::__value_tuple_for_t<Sndr>;
+
+    template <typename Sndr>
+    static constexpr bool is_nothrow_connectable = stdexec::__nothrow_connectable<
+        Sndr,
+        Receiver<
+            typename stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, env>::execution_space,
+            sends_error<Sndr>,
+            result_t<Sndr>
+        >
+    >;
+
     /**
      * According to https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#spec-execution.senders.consumers.sync_wait,
      * it has to return an engaged optional (on the value channel).
-     *
-     * @todo Make the @c noexcept specifier depend on the completion signatures of @p sndr.
      */
     template <stdexec::sender Sndr>
-    auto operator()(Sndr&& sndr) const noexcept(false)
-        -> std::optional<stdexec::__sync_wait::__value_tuple_for_t<Sndr>> {
-        State runloop_state;
+    auto operator()(Sndr&& sndr) const noexcept(!sends_error<Sndr&&>::value && is_nothrow_connectable<Sndr&&>)
+        -> std::optional<result_t<Sndr&&>> {
+        //! See https://github.com/NVIDIA/stdexec/blob/45c0f5803c190366a8529833901d1f6340b40d2e/include/stdexec/__detail/__run_loop.hpp#L50.
+        static_assert(noexcept(std::declval<State<sends_error<Sndr&&>>>().loop.run()));
 
-        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::env{});
+        State<sends_error<Sndr&&>> runloop_state;
 
-        using result_t = std::optional<stdexec::__sync_wait::__value_tuple_for_t<Sndr>>;
+        std::optional<result_t<Sndr&&>> result{};
 
-        result_t result{};
+        Receiver rcvr{
+            .state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::env{})
+                         .state,
+            .runloop_state = std::addressof(runloop_state),
+            .result = std::addressof(result)};
 
-        auto op_state = stdexec::connect(
-            std::forward<Sndr>(sndr),
-            Receiver{
-                .state = std::move(schd.state),
-                .runloop_state = std::addressof(runloop_state),
-                .result = std::addressof(result)});
+        auto op_state = stdexec::connect(std::forward<Sndr>(sndr), std::move(rcvr));
 
         stdexec::start(op_state);
 
         runloop_state.loop.run();
 
-        if (runloop_state.error)
-            std::rethrow_exception(std::move(runloop_state.error));
+        if constexpr (sends_error<Sndr&&>::value)
+            if (runloop_state.error)
+                std::rethrow_exception(std::move(runloop_state.error));
 
         return result;
     }

@@ -4,6 +4,7 @@
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
+#include "tests/utils/stdexec.hpp"
 
 /**
  * @addtogroup unittests
@@ -32,6 +33,23 @@ class SyncWaitTest
         Kokkos::Execution::Impl::WaitEvent
     >;
 };
+
+//! @test Check whether the sender can be nothrow applied.
+consteval bool test_nothrow_apply_sender() {
+    static_assert(Tests::Utils::has_completion_signatures<
+                  typename SyncWaitTest::schedule_sender_t,
+                  stdexec::__mset<stdexec::set_value_t()>
+    >);
+    static_assert(Tests::Utils::has_nothrow_apply_sender<
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain,
+                  stdexec::sync_wait_t,
+                  typename SyncWaitTest::schedule_sender_t
+    >);
+    static_assert(
+        !Tests::Utils::has_nothrow_apply_sender<stdexec::sync_wait_t, typename SyncWaitTest::schedule_sender_t>);
+    return true;
+}
+static_assert(test_nothrow_apply_sender());
 
 /**
  * @test Ensure that @c sync_wait is properly customized.
