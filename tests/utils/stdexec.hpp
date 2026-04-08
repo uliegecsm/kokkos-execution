@@ -3,6 +3,8 @@
 
 #include <concepts>
 
+#include "kokkos-execution/stdexec.hpp"
+
 namespace Tests::Utils {
 
 //! See https://github.com/NVIDIA/stdexec/pull/1873#discussion_r2834863237.
@@ -34,6 +36,18 @@ concept has_completion_scheduler_for =
 template <typename OpState>
 concept operation_state = stdexec::operation_state<OpState> && requires(OpState& opstate) {
     { opstate.start() } noexcept -> std::same_as<void>;
+};
+
+/**
+ * @brief Check that @c apply_sender is @c noexcept.
+ *
+ * Inspired by:
+ *  * https://github.com/NVIDIA/stdexec/blob/45c0f5803c190366a8529833901d1f6340b40d2e/include/stdexec/__detail/__domain.hpp#L43
+ *  * https://github.com/NVIDIA/stdexec/blob/45c0f5803c190366a8529833901d1f6340b40d2e/include/stdexec/__detail/__domain.hpp#L56
+ */
+template <typename DomainOrTag, typename... Args>
+concept has_nothrow_apply_sender = requires(DomainOrTag domain_or_tag, Args&&... args) {
+    { domain_or_tag.apply_sender(std::forward<Args>(args)...) } noexcept;
 };
 
 } // namespace Tests::Utils

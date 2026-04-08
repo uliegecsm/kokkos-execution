@@ -18,7 +18,7 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 template <>
 struct ApplySenderFor<stdexec::sync_wait_t> {
     template <execution_space_completing_sender Sndr>
-    auto operator()(Sndr&& sndr) && noexcept(std::is_nothrow_invocable_v<Impl::SyncWait::SyncWait, Sndr&&>) {
+    auto operator()(Sndr&& sndr) const noexcept(std::is_nothrow_invocable_v<Impl::SyncWait::SyncWait, Sndr&&>) {
         return Impl::SyncWait::SyncWait{}(std::forward<Sndr>(sndr));
     }
 };

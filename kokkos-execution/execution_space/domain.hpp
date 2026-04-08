@@ -13,8 +13,9 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 struct Domain : public stdexec::default_domain {
     template <typename Tag, stdexec::sender Sndr, typename... Args>
-    requires stdexec::__callable<ApplySenderFor<Tag>, Sndr, Args...>
-    static auto apply_sender(Tag, Sndr&& sndr, Args&&... args) {
+    requires stdexec::__callable<ApplySenderFor<Tag>, Sndr&&, Args&&...>
+    static auto apply_sender(Tag, Sndr&& sndr, Args&&... args)
+        noexcept(stdexec::__nothrow_callable<ApplySenderFor<Tag>, Sndr&&, Args&&...>) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_DEBUG << Kokkos::Impl::TypeInfo<Domain>::name() << ": apply_sender for tag "
                    << Kokkos::Impl::TypeInfo<Tag>::name();
