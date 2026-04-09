@@ -3,6 +3,8 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
@@ -32,8 +34,13 @@ class ParallelForTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t =
-        RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
+    using recorder_listener_t = RecorderListener<
+        EventDiscardMatcher<TEST_EXECUTION_SPACE>,
+        BeginFenceEvent,
+        BeginParallelForEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
     using variant_t = typename recorder_listener_t::event_variant_t;
 
     static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
@@ -297,7 +304,11 @@ TEST_F(ParallelForTest, two_parallel_regions) {
     ASSERT_EQ(witness(), size / 2 * (size - 1) + 4 + 2 * size * (2 * size - 1) / 2);
 }
 
-//! @test Check that @ref Kokkos::Execution::parallel_for with a @c stdexec::starts_on works.
+/**
+ * @test Check that @ref Kokkos::Execution::parallel_for with a @c stdexec::starts_on works.
+ *
+ * @todo Too many synchronizations.
+ */
 TEST_F(ParallelForTest, starts_on_parallel_region) {
     constexpr size_t size = 10;
 
@@ -312,11 +323,36 @@ TEST_F(ParallelForTest, starts_on_parallel_region) {
     const context_t esc{exec};
     auto starts_on = stdexec::starts_on(esc.get_scheduler(), std::move(sndr));
 
-    ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on)),
-        testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    /**
+     * Note that @c stdexec transforms the @c stdexec::starts_on sender into a sequence sender. This is why the operation
+     * state of the customized sender does not let the @c stdexec::sync_wait handle the synchronization.
+     *
+     * See https://github.com/NVIDIA/stdexec/blob/5473e9daf50cb8829cfe12fb6b64f5f74a08bcf7/include/stdexec/__detail/__starts_on.hpp#L128.
+     */
+    static_assert(stdexec::__is_instance_of<
+                  stdexec::transform_sender_result_t<
+                      decltype(starts_on),
+                      stdexec::env_of_t<Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE>>
+                  >,
+                  stdexec::__seq::__sndr
+    >);
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on));
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        }
+    }());
 
     ASSERT_EQ(witness(), size / 2 * (size - 1));
 }

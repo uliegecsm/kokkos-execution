@@ -1,29 +1,21 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
 
-#include "kokkos-execution/utils/ignore_warnings.hpp"
-PRAGMA_DIAGNOSTIC_PUSH
-KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
-#include "exec/env.hpp"
-PRAGMA_DIAGNOSTIC_POP
-
-#include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
-#include "kokkos-execution/impl/continues_on.hpp"
-#include "kokkos-execution/impl/env.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-struct FwdWithExec { };
-struct FwdWithoutExec { };
+struct WithExecEnvPolicy { };
+struct WithoutExecEnvPolicy { };
 
 //! Receiver for @c continues_on.
-template <stdexec::receiver Rcvr, typename FwdPolicy = FwdWithExec>
+template <stdexec::scheduler Schd, stdexec::receiver Rcvr, typename ExecEnvPolicy = WithoutExecEnvPolicy>
 struct ContinuesOnReceiver {
     using receiver_concept = stdexec::receiver_tag;
 
+    Schd schd;
     Rcvr rcvr;
 
     void set_value() && noexcept {
@@ -41,59 +33,52 @@ struct ContinuesOnReceiver {
 
     [[nodiscard]]
     constexpr auto get_env() const noexcept -> std::conditional_t<
-        std::same_as<FwdPolicy, FwdWithoutExec>,
-        stdexec::__call_result_t<
-            experimental::execution::__envs::__without_t,
-            stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>,
-            get_exec_t
-        >,
-        stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>
+        std::same_as<ExecEnvPolicy, WithoutExecEnvPolicy>,
+        stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>,
+        stdexec::__join_env_t<
+            stdexec::prop<get_exec_t, ExecutionSpaceRef<typename Schd::execution_space>>,
+            stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>
+        >
     > {
-        if constexpr (std::same_as<FwdPolicy, FwdWithoutExec>) {
-            return experimental::execution::without(stdexec::__fwd_env(stdexec::get_env(rcvr)), get_exec);
-        } else {
+        if constexpr (std::same_as<ExecEnvPolicy, WithoutExecEnvPolicy>) {
             return stdexec::__fwd_env(stdexec::get_env(rcvr));
+        } else {
+            return stdexec::__env::__join(
+                stdexec::prop{get_exec, ExecutionSpaceRef{schd.state->exec}},
+                stdexec::__fwd_env(stdexec::get_env(rcvr)));
         }
     }
 };
 
 //! Sender for @c continues_on.
-template <stdexec::sender Sndr>
+template <stdexec::scheduler Schd, stdexec::sender Sndr>
 struct ContinuesOnSender {
     using sender_concept = stdexec::sender_tag;
 
+    Schd schd;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ContinuesOnSender)
 
-    template <
-        stdexec::receiver Rcvr,
-        typename FwdPolicy = std::conditional_t<
-            std::same_as<
-                stdexec::__detail::__completing_domain_t<stdexec::set_value_t, Sndr, stdexec::env_of_t<Rcvr>>,
-                Domain
-            >
-                || has_when_all_child_with_at_least_one_child_completing_on_v<
-                    stdexec::set_value_t,
-                    Domain,
-                    Sndr,
-                    stdexec::env_of_t<Rcvr>
-                >
-                || has_fork_join_child_with_at_least_one_child_completing_on_v<
-                    stdexec::set_value_t,
-                    Domain,
-                    Sndr,
-                    stdexec::env_of_t<Rcvr>
-                >,
-            FwdWithExec,
-            FwdWithoutExec
-        >
-    >
-    auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>)
-        -> stdexec::connect_result_t<Sndr, ContinuesOnReceiver<Rcvr, FwdPolicy>> {
-        using recv_t = ContinuesOnReceiver<Rcvr, FwdPolicy>;
+    template <typename Rcvr>
+    using exec_env_policy_t = std::conditional_t<
+        std::same_as<
+            stdexec::__completion_domain_of_t<stdexec::set_value_t, Sndr, stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>>,
+            Domain
+        >,
+        WithExecEnvPolicy,
+        WithoutExecEnvPolicy
+    >;
 
-        return stdexec::connect(std::forward<Sndr>(sndr), recv_t{.rcvr = std::move(rcvr)});
+    template <typename Rcvr>
+    using rcvr_t = ContinuesOnReceiver<Schd, Rcvr, exec_env_policy_t<Rcvr>>;
+
+    template <stdexec::receiver Rcvr>
+    auto connect(Rcvr rcvr) && noexcept(
+        std::is_nothrow_constructible_v<rcvr_t<Rcvr>, Schd&&, Rcvr&&>
+        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) -> stdexec::connect_result_t<Sndr, rcvr_t<Rcvr>> {
+        return stdexec::connect(
+            std::forward<Sndr>(sndr), rcvr_t<Rcvr>{.schd = std::forward<Schd>(schd), .rcvr = std::move(rcvr)});
     }
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
@@ -102,9 +87,9 @@ struct ContinuesOnSender {
 template <>
 struct TransformSenderFor<stdexec::continues_on_t> {
     template <typename Env, stdexec::__is_instance_of<Scheduler> Schd, stdexec::sender Sndr>
-    auto operator()(const Env&, stdexec::continues_on_t, Schd&&, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<ContinuesOnSender<Sndr>, Sndr&&>) {
-        return ContinuesOnSender<Sndr>{.sndr = std::forward<Sndr>(sndr)};
+    auto operator()(const Env&, stdexec::continues_on_t, Schd&& schd, Sndr&& sndr) const
+        noexcept(std::is_nothrow_constructible_v<ContinuesOnSender<Schd, Sndr>, Schd&&, Sndr&&>) {
+        return ContinuesOnSender<Schd, Sndr>{.schd = std::forward<Schd>(schd), .sndr = std::forward<Sndr>(sndr)};
     }
 };
 

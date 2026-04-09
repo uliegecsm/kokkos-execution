@@ -5,7 +5,7 @@
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
-#include "kokkos-execution/execution_space/sender_concepts.hpp"
+#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
@@ -22,23 +22,25 @@ struct ScheduleFromReceiver {
 
     void set_value() && noexcept {
         //! If the downstream receiver is our customization of @c continues_on and it shares the same execution space instance, skip the fence.
-        const bool skip = [&]() {
+        const bool requires_synchronization = [&]() {
             if constexpr (stdexec::__is_instance_of<Rcvr, ContinuesOnReceiver>) {
-                if constexpr (stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>) {
-                    if constexpr (
-                        std::same_as<
-                            std::remove_cvref_t<decltype(get_exec(stdexec::get_env(rcvr)).get())>,
-                            typename Schd::execution_space
-                        >) {
-                        return schd.state->exec == get_exec(stdexec::get_env(rcvr)).get();
-                    }
+                static_assert(stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>);
+                if constexpr (
+                    std::same_as<
+                        typename std::remove_cvref_t<
+                            stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, get_exec_t>
+                        >::execution_space,
+                        typename Schd::execution_space
+                    >) {
+                    return get_exec(stdexec::get_env(rcvr)).get() != schd.state->exec;
                 }
             }
-            return false;
+            return true;
         }();
-        if (!skip)
+        if (requires_synchronization) {
             schd.state->exec.fence(
                 std::format("{}: schedule_from", Kokkos::Impl::TypeInfo<typename Schd::execution_space>::name()));
+        }
         stdexec::set_value(std::move(rcvr));
     }
 
@@ -51,8 +53,7 @@ struct ScheduleFromReceiver {
         stdexec::set_stopped(std::move(rcvr));
     }
 
-    //! Make others aware of which execution space instance it may synchronize.
-    KOKKOS_EXECUTION_UPSERT_EXEC(typename Schd::execution_space, schd.state->exec, Rcvr, rcvr)
+    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, rcvr)
 };
 
 //! Sender for @c schedule_from.

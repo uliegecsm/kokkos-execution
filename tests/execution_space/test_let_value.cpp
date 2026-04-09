@@ -33,8 +33,14 @@ class LetValueTest
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
-    using recorder_listener_t =
-        RecorderListener<BeginFenceEvent, BeginParallelForEvent, AllocateDataEvent, DeallocateDataEvent>;
+    using recorder_listener_t = RecorderListener<
+        BeginFenceEvent,
+        BeginParallelForEvent,
+        AllocateDataEvent,
+        DeallocateDataEvent,
+        Kokkos::Execution::Impl::RecordEvent,
+        Kokkos::Execution::Impl::WaitEvent
+    >;
     using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
