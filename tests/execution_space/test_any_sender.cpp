@@ -11,6 +11,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/stdexec.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -85,8 +86,7 @@ TEST_F(AnySenderTest, then) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record(
-            [extended_chain = std::move(extended_chain)]() mutable { stdexec::sync_wait(std::move(extended_chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(extended_chain)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),

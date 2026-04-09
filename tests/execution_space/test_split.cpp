@@ -13,6 +13,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -49,9 +50,7 @@ TEST_F(SplitTest, split_and_sync_wait) {
 
     stdexec::sender auto chain = stdexec::schedule(esc.get_scheduler()) | experimental::execution::split();
 
-    ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
-        testing::IsEmpty());
+    ASSERT_THAT(Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)), testing::IsEmpty());
 }
 
 /**
@@ -82,8 +81,7 @@ TEST_F(SplitTest, within) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain));
 
     /// Each branch may be executed by a distinct host thread. So ordering of the event is not guaranteed.
     if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {

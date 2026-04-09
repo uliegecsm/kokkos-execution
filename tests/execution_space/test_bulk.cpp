@@ -9,6 +9,7 @@
 #include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -154,7 +155,7 @@ TEST_F(BulkTest, bulk) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));

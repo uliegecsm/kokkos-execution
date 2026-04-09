@@ -5,6 +5,7 @@
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/sink_receiver.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -63,7 +64,7 @@ TEST_F(ScopedRegionTest, many) {
                      "the name of my nice scoped region", THEN_INCREMENT(data) | THEN_INCREMENT(data));
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
             MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),

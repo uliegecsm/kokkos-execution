@@ -15,6 +15,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/kokkos.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -67,7 +68,7 @@ TEST_F(ForkJoinTest, diamond) {
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -98,9 +99,7 @@ TEST_F(ForkJoinTest, continues_on) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(sndr));                         // NOLINT(performance-move-const-arg)
-        }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)), // NOLINT(performance-move-const-arg)
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
@@ -128,9 +127,7 @@ TEST_F(ForkJoinTest, continues_on_bulk) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(sndr));                         // NOLINT(performance-move-const-arg)
-        }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),

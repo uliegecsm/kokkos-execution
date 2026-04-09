@@ -11,6 +11,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/kokkos.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -56,10 +57,8 @@ TEST_F(InterOpTest, transition_to_inline_scheduler) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(chain)); // NOLINT(performance-move-const-arg)
 
     ASSERT_THAT(
         recorded_events,
@@ -88,10 +87,8 @@ TEST_F(InterOpTest, transition_from_inline_scheduler) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(chain)); // NOLINT(performance-move-const-arg)
 
     ASSERT_THAT(
         recorded_events,
@@ -123,10 +120,8 @@ TEST_F(InterOpTest, transition_from_inline_scheduler_and_back) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(chain)); // NOLINT(performance-move-const-arg)
 
     ASSERT_THAT(
         recorded_events,
@@ -157,10 +152,8 @@ TEST_F(InterOpTest, transition_to_static_thread_pool) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(chain)); // NOLINT(performance-move-const-arg)
 
     ASSERT_THAT(
         recorded_events,
@@ -193,10 +186,8 @@ TEST_F(InterOpTest, transition_from_static_thread_pool) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(chain)); // NOLINT(performance-move-const-arg)
 
     ASSERT_THAT(
         recorded_events,
@@ -232,10 +223,8 @@ TEST_F(InterOpTest, transition_from_static_thread_pool_and_back) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(chain)); // NOLINT(performance-move-const-arg)
 
     ASSERT_THAT(
         recorded_events,
@@ -271,10 +260,8 @@ TEST_F(InterOpTest, transition_to_static_thread_pool_and_back) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable {    // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(chain)); // NOLINT(performance-move-const-arg)
 
     ASSERT_THAT(
         recorded_events,

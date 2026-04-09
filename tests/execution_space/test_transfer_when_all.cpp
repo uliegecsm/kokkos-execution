@@ -13,6 +13,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/kokkos.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -72,8 +73,7 @@ TEST_F(TransferWhenAllTest, Y) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
         ASSERT_THAT(

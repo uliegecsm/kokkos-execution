@@ -9,6 +9,7 @@
 #include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/kokkos.hpp"
 #include "tests/utils/sink_receiver.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -226,10 +227,8 @@ TEST_F(ParallelForTest, closure_object_creation_overloads) {
 
     const view_s_t witness(Kokkos::view_alloc(exec, "data - shared space"));
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = closure_object_creation_overloads(size, witness, context_t{exec})]() mutable {
-            stdexec::sync_wait(std::move(chain));
-        });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        closure_object_creation_overloads(size, witness, context_t{exec}));
 
     unsigned short int ievent = 0;
 
@@ -278,7 +277,7 @@ TEST_F(ParallelForTest, two_parallel_regions) {
                      Tests::Utils::Functors::SumIndices{.data = witness});
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -304,8 +303,7 @@ TEST_F(ParallelForTest, starts_on_parallel_region) {
     auto starts_on = stdexec::starts_on(esc.get_scheduler(), std::move(sndr));
 
     ASSERT_THAT(
-        recorder_listener_t::record(
-            [starts_on = std::move(starts_on)]() mutable { stdexec::sync_wait(std::move(starts_on)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
