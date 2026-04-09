@@ -1,17 +1,15 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
 
+#include "kokkos-execution/execution_space/env.hpp"
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-struct WithExecEnvPolicy { };
-struct WithoutExecEnvPolicy { };
-
 //! Receiver for @c continues_on.
-template <stdexec::scheduler Schd, stdexec::receiver Rcvr, typename ExecEnvPolicy = WithoutExecEnvPolicy>
+template <typename ExecEnvPolicy, stdexec::scheduler Schd, stdexec::receiver Rcvr>
 struct ContinuesOnReceiver {
     using receiver_concept = stdexec::receiver_tag;
 
@@ -32,21 +30,9 @@ struct ContinuesOnReceiver {
     }
 
     [[nodiscard]]
-    constexpr auto get_env() const noexcept -> std::conditional_t<
-        std::same_as<ExecEnvPolicy, WithoutExecEnvPolicy>,
-        stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>,
-        stdexec::__join_env_t<
-            stdexec::prop<get_exec_t, ExecutionSpaceRef<typename Schd::execution_space>>,
-            stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>
-        >
-    > {
-        if constexpr (std::same_as<ExecEnvPolicy, WithoutExecEnvPolicy>) {
-            return stdexec::__fwd_env(stdexec::get_env(rcvr));
-        } else {
-            return stdexec::__env::__join(
-                stdexec::prop{get_exec, ExecutionSpaceRef{schd.state->exec}},
-                stdexec::__fwd_env(stdexec::get_env(rcvr)));
-        }
+    constexpr auto get_env() const noexcept
+        -> join_env_with_exec_t<ExecEnvPolicy, stdexec::env_of_t<Rcvr>, typename Schd::execution_space> {
+        return join_env_with_exec<ExecEnvPolicy>(stdexec::get_env(rcvr), schd.state->exec);
     }
 };
 
@@ -71,7 +57,7 @@ struct ContinuesOnSender {
     >;
 
     template <typename Rcvr>
-    using rcvr_t = ContinuesOnReceiver<Schd, Rcvr, exec_env_policy_t<Rcvr>>;
+    using rcvr_t = ContinuesOnReceiver<exec_env_policy_t<Rcvr>, Schd, Rcvr>;
 
     template <stdexec::receiver Rcvr>
     auto connect(Rcvr rcvr) && noexcept(

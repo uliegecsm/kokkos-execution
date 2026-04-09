@@ -19,7 +19,7 @@ struct State;
 template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
-template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
+template <typename...>
 struct ScheduleFromReceiver;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl

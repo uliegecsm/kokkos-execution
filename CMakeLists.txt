@@ -91,6 +91,7 @@ target_sources(
             kokkos-execution/execution_space/bulk.hpp
             kokkos-execution/execution_space/continues_on.hpp
             kokkos-execution/execution_space/domain.hpp
+            kokkos-execution/execution_space/env.hpp
             kokkos-execution/execution_space/execution_space_fwd.hpp
             kokkos-execution/execution_space/get_exec.hpp
             kokkos-execution/execution_space/operation_state.hpp
@@ -100,6 +101,7 @@ target_sources(
             kokkos-execution/execution_space/sender_concepts.hpp
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
+            kokkos-execution/execution_space/when_all.hpp
             kokkos-execution/graph/domain.hpp
             kokkos-execution/graph/events.hpp
             kokkos-execution/graph/graph_fwd.hpp
