@@ -7,8 +7,8 @@
 
 #include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
-#include "kokkos-execution/execution_space/sender_introspection.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
+#include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {

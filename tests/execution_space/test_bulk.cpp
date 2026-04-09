@@ -65,7 +65,7 @@ consteval bool test_sndr_traits() {
 
     //! Models the execution space completing sender concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<bulk_sndr_t>);
-    static_assert(std::same_as<Kokkos::Execution::ExecutionSpaceImpl::exec_of_t<bulk_sndr_t>, TEST_EXECUTION_SPACE>);
+    static_assert(std::same_as<Kokkos::Execution::Impl::exec_of_t<bulk_sndr_t>, TEST_EXECUTION_SPACE>);
 
     //! Models the dispatching sender concept.
     static_assert(Kokkos::Execution::Impl::dispatching_sender<bulk_sndr_t>);

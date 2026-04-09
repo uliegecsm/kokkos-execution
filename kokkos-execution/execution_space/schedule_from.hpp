@@ -9,6 +9,7 @@
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/sender_introspection.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -83,7 +84,7 @@ struct ScheduleFromSender {
 template <>
 struct TransformSenderFor<stdexec::schedule_from_t> {
     template <typename Sndr, typename Env>
-    using schd_t = stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env>;
+    using schd_t = Impl::completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env>;
 
     template <typename Sndr, typename Env>
     using sndr_t = ScheduleFromSender<schd_t<Sndr, Env>, Sndr>;

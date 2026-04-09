@@ -6,6 +6,7 @@
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/sender_introspection.hpp"
 
 #include "tests/utils/stdexec.hpp"
 
@@ -58,7 +59,7 @@ struct CheckSchedulerTypeSender {
     static consteval bool check_scheduler_type() {
         /// First, try to get the completion scheduler from the sender environment.
         if constexpr (Tests::Utils::has_completion_scheduler_for<Sndr, Tag, stdexec::env_of_t<Rcvr>>) {
-            using schd_t = stdexec::__completion_scheduler_of_t<Tag, Sndr, stdexec::env_of_t<Rcvr>>;
+            using schd_t = Kokkos::Execution::Impl::completion_scheduler_of_t<Tag, Sndr, stdexec::env_of_t<Rcvr>>;
             static_assert(
                 std::same_as<std::remove_cvref_t<schd_t>, Schd>,
                 "Scheduler type mismatch: completion scheduler doesn't match expected type.");

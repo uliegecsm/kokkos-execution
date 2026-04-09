@@ -96,7 +96,6 @@ target_sources(
             kokkos-execution/execution_space/schedule_from.hpp
             kokkos-execution/execution_space/scoped_region.hpp
             kokkos-execution/execution_space/sender_concepts.hpp
-            kokkos-execution/execution_space/sender_introspection.hpp
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
             kokkos-execution/graph/domain.hpp
@@ -115,6 +114,7 @@ target_sources(
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
             kokkos-execution/impl/sender_concepts.hpp
+            kokkos-execution/impl/sender_introspection.hpp
             kokkos-execution/impl/SYCL/event.hpp
             kokkos-execution/impl/state.hpp
             kokkos-execution/impl/sync_wait.hpp

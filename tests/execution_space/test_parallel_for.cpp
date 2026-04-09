@@ -63,7 +63,7 @@ consteval bool test_sndr_traits() {
 
     //! Models the execution space completing sender concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<pfor_sndr_t>);
-    static_assert(std::same_as<Kokkos::Execution::ExecutionSpaceImpl::exec_of_t<pfor_sndr_t>, TEST_EXECUTION_SPACE>);
+    static_assert(std::same_as<Kokkos::Execution::Impl::exec_of_t<pfor_sndr_t>, TEST_EXECUTION_SPACE>);
 
     //! Models the dispatching sender concept.
     static_assert(Kokkos::Execution::Impl::dispatching_sender<pfor_sndr_t>);
@@ -84,7 +84,7 @@ consteval bool test_sndr_traits() {
 
     //! Has the expected completion scheduler.
     static_assert(std::same_as<
-                  stdexec::__completion_scheduler_of_t<stdexec::set_value_t, pfor_sndr_t, stdexec::env<>>,
+                  Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, pfor_sndr_t>,
                   Kokkos::Execution::ExecutionSpaceImpl::Scheduler<TEST_EXECUTION_SPACE>
     >);
 

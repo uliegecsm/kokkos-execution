@@ -5,6 +5,7 @@
 
 #include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
+#include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution::Impl::SyncWait {
@@ -84,11 +85,7 @@ struct SyncWait {
     using result_t = stdexec::__sync_wait::__value_tuple_for_t<Sndr>;
 
     template <typename Sndr>
-    using receiver_t = Receiver<
-        typename stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, env>::execution_space,
-        sends_error<Sndr>,
-        result_t<Sndr>
-    >;
+    using receiver_t = Receiver<Impl::exec_of_t<Sndr, env>, sends_error<Sndr>, result_t<Sndr>>;
 
     template <typename Sndr>
     static constexpr bool is_nothrow_connectable = stdexec::__nothrow_connectable<Sndr, receiver_t<Sndr>>;
