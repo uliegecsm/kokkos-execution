@@ -7,6 +7,7 @@
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/stdexec.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -92,7 +93,7 @@ TEST_F(ThenTest, then_schedule) {
     >);
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -147,8 +148,7 @@ TEST_F(ThenTest, then_starts_on) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record(
-            [starts_on = std::move(starts_on)]() mutable { stdexec::sync_wait(std::move(starts_on)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),

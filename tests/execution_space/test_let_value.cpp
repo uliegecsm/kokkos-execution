@@ -11,6 +11,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/stdexec.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -160,9 +161,7 @@ TEST_F(LetValueTest, scoped_allocation) {
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(check)
 
     ASSERT_THAT(
-        recorder_listener_t::record([check = std::move(check)]() mutable { // NOLINT(performance-move-const-arg)
-            stdexec::sync_wait(std::move(check));                          // NOLINT(performance-move-const-arg)
-        }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(check)), // NOLINT(performance-move-const-arg)
         ContainsInOrder<variant_t>(
             Kokkos::utils::callbacks::AAllocateDataEvent(
                 testing::Field(

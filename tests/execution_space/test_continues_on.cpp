@@ -9,6 +9,7 @@
 #include "tests/utils/kokkos.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -266,7 +267,7 @@ TEST_F(ContinuesOnTest, then_sync_wait) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         ::testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
@@ -292,7 +293,7 @@ TEST_F(ContinuesOnTest, transition_to_same_execution_space_instance) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         ::testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -322,8 +323,7 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain));
 
     if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
         ASSERT_THAT(
@@ -369,8 +369,7 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [chain = std::move(chain)]() mutable { stdexec::sync_wait(std::move(chain)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain));
 
     if (Tests::Utils::are_same_instances(exec, exec_h)) {
         ASSERT_THAT(

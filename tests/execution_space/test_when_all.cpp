@@ -18,6 +18,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/kokkos.hpp"
 #include "tests/utils/stdexec.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -75,8 +76,7 @@ TEST_F(WhenAllTest, single_branch) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     /// Because the sender returned by @c stdexec::when_all is not an execution space completing sender,
     /// the default implementation of @c stdexec::sync_wait is used.
@@ -115,7 +115,7 @@ TEST_F(WhenAllTest, single_branch_followed_by_self) {
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -149,7 +149,7 @@ TEST_F(WhenAllTest, single_mixed_branch_followed_by_self) {
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
     ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
@@ -181,8 +181,7 @@ TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    const auto recorded_events = recorder_listener_t::record(
-        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     ASSERT_THAT(recorded_events, [&]() {
         if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
@@ -237,7 +236,7 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
     ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -270,8 +269,7 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
         ASSERT_THAT(
@@ -334,8 +332,7 @@ TEST_F(WhenAllTest, two_branches_host_device_followed_by_device) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = recorder_listener_t::record(
-        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     if (Tests::Utils::are_same_instances(exec, exec_h)) {
         ASSERT_THAT(
@@ -396,8 +393,7 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    const auto recorded_events = recorder_listener_t::record(
-        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     ASSERT_THAT(recorded_events, [&]() {
         if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
@@ -452,7 +448,7 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
     ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -488,8 +484,7 @@ TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
 
     auto sndr = ::stdexec::when_all(std::move(when_AB_then_D), std::move(br_C));
 
-    const auto recorded_events = recorder_listener_t::record(
-        [sndr = std::move(sndr)]() mutable { stdexec::sync_wait(std::move(sndr)); });
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
         ASSERT_THAT(
