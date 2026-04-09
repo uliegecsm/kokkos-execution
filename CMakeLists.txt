@@ -100,12 +100,16 @@ target_sources(
             kokkos-execution/execution_space/sync_wait.hpp
             kokkos-execution/execution_space/then.hpp
             kokkos-execution/graph/domain.hpp
+            kokkos-execution/graph/graph_fwd.hpp
+            kokkos-execution/graph/sender_concepts.hpp
+            kokkos-execution/graph/sync_wait.hpp
             kokkos-execution/impl/attributes.hpp
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signatures.hpp
             kokkos-execution/impl/continues_on.hpp
             kokkos-execution/impl/Cuda/event.hpp
             kokkos-execution/impl/dispatch_label.hpp
+            kokkos-execution/impl/domain.hpp
             kokkos-execution/impl/env.hpp
             kokkos-execution/impl/event.hpp
             kokkos-execution/impl/HIP/event.hpp

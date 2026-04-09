@@ -1,0 +1,57 @@
+#include "kokkos-utils/callbacks/RecorderListener.hpp"
+#include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
+
+#include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/check_sync_wait.hpp"
+#include "tests/utils/graph_context.hpp"
+#include "tests/utils/stdexec.hpp"
+
+/**
+ * @addtogroup unittests
+ *
+ * Customization of @c stdexec::sync_wait by @c Kokkos::Execution::GraphContext
+ * ----------------------------------------------------------------------------
+ *
+ * This group of tests check that @ref Kokkos::Execution::GraphContext properly customizes
+ * @c stdexec::sync_wait.
+ *
+ * The tests can be found in @ref tests/graph/test_sync_wait.cpp.
+ */
+
+namespace Tests::GraphImpl {
+
+using namespace Kokkos::utils::callbacks;
+
+class SyncWaitTest
+    : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE>
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
+    using recorder_listener_t = RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent>;
+};
+
+//! @test Check whether the sender can be nothrow applied.
+static_assert(Tests::Utils::check_nothrow_apply_sender<
+              Kokkos::Execution::GraphImpl::Domain,
+              typename SyncWaitTest::schedule_sender_t
+>());
+
+/**
+ * @test Ensure that @c stdexec::sync_wait is properly customized.
+ *
+ * Improperly customized @c stdexec::sync_wait should result in a missing synchronization.
+ */
+TEST_F(SyncWaitTest, sync_wait) {
+    const context_t esc{exec};
+
+    auto sndr = stdexec::schedule(esc.get_scheduler());
+
+    ASSERT_THAT(
+        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { // NOLINT(performance-move-const-arg)
+            const auto value = stdexec::sync_wait(std::move(sndr));      // NOLINT(performance-move-const-arg)
+            static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
+            ASSERT_TRUE(value.has_value());
+        }),
+        testing::ElementsAre(MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+}
+
+} // namespace Tests::GraphImpl

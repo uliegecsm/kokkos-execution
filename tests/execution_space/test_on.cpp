@@ -83,6 +83,10 @@ TEST_F(OnTest, on_another_execution_space_instance_same_type) {
     auto chain = stdexec::schedule(esc_A.get_scheduler()) | THEN_INCREMENT(data)
                | stdexec::on(esc_B.get_scheduler(), THEN_INCREMENT(data)) | THEN_INCREMENT(data);
 
+    static_assert(!Tests::Utils::has_completion_scheduler_for<decltype(chain), stdexec::set_value_t>);
+    static_assert(stdexec::dependent_sender<decltype(chain)>);
+    static_assert(Tests::Utils::has_completion_scheduler_for<decltype(chain), stdexec::set_value_t, stdexec::env<>>);
+
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain));
