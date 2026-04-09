@@ -30,8 +30,8 @@ struct TransformSenderFor<stdexec::then_t> {
     template <typename Env, typename Functor, typename Sndr>
     using trnsfrmd_sndr_t = ParallelForSender<Sndr, std::string_view, ThenWrapper<Functor>, policy_t<Sndr, Env>>;
 
-    template <typename Env, typename Functor, execution_space_completing_sender<Env> Sndr>
-    requires requires { typename exec_of_t<Sndr, Env>; }
+    template <typename Env, typename Functor, typename Sndr>
+    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
     auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Functor, Sndr>,

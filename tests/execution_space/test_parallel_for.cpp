@@ -6,7 +6,9 @@
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
+#include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
+#include "tests/utils/just_stopped.hpp"
 #include "tests/utils/kokkos.hpp"
 #include "tests/utils/sink_receiver.hpp"
 
@@ -164,6 +166,14 @@ static_assert(test_closure_traits<typename ParallelForTest::view_s_t, false>());
 static_assert(test_closure_traits<typename ParallelForTest::view_s_t, true>());
 #endif
 static_assert(test_closure_traits<std::span<int>, true>());
+
+//! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
+static_assert(Tests::Utils::check_continues_on_after_just_stopped<
+              typename ParallelForTest::scheduler_t,
+              Kokkos::Execution::parallel_for_t,
+              Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+              Tests::Utils::Functors::NoOp<false, false, false>
+>());
 
 //! @test Check @ref Kokkos::Execution::parallel_for with a team policy.
 TEST_F(ParallelForTest, team_policy) {

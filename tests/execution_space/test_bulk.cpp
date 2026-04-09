@@ -7,6 +7,7 @@
 #include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
+#include "tests/utils/just_stopped.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
 
@@ -92,6 +93,15 @@ consteval bool test_sndr_no_throw_transformable() {
     return true;
 }
 static_assert(test_sndr_no_throw_transformable());
+
+//! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
+static_assert(Tests::Utils::check_continues_on_after_just_stopped<
+              typename BulkTest::scheduler_t,
+              stdexec::bulk_t,
+              stdexec::parallel_policy,
+              int,
+              Tests::Utils::Functors::NoOp<false, false, false>
+>());
 
 /**
  * @test Check construction of operation state from a parallel for sender

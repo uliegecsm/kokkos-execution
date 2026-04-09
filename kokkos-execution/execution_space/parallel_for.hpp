@@ -66,7 +66,8 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
         typename std::remove_cvref_t<Data>::policy_t
     >;
 
-    template <typename Env, typename Data, execution_space_completing_sender<Env> Sndr>
+    template <typename Env, typename Data, typename Sndr>
+    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
     auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Data, Sndr>,
