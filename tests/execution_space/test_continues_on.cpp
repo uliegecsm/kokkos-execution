@@ -394,24 +394,6 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
     ASSERT_EQ(data(), 3) << "A synchronization is missing.";
 }
 
-//! @test Our customization properly does not add a value channel, such that it is not sync-waitable.
-consteval bool test_continues_on_after_just_stopped() {
-    using sndr_t =
-        decltype(stdexec::just_stopped() | stdexec::continues_on(std::declval<typename ContinuesOnTest::scheduler_t>()) | stdexec::then([]() {
-                 }));
-
-    static_assert(Tests::Utils::has_completion_signatures<sndr_t, stdexec::__mset<stdexec::set_stopped_t()>>);
-
-    static_assert(
-        Tests::Utils::has_completion_signatures<sndr_t, stdexec::__mset<stdexec::set_stopped_t()>, stdexec::env<>>);
-
-    /// Trying to pass the sender to @c stdexec::sync_wait will fail
-    /// on the @c static_assert in https://github.com/NVIDIA/stdexec/blob/7c8c3c3d5a0d0b16963a00192dbfae5db9c2c627/include/stdexec/__detail/__sync_wait.hpp#L199-L219.
-
-    return true;
-}
-static_assert(test_continues_on_after_just_stopped());
-
 //! @test Check @c noexcept specification of sender transformation.
 consteval bool test_sndr_no_throw_transformable() {
     using sndr_continues_on_t =

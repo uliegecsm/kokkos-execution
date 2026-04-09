@@ -8,8 +8,8 @@
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 //! Type of the execution space extracted from a sender's completion scheduler.
-template <typename Sndr, typename Env = stdexec::env<>>
-using exec_of_t = typename stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env>::execution_space;
+template <typename Sndr, typename... Env>
+using exec_of_t = typename stdexec::__completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env...>::execution_space;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 

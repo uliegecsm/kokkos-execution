@@ -21,12 +21,8 @@ struct TransformSenderFor<stdexec::bulk_t> {
         Kokkos::RangePolicy<exec_of_t<Sndr, Env>>
     >;
 
-    template <
-        typename Env,
-        Kokkos::Execution::Impl::has_parallel_policy Data,
-        execution_space_completing_sender<Env> Sndr
-    >
-    requires requires { typename exec_of_t<Sndr, Env>; }
+    template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
+    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
     auto operator()(
         const Env& env,
         stdexec::bulk_t,

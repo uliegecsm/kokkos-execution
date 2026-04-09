@@ -6,6 +6,7 @@
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
+#include "tests/utils/just_stopped.hpp"
 #include "tests/utils/stdexec.hpp"
 #include "tests/utils/sync_wait.hpp"
 
@@ -65,6 +66,13 @@ consteval bool test_sndr_traits() {
     return true;
 }
 static_assert(test_sndr_traits());
+
+//! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
+static_assert(Tests::Utils::check_continues_on_after_just_stopped<
+              typename ThenTest::scheduler_t,
+              stdexec::then_t,
+              Tests::Utils::Functors::NoOp<false, false, false>
+>());
 
 /**
  * @test Check that @ref Kokkos::Execution::ExecutionSpaceContext does its duty well when used with @c then
