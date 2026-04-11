@@ -13,6 +13,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/event.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
+#include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
 
@@ -208,28 +209,6 @@ struct OpStateBase : public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::
     KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, this->rcvr)
 };
 
-template <typename ParentOp>
-struct OpStateReceiver {
-    using receiver_concept = stdexec::receiver_tag;
-
-    ParentOp* parent_op;
-
-    void set_value() && noexcept {
-        parent_op->propagate_completion_signal(stdexec::set_value);
-    }
-
-    template <typename Error>
-    void set_error(Error&& error) && noexcept {
-        parent_op->propagate_completion_signal(stdexec::set_error, std::forward<Error>(error));
-    }
-
-    void set_stopped() && noexcept {
-        parent_op->propagate_completion_signal(stdexec::set_stopped);
-    }
-
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(typename ParentOp::receiver_t, parent_op->rcvr)
-};
-
 template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure... Clsrs>
 requires(!Impl::dispatching_sender<Sndr>)
 struct OpState
@@ -238,14 +217,14 @@ struct OpState
     using operation_state_concept = stdexec::operation_state_tag;
 
     using base_t = OpStateBase<Rcvr, Clsrs...>;
+    using rcvr_t = Impl::Receiver<base_t>;
 
-    using inner_opstate_t = stdexec::connect_result_t<Sndr, OpStateReceiver<base_t>>;
+    using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 
     static constexpr bool opstate_base_is_nothrow_constructible =
         std::is_nothrow_constructible_v<base_t, Rcvr&&, Clsrs&&...>;
 
-    static constexpr bool inner_opstate_is_nothrow_constructible =
-        stdexec::__nothrow_connectable<Sndr&&, OpStateReceiver<base_t>>;
+    static constexpr bool inner_opstate_is_nothrow_constructible = stdexec::__nothrow_connectable<Sndr&&, rcvr_t>;
 
     inner_opstate_t inner_opstate;
 
@@ -254,7 +233,7 @@ struct OpState
         Rcvr rcvr_,
         Clsrs... clsrs_) noexcept(opstate_base_is_nothrow_constructible && inner_opstate_is_nothrow_constructible)
         : base_t(std::move(rcvr_), std::move(clsrs_)...)
-        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), OpStateReceiver<base_t>{this})) {
+        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }
 
     void start() & noexcept {

@@ -130,15 +130,14 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
      * The environment of the receiver created by the customization of the most downstream @c then
      * is queryable with @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec_t.
      */
-    using then_rcvr_t =
-        Kokkos::Execution::ExecutionSpaceImpl::OpStateReceiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-            Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space>,
-            Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-                std::string_view,
-                Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'h'>>,
-                Kokkos::RangePolicy<host_execution_space, Kokkos::LaunchBounds<1>>
-            >
-        >>;
+    using then_rcvr_t = Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
+        Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space>,
+        Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+            std::string_view,
+            Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'h'>>,
+            Kokkos::RangePolicy<host_execution_space, Kokkos::LaunchBounds<1>>
+        >
+    >>;
     static_assert(std::same_as<decltype(op_state.inner_opstate.rcvr.rcvr.rcvr), then_rcvr_t>);
     static_assert(
         !stdexec::__queryable_with<stdexec::env_of_t<then_rcvr_t>, Kokkos::Execution::ExecutionSpaceImpl::get_exec_t>);
@@ -178,7 +177,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     >);
 
     using then_sfrom_con_h_then_rcvr_t =
-        Kokkos::Execution::ExecutionSpaceImpl::OpStateReceiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
+        Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
             sfrom_con_h_then_rcvr_t,
             Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
                 std::string_view,
@@ -236,7 +235,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     >);
 
     using then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t =
-        Kokkos::Execution::ExecutionSpaceImpl::OpStateReceiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
+        Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
             sfrom_con_B_then_sfrom_con_h_then_rcvr_t,
             Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
                 std::string_view,
