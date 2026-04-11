@@ -75,7 +75,7 @@ consteval bool test_sndr_traits() {
 static_assert(test_sndr_traits());
 
 //! @test Check @c noexcept specification of sender transformation.
-consteval bool test_sndr_no_throw_transformable() {
+consteval bool test_sndr_nothrow_transformable() {
     using sndr_bulk_t =
         decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 1, Tests::Utils::Functors::NoOp<false, false, false>{}));
 
@@ -98,7 +98,7 @@ consteval bool test_sndr_no_throw_transformable() {
 
     return true;
 }
-static_assert(test_sndr_no_throw_transformable());
+static_assert(test_sndr_nothrow_transformable());
 
 //! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
 static_assert(Tests::Utils::check_continues_on_after_just_stopped<

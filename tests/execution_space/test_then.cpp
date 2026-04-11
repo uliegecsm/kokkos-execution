@@ -275,7 +275,7 @@ TEST_F(ThenTest, then_lifetime) {
 }
 
 //! @test Check @c noexcept specification of sender transformation.
-consteval bool test_sndr_no_throw_transformable() {
+consteval bool test_sndr_nothrow_transformable() {
     using sndr_then_t =
         decltype(stdexec::schedule(std::declval<typename ThenTest::scheduler_t>()) | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{}));
 
@@ -307,6 +307,6 @@ consteval bool test_sndr_no_throw_transformable() {
 
     return true;
 }
-static_assert(test_sndr_no_throw_transformable());
+static_assert(test_sndr_nothrow_transformable());
 
 } // namespace Tests::ExecutionSpaceImpl
