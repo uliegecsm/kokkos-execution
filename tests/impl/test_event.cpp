@@ -89,6 +89,26 @@ consteval bool test_support_events() {
 }
 static_assert(test_support_events<TEST_EXECUTION_SPACE>());
 
+//! @test Check the stream operator of @ref Kokkos::Execution::Impl::RecordEvent.
+TEST(RecordEvent, description) {
+    const Kokkos::Execution::Impl::RecordEvent event{.dev_id = 42, .event_id = 1337};
+
+    std::ostringstream oss;
+    oss << event;
+
+    ASSERT_EQ(oss.str(), "RecordEvent: {dev_id = 42, event_id = 1337}");
+}
+
+//! @test Check the stream operator of @ref Kokkos::Execution::Impl::WaitEvent.
+TEST(WaitEvent, description) {
+    const Kokkos::Execution::Impl::WaitEvent event{.event_id = 1337};
+
+    std::ostringstream oss;
+    oss << event;
+
+    ASSERT_EQ(oss.str(), "WaitEvent: {event_id = 1337}");
+}
+
 #define KOKKOS_EXECUTION_TESTS_IMPL_EVENT(_fixture_, _name_, _statement_)                                              \
     TEST_F(_fixture_, _name_) {                                                                                        \
         if constexpr (EventTest::has_support<TEST_EXECUTION_SPACE>) {                                                  \
