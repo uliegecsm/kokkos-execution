@@ -65,23 +65,41 @@ TEST_F(SplitTest, within) {
 
     stdexec::sender auto fork = stdexec::schedule(pool.get_scheduler()) | experimental::execution::split();
 
+    static_assert(!stdexec::dependent_sender<decltype(fork)>);
+
     auto branch_a = fork | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
                   | THEN_INCREMENT_ATOMIC(data);
     auto branch_b = fork | stdexec::continues_on(pool.get_scheduler()) | THEN_INCREMENT_ATOMIC(data);
     auto branch_c = std::move(fork) | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
                   | THEN_INCREMENT_ATOMIC(data);
 
-    auto chain = stdexec::when_all(std::move(branch_a), std::move(branch_b), std::move(branch_c))
-               | stdexec::then([&data]() {
-                     if (data() != 5)
-                         Kokkos::abort("Synchronization issue.");
-                 });
+    static_assert(!stdexec::dependent_sender<decltype(branch_a)>);
+    static_assert(stdexec::dependent_sender<decltype(branch_b)>);
+    static_assert(!stdexec::dependent_sender<decltype(branch_c)>);
+
+    stdexec::sender auto w_a = stdexec::when_all(std::move(branch_a), std::move(branch_b), std::move(branch_c));
+
+    static_assert(stdexec::dependent_sender<decltype(w_a)>);
+
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(w_a), stdexec::env<>>,
+                  stdexec::default_domain
+    >);
+
+    stdexec::sender auto sndr = std::move(w_a) | stdexec::then([&data]() { EXPECT_EQ(data(), 5); });
+
+    static_assert(stdexec::dependent_sender<decltype(sndr)>);
+
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(sndr), stdexec::env<>>,
+                  stdexec::default_domain
+    >);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(chain)
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     /// Each branch may be executed by a distinct host thread. So ordering of the event is not guaranteed.
     if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
