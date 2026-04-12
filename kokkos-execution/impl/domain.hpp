@@ -3,6 +3,8 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "Kokkos_TypeInfo.hpp"
+
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
 #    include "plog/Log.h"
 #endif
