@@ -34,16 +34,20 @@ struct TransformSenderFor<stdexec::bulk_t> {
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
-        auto& [parallel_policy, shape, functor] = data;
+        if constexpr (execution_space_completing_sender<Sndr, Env>) {
+            auto& [parallel_policy, shape, functor] = data;
 
-        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            parallel_for_t{},
-            {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),
-              stdexec::__forward_like<Data>(functor),
-              Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>(schd.state->exec, 0, shape)}},
-            std::forward<Sndr>(sndr)};
+            return trnsfrmd_sndr_t<Env, Data, Sndr>{
+                parallel_for_t{},
+                {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),
+                  stdexec::__forward_like<Data>(functor),
+                  Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>(schd.state->exec, 0, shape)}},
+                std::forward<Sndr>(sndr)};
+        } else {
+            return no_execution_space_scheduler_in_env<stdexec::bulk_t, Sndr, Env>();
+        }
     }
 };
 

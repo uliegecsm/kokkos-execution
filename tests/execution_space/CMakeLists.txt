@@ -16,19 +16,23 @@ add_one_test(NAME sync_wait)
 add_one_test(NAME then)
 add_one_test(NAME transfer_when_all)
 add_one_test(NAME when_all)
+add_one_test(NAME when_all.failure)
+
+foreach(DEVICE IN LISTS Kokkos_DEVICES)
+  set(target_name tests_execution_space_when_all.failure.${DEVICE})
+  add_build_failure_test(
+    ${target_name}.compiler
+    ${target_name}
+    "CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_EXECUTION_SPACE_SCHEDULER.*BECAUSE_THERE_IS_NO_EXECUTION_SPACE_SCHEDULER_IN_THE_ENVIRONMENT"
+  )
+endforeach()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION STREQUAL 14.2.0)
   foreach(DEVICE IN LISTS Kokkos_DEVICES)
     set(target_name tests_execution_space_any_sender.${DEVICE})
-    set_target_properties(${target_name} PROPERTIES EXCLUDE_FROM_ALL TRUE EXCLUDE_FROM_DEFAULT_BUILD TRUE)
-    set_tests_properties(${target_name} PROPERTIES DISABLED TRUE)
-    add_test(NAME ${target_name}.compiler COMMAND ${CMAKE_COMMAND} --build . --config $<CONFIGURATION> --target
-                                                  ${target_name} --verbose WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
-    set_tests_properties(
-      ${target_name}.compiler
-      PROPERTIES PASS_REGULAR_EXPRESSION
-                 "error: use of deleted function \'Kokkos::Execution::Impl::Immovable::Immovable"
+    add_build_failure_test(
+      ${target_name}.compiler ${target_name}
+      "error: use of deleted function \'Kokkos::Execution::Impl::Immovable::Immovable"
     )
   endforeach()
 endif()

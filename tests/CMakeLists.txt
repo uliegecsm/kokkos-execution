@@ -65,6 +65,18 @@ function(add_one_test)
   endforeach()
 endfunction()
 
+function(add_build_failure_test NAME TARGET REGEX)
+  message(STATUS "Adding build failure test ${NAME} for target ${TARGET}.")
+
+  set_target_properties(${TARGET} PROPERTIES EXCLUDE_FROM_ALL TRUE EXCLUDE_FROM_DEFAULT_BUILD TRUE)
+  set_tests_properties(${TARGET} PROPERTIES DISABLED TRUE)
+
+  add_test(NAME ${NAME} COMMAND ${CMAKE_COMMAND} --build . --config $<CONFIGURATION> --target ${TARGET} --verbose
+           WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  )
+  set_tests_properties(${NAME} PROPERTIES PASS_REGULAR_EXPRESSION "${REGEX}")
+endfunction()
+
 # Common test object library.
 add_library(test_common OBJECT)
 target_sources(test_common PRIVATE main.cpp)

@@ -39,14 +39,18 @@ struct TransformSenderFor<stdexec::then_t> {
                  typename trnsfrmd_sndr_t<Env, Functor, Sndr>::closure_t&&,
                  Sndr&&
         >) {
-        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+        if constexpr (execution_space_completing_sender<Sndr, Env>) {
+            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-        return trnsfrmd_sndr_t<Env, Functor, Sndr>{
-            parallel_for_t{},
-            {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
-              ThenWrapper<Functor>{std::forward<Functor>(functor)},
-              policy_t<Sndr, Env>(schd.state->exec, 0, 1)}},
-            std::forward<Sndr>(sndr)};
+            return trnsfrmd_sndr_t<Env, Functor, Sndr>{
+                parallel_for_t{},
+                {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
+                  ThenWrapper<Functor>{std::forward<Functor>(functor)},
+                  policy_t<Sndr, Env>(schd.state->exec, 0, 1)}},
+                std::forward<Sndr>(sndr)};
+        } else {
+            return no_execution_space_scheduler_in_env<stdexec::then_t, Sndr, Env>();
+        }
     }
 };
 
