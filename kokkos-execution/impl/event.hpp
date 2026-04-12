@@ -48,6 +48,10 @@ struct RecordEvent {
     uint64_t event_id = 0;
 
     constexpr auto operator<=>(const RecordEvent&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& out, const RecordEvent& event) {
+        return out << "RecordEvent: {dev_id = " << event.dev_id << ", event_id = " << event.event_id << '}';
+    }
 };
 
 template <Kokkos::ExecutionSpace Exec>
@@ -64,6 +68,10 @@ struct WaitEvent {
     uint64_t event_id = 0;
 
     constexpr auto operator<=>(const WaitEvent&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& out, const WaitEvent& event) {
+        return out << "WaitEvent: {event_id = " << event.event_id << '}';
+    }
 };
 
 inline void wait_event(const uint64_t event_id) {
