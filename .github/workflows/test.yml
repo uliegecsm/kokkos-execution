@@ -82,7 +82,7 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
-          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "20"}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "20", extra_type_checking: true}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "23"}
           - kokkos_backends: [HPX]
             compiler:
@@ -109,6 +109,7 @@ jobs:
               version: 22
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'blackwell120', 'gpu:0']"
             tag_suffix     : -blackwell120
+            extra_type_checking: true
           - kokkos_backends: [OpenMP, HIP]
             compiler:
               family: rocm
@@ -149,6 +150,7 @@ jobs:
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
+            -DKokkosExecution_ENABLE_EXTRA_TYPE_CHECKING=${{ matrix.extra_type_checking && 'ON' || 'OFF' }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd || 20 }}
       - run: |
           cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4

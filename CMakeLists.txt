@@ -13,6 +13,7 @@ project(kokkos-execution VERSION ${KokkosExecution_VERSION} LANGUAGES CXX)
 option(KokkosExecution_ENABLE_CLANG_TIDY "Enable clang-tidy checks" OFF)
 option(KokkosExecution_ENABLE_DEBUG_LOGGING "Enable debug logging" OFF)
 option(KokkosExecution_ENABLE_DOCS "Enable documentation" OFF)
+option(KokkosExecution_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking, but increases compile time" OFF)
 option(KokkosExecution_ENABLE_TESTS "Enable testing" ON)
 
 include(CMakeDependentOption)
@@ -59,6 +60,7 @@ cpmaddpackage(
   "STDEXEC_BUILD_TESTS OFF"
   "STDEXEC_BUILD_EXAMPLES OFF"
   "STDEXEC_INSTALL ON"
+  "STDEXEC_ENABLE_EXTRA_TYPE_CHECKING ${KokkosExecution_ENABLE_EXTRA_TYPE_CHECKING}"
 )
 
 # Compiler warnings.
