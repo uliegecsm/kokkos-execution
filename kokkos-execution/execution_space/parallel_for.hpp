@@ -75,25 +75,30 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
-        auto [label, functor, policy] = std::forward<Data>(data);
+        if constexpr (execution_space_completing_sender<Sndr, Env>) {
+            auto [label, functor, policy] = std::forward<Data>(data);
 
-        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-        //! Only the execution space instance, not its type, can be bound lately.
-        static_assert(
-            std::same_as<
-                typename decltype(schd)::execution_space,
-                typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t::execution_space
-            >,
-            "The policy's execution space type must be the same as the completion scheduler's execution space type.");
+            //! Only the execution space instance, not its type, can be bound lately.
+            static_assert(
+                std::same_as<
+                    typename decltype(schd)::execution_space,
+                    typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t::execution_space
+                >,
+                "The policy's execution space type must be the same as the completion scheduler's execution space "
+                "type.");
 
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            parallel_for_t{},
-            {{std::move(label),
-              std::move(functor),
-              typename std::remove_cvref_t<Data>::policy_t(
-                  Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec)}},
-            std::forward<Sndr>(sndr)};
+            return trnsfrmd_sndr_t<Env, Data, Sndr>{
+                parallel_for_t{},
+                {{std::move(label),
+                  std::move(functor),
+                  typename std::remove_cvref_t<Data>::policy_t(
+                      Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec)}},
+                std::forward<Sndr>(sndr)};
+        } else {
+            return no_execution_space_scheduler_in_env<parallel_for_t, Sndr, Env>();
+        }
     }
 };
 
