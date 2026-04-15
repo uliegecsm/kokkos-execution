@@ -172,7 +172,7 @@ jobs:
           cmake -S . --preset=gnu-OpenMP -DKokkosExecution_ENABLE_DOCS=ON
       - run: |
           cmake --build --preset=gnu-OpenMP -j4 --target=docs
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: build-with-gnu-OpenMP/docs/html
 
