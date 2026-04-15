@@ -3,6 +3,8 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "kokkos-execution/impl/env.hpp"
+
 namespace Kokkos::Execution::Impl {
 
 //! Receiver for an object @ref parent_op that implements @c propagate_completion_signal.
