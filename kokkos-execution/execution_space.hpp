@@ -14,6 +14,7 @@
 #include "kokkos-execution/execution_space/scoped_region.hpp"
 #include "kokkos-execution/execution_space/sync_wait.hpp"
 #include "kokkos-execution/execution_space/then.hpp"
+#include "kokkos-execution/execution_space/when_all.hpp"
 #include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution {
