@@ -2,10 +2,10 @@
 #include "gtest/gtest.h"
 
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
-#include "kokkos-utils/tests/scoped/ExecutionSpace.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
 #include "tests/graph/events.hpp"
+#include "tests/utils/graph_context.hpp"
 
 /**
  * @addtogroup unittests
@@ -27,8 +27,7 @@ namespace Tests::GraphImpl {
 using namespace Kokkos::utils::callbacks;
 
 class EventsTest
-    : public virtual testing::Test
-    , public Kokkos::utils::tests::scoped::ExecutionSpace<TEST_EXECUTION_SPACE>
+    : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<
@@ -39,23 +38,47 @@ class EventsTest
         Kokkos::Execution::GraphImpl::GraphInstantiateEvent,
         Kokkos::Execution::GraphImpl::GraphSubmitEvent
     >;
-
-    using graph_t = Kokkos::Experimental::Graph<TEST_EXECUTION_SPACE>;
 };
 
-//! @test Check events recorded for graph creation, instantiation and asubmission.
-TEST_F(EventsTest, create_instantiate_and_submit) {
-    auto device_handle = Kokkos::Experimental::get_device_handle(exec);
+//! @test Test which calls are @c noexcept.
+consteval bool test_noexcept() {
+    static_assert(
+        noexcept(Kokkos::Execution::GraphImpl::get_graph_impl_ptr(std::declval<const EventsTest::graph_t::root_t&>())));
+    static_assert(
+        noexcept(Kokkos::Execution::GraphImpl::get_node_ptr(std::declval<const EventsTest::graph_t::root_t&>())));
 
-    const auto recorded_events = recorder_listener_t::record([this, &device_handle]() {
-        graph_t graph{device_handle};
-        Kokkos::Execution::GraphImpl::graph_create_event(graph);
+    static_assert(
+        !noexcept(Kokkos::Execution::GraphImpl::graph_create_event(std::declval<const EventsTest::graph_t&>())));
+    static_assert(
+        !noexcept(Kokkos::Execution::GraphImpl::create_graph(std::declval<const EventsTest::device_handle_t&>())));
+
+    static_assert(!noexcept(Kokkos::Execution::GraphImpl::graph_add_node_event<true>(
+        std::declval<const EventsTest::device_handle_t&>(),
+        std::declval<const EventsTest::graph_t::root_t&>(),
+        std::declval<const EventsTest::graph_t::root_t&>())));
+
+    static_assert(
+        !noexcept(Kokkos::Execution::GraphImpl::graph_instantiate_event(std::declval<const EventsTest::graph_t&>())));
+
+    static_assert(!noexcept(Kokkos::Execution::GraphImpl::graph_submit_event(
+        std::declval<const EventsTest::graph_t&>(), std::declval<const TEST_EXECUTION_SPACE&>())));
+
+    static_assert(!noexcept(Kokkos::Execution::GraphImpl::submit_graph(
+        std::declval<const EventsTest::graph_t&>(), std::declval<const TEST_EXECUTION_SPACE&>())));
+
+    return true;
+}
+static_assert(test_noexcept());
+
+//! @test Check events recorded for graph creation, instantiation and submission.
+TEST_F(EventsTest, create_instantiate_and_submit) {
+    const auto recorded_events = recorder_listener_t::record([this]() {
+        graph_t graph = Kokkos::Execution::GraphImpl::create_graph(device_handle);
 
         graph.instantiate();
         Kokkos::Execution::GraphImpl::graph_instantiate_event(graph);
 
-        graph.submit(exec);
-        Kokkos::Execution::GraphImpl::graph_submit_event(graph, exec);
+        Kokkos::Execution::GraphImpl::submit_graph(graph, exec);
     });
     ASSERT_THAT(
         recorded_events,
@@ -67,9 +90,7 @@ TEST_F(EventsTest, create_instantiate_and_submit) {
 
 //! @test Check events recorded for graph nodes.
 TEST_F(EventsTest, create_and_add_nodes) {
-    auto device_handle = Kokkos::Experimental::get_device_handle(exec);
-
-    const auto recorded_events = recorder_listener_t::record([&device_handle]() {
+    const auto recorded_events = recorder_listener_t::record([this]() {
         const graph_t graph{device_handle};
         Kokkos::Execution::GraphImpl::graph_create_event(graph);
 

@@ -74,6 +74,13 @@ auto* get_graph_impl_ptr(const NodeType& node) noexcept {
     return Kokkos::Impl::GraphAccess::get_graph_weak_ptr(node).lock().get();
 }
 
+//! Retrieve the raw node pointer.
+template <typename NodeType>
+requires Kokkos::Impl::is_specialization_of_v<NodeType, Kokkos::Experimental::GraphNodeRef>
+auto* get_node_ptr(const NodeType& node) noexcept {
+    return Kokkos::Impl::GraphAccess::get_node_ptr(node).get();
+}
+
 //! Record a @ref GraphCreateEvent event.
 template <Kokkos::ExecutionSpace Exec>
 void graph_create_event(const Kokkos::Experimental::Graph<Exec>& graph) {
@@ -84,6 +91,14 @@ void graph_create_event(const Kokkos::Experimental::Graph<Exec>& graph) {
             .dev_id = Kokkos::Tools::Experimental::device_id(graph.get_device_handle().m_exec),
             .event_id = Kokkos::utils::callbacks::get_next_event_id()});
 #endif
+}
+
+//! Create a graph and record the associated event with @ref graph_create_event.
+template <Kokkos::ExecutionSpace Exec, typename... Args>
+auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&... args) {
+    Kokkos::Experimental::Graph<Exec> graph{device_handle, std::forward<Args>(args)...};
+    graph_create_event(graph);
+    return graph;
 }
 
 /**
@@ -100,8 +115,8 @@ void graph_add_node_event(
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
             .graph = get_graph_impl_ptr(predecessor),
-            .predecessor = IsRoot ? nullptr : Kokkos::Impl::GraphAccess::get_node_ptr(predecessor).get(),
-            .node = Kokkos::Impl::GraphAccess::get_node_ptr(node).get(),
+            .predecessor = IsRoot ? nullptr : get_node_ptr(predecessor),
+            .node = get_node_ptr(node),
             .dev_id = Kokkos::Tools::Experimental::device_id(handle.m_exec)});
 #endif
 }
@@ -124,6 +139,14 @@ void graph_submit_event(const Kokkos::Experimental::Graph<Exec>& graph, const Ex
             .graph = get_graph_impl_ptr(graph.root_node()), .dev_id = Kokkos::Tools::Experimental::device_id(exec)});
 #endif
 }
+
+//! Submit a graph and record the associated event with @ref graph_submit_event.
+template <Kokkos::ExecutionSpace Exec>
+void submit_graph(const Kokkos::Experimental::Graph<Exec>& graph, const Exec& exec) {
+    graph_submit_event(graph, exec);
+    graph.submit(exec);
+}
+
 } // namespace Kokkos::Execution::GraphImpl
 
 #endif // KOKKOS_EXECUTION_GRAPH_EVENTS_HPP
