@@ -8,9 +8,7 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-struct Domain
-    : public stdexec::default_domain
-    , public Impl::ApplySender<Domain, ApplySenderFor> {
+struct Domain : public Impl::ApplySender<Domain, ApplySenderFor> {
     using Impl::ApplySender<Domain, ApplySenderFor>::apply_sender;
 };
 
