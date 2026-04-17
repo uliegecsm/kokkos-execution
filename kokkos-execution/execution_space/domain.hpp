@@ -9,8 +9,7 @@
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 struct Domain
-    : public stdexec::default_domain
-    , public Impl::ApplySender<Domain, ApplySenderFor>
+    : public Impl::ApplySender<Domain, ApplySenderFor>
     , public Impl::TransformSender<Domain, TransformSenderFor> {
     using Impl::ApplySender<Domain, ApplySenderFor>::apply_sender;
     using Impl::TransformSender<Domain, TransformSenderFor>::transform_sender;

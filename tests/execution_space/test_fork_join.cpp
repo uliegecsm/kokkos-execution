@@ -66,7 +66,8 @@ TEST_F(ForkJoinTest, diamond) {
         | stdexec::then(Tests::Utils::Functors::LoadCheckAdd<int, false>{.prev = 0, .value = 4, .data = data.data()})
         | experimental::execution::fork_join(
             stdexec::continues_on(esc.get_scheduler())
-                | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT_ATOMIC(data),
+                | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT_ATOMIC(data)
+                | stdexec::continues_on(pool.get_scheduler()),
             stdexec::continues_on(pool.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
         | stdexec::continues_on(esc.get_scheduler())
         | stdexec::then(
@@ -78,24 +79,13 @@ TEST_F(ForkJoinTest, diamond) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
-
-    ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")));
-        } else {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")));
-        }
-    }());
+    ASSERT_THAT(
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 14);
 }

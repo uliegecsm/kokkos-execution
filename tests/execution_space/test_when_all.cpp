@@ -208,12 +208,10 @@ TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
  *       on another context, followed by work on the same @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then_atomic -- \
- *                                 when_all --> continues_on(esc) | then
- * schedule(stc) | then_atomic -- /
+ * schedule(esc) | then_atomic ------------------------ \
+ *                                                       when_all --> continues_on(esc) | then
+ * schedule(stc) | then_atomic --> continues_on(esc) -- /
  * @endverbatim
- *
- * @todo Too many synchronizations.
  */
 TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
@@ -223,12 +221,13 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
 
     auto w_a = stdexec::when_all(
         stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
-        stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data));
+        stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+            | stdexec::continues_on(esc.get_scheduler()));
 
     static_assert(
         std::same_as<
             decltype(stdexec::get_completion_domain<stdexec::set_value_t>(stdexec::get_env(w_a), stdexec::env<>{})),
-            stdexec::default_domain
+            Kokkos::Execution::ExecutionSpaceImpl::Domain
         >);
 
     auto sndr = std::move(w_a) | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
@@ -237,24 +236,12 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
-
-    ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        } else {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        }
-    }());
+    ASSERT_THAT(
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 3);
 }
@@ -386,9 +373,9 @@ TEST_F(WhenAllTest, two_branches_host_device_followed_by_device) {
  *       on the same @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then_atomic -- \
- *                                 when_all --> continues_on(stc) | then --> continues_on(esc) | then
- * schedule(stc) | then_atomic -- /
+ * schedule(esc) | then_atomic --> continues_on(stc) -- \
+ *                                                       when_all --> continues_on(stc) | then --> continues_on(esc) | then
+ * schedule(stc) | then_atomic ------------------------ /
  * @endverbatim
  */
 TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
@@ -398,7 +385,8 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
     experimental::execution::single_thread_context stc{};
 
     auto sndr = stdexec::when_all(
-                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+                        | stdexec::continues_on(stc.get_scheduler()),
                     stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
               | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data)
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
@@ -407,24 +395,13 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
-
-    ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        } else {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        }
-    }());
+    ASSERT_THAT(
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 4);
 }
@@ -438,12 +415,10 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
  *       because its preceding @c stdexec::when_all has at least one branch on @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then_atomic -------------------------------------------------- \
- *                                                                                 when_all --> continues_on(esc) | then
- * schedule(esc) | then_atomic -- when_all --> continues_on(stc) | then_atomic -- /
+ * schedule(esc) | then_atomic ------------------------------------------------------------------------ \
+ *                                                                                                       when_all --> continues_on(esc) | then
+ * schedule(esc) | then_atomic -- when_all --> continues_on(stc) | then_atomic --> continues_on(stc) -- /
  * @endverbatim
- *
- * @todo Too many synchronizations.
  */
 TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
@@ -456,7 +431,8 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
             stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
             stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
                 | Tests::Utils::check_rcvr_env_not_queryable_with<Kokkos::Execution::ExecutionSpaceImpl::get_exec_t>()
-                | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
+                | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+                | stdexec::continues_on(esc.get_scheduler()))
         | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
@@ -469,17 +445,14 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
         if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(3)),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
