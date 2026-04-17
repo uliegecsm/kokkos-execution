@@ -69,7 +69,8 @@ TEST_F(SplitTest, within) {
 
     auto branch_a = fork | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
                   | THEN_INCREMENT_ATOMIC(data);
-    auto branch_b = fork | stdexec::continues_on(pool.get_scheduler()) | THEN_INCREMENT_ATOMIC(data);
+    auto branch_b = fork | stdexec::continues_on(pool.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+                  | stdexec::continues_on(esc.get_scheduler());
     auto branch_c = std::move(fork) | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
                   | THEN_INCREMENT_ATOMIC(data);
 
@@ -83,10 +84,11 @@ TEST_F(SplitTest, within) {
 
     static_assert(std::same_as<
                   stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(w_a), stdexec::env<>>,
-                  stdexec::default_domain
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain
     >);
 
-    stdexec::sender auto sndr = std::move(w_a) | stdexec::then([&data]() { EXPECT_EQ(data(), 5); });
+    stdexec::sender auto sndr = std::move(w_a) | stdexec::continues_on(stdexec::inline_scheduler{})
+                              | stdexec::then([&data]() { EXPECT_EQ(data(), 5); });
 
     static_assert(stdexec::dependent_sender<decltype(sndr)>);
 
