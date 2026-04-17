@@ -3,6 +3,7 @@
 
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/check_continues_on.hpp"
+#include "tests/utils/check_rcvr_env.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/labeled.hpp"
@@ -372,9 +373,26 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
     Tests::Utils::show_exec_space_id(exec, "exec");
     Tests::Utils::show_exec_space_id(exec_h, "exec_h");
 
+    using level_C_env_t = Kokkos::Execution::Impl::SyncWait::env;
+    using level_B_env_t = stdexec::__env::__fwd<stdexec::env<
+        stdexec::prop<
+            Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,
+            Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef<TEST_EXECUTION_SPACE>
+        >,
+        stdexec::__env::__fwd<level_C_env_t>
+    >>;
+    using level_A_env_t = stdexec::__env::__fwd<stdexec::env<
+        stdexec::prop<
+            Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,
+            Kokkos::Execution::ExecutionSpaceImpl::ExecutionSpaceRef<host_execution_space>
+        >,
+        level_B_env_t
+    >>;
     auto chain = stdexec::just() | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data)
-               | stdexec::continues_on(esc_h.get_scheduler()) | THEN_INCREMENT(data)
-               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+               | Tests::Utils::check_rcvr_env<level_A_env_t>() | stdexec::continues_on(esc_h.get_scheduler())
+               | THEN_INCREMENT(data) | Tests::Utils::check_rcvr_env<level_B_env_t>()
+               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data)
+               | Tests::Utils::check_rcvr_env<level_C_env_t>();
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
