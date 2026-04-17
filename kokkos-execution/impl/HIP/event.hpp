@@ -12,7 +12,7 @@
 namespace Kokkos::Execution::Impl {
 
 template <>
-struct SupportEvents<Kokkos::HIP> : std::true_type { };
+struct HasNonBlockingDispatch<Kokkos::HIP> : std::true_type { };
 
 template <>
 struct Event<Kokkos::HIP> {
@@ -27,20 +27,8 @@ struct Event<Kokkos::HIP> {
 
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
-    Event(Event&& other) noexcept
-        : m_event(std::exchange(other.m_event, nullptr))
-        , m_event_id(std::exchange(other.m_event_id, invalid_event_id)) {
-    }
-    Event& operator=(Event&& other) noexcept {
-        if (this != &other) {
-            if (m_event != nullptr) {
-                KOKKOS_IMPL_HIP_SAFE_CALL(hipEventDestroy(m_event));
-            }
-            m_event = std::exchange(other.m_event, nullptr);
-            m_event_id = std::exchange(other.m_event_id, invalid_event_id);
-        }
-        return *this;
-    }
+    Event(Event&&) noexcept = delete;
+    Event& operator=(Event&&) noexcept = delete;
 
     ~Event() {
         if (m_event != nullptr)
@@ -62,8 +50,6 @@ struct Event<Kokkos::HIP> {
         }
     }
 };
-
-Event(const Kokkos::HIP&) -> Event<Kokkos::HIP>;
 
 } // namespace Kokkos::Execution::Impl
 

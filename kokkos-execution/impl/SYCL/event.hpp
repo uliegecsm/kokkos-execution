@@ -12,7 +12,7 @@
 namespace Kokkos::Execution::Impl {
 
 template <>
-struct SupportEvents<Kokkos::SYCL> : std::true_type { };
+struct HasNonBlockingDispatch<Kokkos::SYCL> : std::true_type { };
 
 template <>
 struct Event<Kokkos::SYCL> {
@@ -27,17 +27,8 @@ struct Event<Kokkos::SYCL> {
 
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
-    Event(Event&& other) noexcept
-        : m_event(std::move(other.m_event))
-        , m_event_id(std::exchange(other.m_event_id, invalid_event_id)) {
-    }
-    Event& operator=(Event&& other) noexcept {
-        if (this != &other) {
-            m_event = std::move(other.m_event);
-            m_event_id = std::exchange(other.m_event_id, invalid_event_id);
-        }
-        return *this;
-    }
+    Event(Event&& other) noexcept = delete;
+    Event& operator=(Event&& other) noexcept = delete;
 
     /**
      * According to https://github.com/intel/llvm/issues/15606, it should semantically be
@@ -56,8 +47,6 @@ struct Event<Kokkos::SYCL> {
         }
     }
 };
-
-Event(const Kokkos::SYCL&) -> Event<Kokkos::SYCL>;
 
 } // namespace Kokkos::Execution::Impl
 

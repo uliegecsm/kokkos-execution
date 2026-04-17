@@ -81,7 +81,7 @@ TEST_F(WhenAllTest, single_branch) {
     /// Because the sender returned by @c stdexec::when_all is not an execution space completing sender,
     /// the default implementation of @c stdexec::sync_wait is used.
     ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
@@ -184,7 +184,7 @@ TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
@@ -282,7 +282,7 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
     } else {
         ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
                 return testing::ElementsAre(
                     MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
                     MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
@@ -345,7 +345,7 @@ TEST_F(WhenAllTest, two_branches_host_device_followed_by_device) {
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     } else {
         ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::support_events<host_execution_space>) {
+            if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<host_execution_space>) {
                 return testing::ElementsAre(
                     MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                     MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
@@ -417,7 +417,7 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
  * @verbatim
  * schedule(esc) | then_atomic ------------------------------------------------------------------------ \
  *                                                                                                       when_all --> continues_on(esc) | then
- * schedule(esc) | then_atomic -- when_all --> continues_on(stc) | then_atomic --> continues_on(stc) -- /
+ * schedule(esc) | then_atomic -- when_all --> continues_on(stc) | then_atomic --> continues_on(esc) -- /
  * @endverbatim
  */
 TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
@@ -442,7 +442,7 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
@@ -502,7 +502,7 @@ TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
                 MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "after dispatch"))));
     } else {
         ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
                 return testing::ElementsAre(
                     MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
                     MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
