@@ -1,7 +1,5 @@
 #include "gtest/gtest.h"
 
-#include "kokkos-execution/stdexec.hpp"
-
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 
 /**

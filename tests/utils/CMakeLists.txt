@@ -1,2 +1,3 @@
 add_one_test(NAME check_scheduler_type)
+add_one_test(NAME check_rcvr_env)
 add_one_test(NAME check_rcvr_env_queryable_with)
