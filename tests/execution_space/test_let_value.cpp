@@ -61,8 +61,7 @@ TEST_F(LetValueTest, scoped_allocation) {
                             view_of_5_t{Kokkos::view_alloc(exec, "scratch", Kokkos::WithoutInitializing)});
                     });
 
-    static_assert(
-        Tests::Utils::has_completion_signatures<decltype(allocate), stdexec::__mset<stdexec::set_value_t(view_of_5_t)>>);
+    static_assert(stdexec::dependent_sender<decltype(allocate)>);
 
 //! @bug https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
 #if defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)
