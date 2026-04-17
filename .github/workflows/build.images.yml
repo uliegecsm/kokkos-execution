@@ -130,12 +130,8 @@ jobs:
               version: 14
             base_image: ubuntu:24.04
             platforms: linux/amd64
-          - kokkos_backends: [OpenMP]
-            compiler:
-              family: gnu
-              version: 14
-            base_image     : ubuntu:24.04
-            platforms      : linux/amd64
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Release}
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
@@ -243,7 +239,7 @@ jobs:
 
       - id : compute-tag
         run: |
-          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}${{ matrix.kokkos_backends && format('-{0}', join(matrix.kokkos_backends, '-')) || '' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
+          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-buildx-action@v4
@@ -259,6 +255,7 @@ jobs:
             cache-to: type=inline
             build-args: |
                 BASE_IMAGE=${{ matrix.base_image }}
+                CMAKE_BUILD_TYPE=${{ matrix.cmake_build_type || 'Release' }}
                 CMAKE_VERSION=${{ env.CMAKE_VERSION }}
                 CMAKE_PACKAGE_MANAGER_VERSION=${{ env.CMAKE_PACKAGE_MANAGER_VERSION }}
                 COMPILER_FAMILY=${{ matrix.compiler.family }}
