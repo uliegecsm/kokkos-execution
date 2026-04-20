@@ -60,8 +60,8 @@ consteval bool test_sndr_traits() {
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<then_sndr_t>);
     static_assert(std::same_as<Kokkos::Execution::Impl::exec_of_t<then_sndr_t>, TEST_EXECUTION_SPACE>);
 
-    //! Models the dispatching sender concept.
-    static_assert(Kokkos::Execution::Impl::dispatching_sender<then_sndr_t>);
+    //! Does not model the dispatching sender concept.
+    static_assert(!Kokkos::Execution::Impl::dispatching_sender<then_sndr_t>);
 
     //! The policy used in the parallel for created by the @c then sender has the expected launch bounds.
     using policy_t = typename then_sndr_t::closure_t::policy_t;
