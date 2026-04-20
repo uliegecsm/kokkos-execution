@@ -33,14 +33,13 @@ struct ParallelForClosure {
     }
 };
 
-template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+template <typename Tag, stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender {
     using sender_concept = stdexec::sender_tag;
 
     using closure_t = ParallelForClosure<Label, Functor, ExecPolicy>;
     using execution_space = typename closure_t::execution_space;
 
-    parallel_for_t tag;
     closure_t clsr;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
@@ -60,6 +59,7 @@ template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t = ParallelForSender<
+        parallel_for_t,
         Sndr,
         typename std::remove_cvref_t<Data>::label_t,
         typename std::remove_cvref_t<Data>::functor_t,
@@ -71,7 +71,6 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 parallel_for_t,
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
@@ -90,7 +89,6 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
                 "type.");
 
             return trnsfrmd_sndr_t<Env, Data, Sndr>{
-                parallel_for_t{},
                 {{std::move(label),
                   std::move(functor),
                   typename std::remove_cvref_t<Data>::policy_t(
@@ -103,17 +101,5 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
 };
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
-
-#if !STDEXEC_HAS_BUILTIN(__builtin_structured_binding_size)
-namespace stdexec {
-
-//! See also https://cor3ntin.github.io/posts/clang21/#__builtin_structured_binding_size.
-template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-inline constexpr auto __structured_binding_size_v< // NOLINT(bugprone-reserved-identifier)
-    Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<Sndr, Label, Functor, ExecPolicy>
-> = 3;
-
-} // namespace stdexec
-#endif
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_PARALLEL_FOR_HPP

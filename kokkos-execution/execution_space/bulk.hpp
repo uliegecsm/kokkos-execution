@@ -15,6 +15,7 @@ template <>
 struct TransformSenderFor<stdexec::bulk_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t = ParallelForSender<
+        stdexec::bulk_t,
         Sndr,
         std::string_view,
         typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t,
@@ -30,7 +31,6 @@ struct TransformSenderFor<stdexec::bulk_t> {
         Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 parallel_for_t,
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
@@ -40,7 +40,6 @@ struct TransformSenderFor<stdexec::bulk_t> {
             auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
             return trnsfrmd_sndr_t<Env, Data, Sndr>{
-                parallel_for_t{},
                 {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),
                   stdexec::__forward_like<Data>(functor),
                   Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>(schd.state->exec, 0, shape)}},

@@ -28,14 +28,14 @@ struct TransformSenderFor<stdexec::then_t> {
     using policy_t = Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>, Kokkos::LaunchBounds<1>>;
 
     template <typename Env, typename Functor, typename Sndr>
-    using trnsfrmd_sndr_t = ParallelForSender<Sndr, std::string_view, ThenWrapper<Functor>, policy_t<Sndr, Env>>;
+    using trnsfrmd_sndr_t =
+        ParallelForSender<stdexec::then_t, Sndr, std::string_view, ThenWrapper<Functor>, policy_t<Sndr, Env>>;
 
     template <typename Env, typename Functor, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
     auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Functor, Sndr>,
-                 parallel_for_t,
                  typename trnsfrmd_sndr_t<Env, Functor, Sndr>::closure_t&&,
                  Sndr&&
         >) {
@@ -43,7 +43,6 @@ struct TransformSenderFor<stdexec::then_t> {
             auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
             return trnsfrmd_sndr_t<Env, Functor, Sndr>{
-                parallel_for_t{},
                 {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
                   ThenWrapper<Functor>{std::forward<Functor>(functor)},
                   policy_t<Sndr, Env>(schd.state->exec, 0, 1)}},
