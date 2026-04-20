@@ -129,7 +129,7 @@ TEST_F(ThenTest, then_starts_on) {
     auto chain = stdexec::just() | THEN_INCREMENT(data) | THEN_INCREMENT(data);
 
     /// The chain cannot be queried for a completion scheduler.
-    /// It may complete on the value channel or the error channel, since @c Kokkos may throw.
+    /// It may complete on the value channel or the error channel, since the @c stdexec::then functor is not @c noexcept.
     /// It hasn't been connected yet, so the domain is indeterminate.
     using chain_t = decltype(chain);
 
