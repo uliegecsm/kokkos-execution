@@ -10,7 +10,6 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
-#include "tests/utils/kokkos.hpp"
 #include "tests/utils/sync_wait.hpp"
 
 /**
@@ -40,8 +39,6 @@ class InterOpTest
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
-
-    static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
 
 //! @test Transition from @ref Kokkos::Execution::ExecutionSpaceContext to @c stdexec::inline_scheduler.

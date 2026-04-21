@@ -11,7 +11,6 @@
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/just_stopped.hpp"
-#include "tests/utils/kokkos.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/sync_wait.hpp"
 
@@ -42,8 +41,6 @@ class ParallelForTest
         Kokkos::Execution::Impl::WaitEvent
     >;
     using variant_t = typename recorder_listener_t::event_variant_t;
-
-    static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
 
 /**

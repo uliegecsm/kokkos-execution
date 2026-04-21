@@ -14,9 +14,6 @@ struct TransformSenderFor;
 struct Domain;
 
 template <Kokkos::ExecutionSpace Exec>
-struct State;
-
-template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
 template <typename...>

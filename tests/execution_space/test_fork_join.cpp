@@ -16,7 +16,6 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
-#include "tests/utils/kokkos.hpp"
 #include "tests/utils/sync_wait.hpp"
 
 /**
@@ -46,8 +45,6 @@ class ForkJoinTest
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
-
-    static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
 };
 
 /**
