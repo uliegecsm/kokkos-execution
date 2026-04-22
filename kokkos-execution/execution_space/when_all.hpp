@@ -52,7 +52,7 @@ struct __sexpr_impl<Kokkos::Execution::ExecutionSpaceImpl::when_all_t> : stdexec
         if constexpr (stdexec::__minvocable_q<stdexec::__when_all::__when_all_impl::__completions_t, Self, Envs...>) {
             return stdexec::__when_all::__when_all_impl::__completions_t<Self, Envs...>{};
         } else if constexpr (sizeof...(Envs) == 0) {
-            return stdexec::__dependent_sender<Self>();
+            return stdexec::__throw_dependent_sender_error<Self>();
         }
     }
 };
