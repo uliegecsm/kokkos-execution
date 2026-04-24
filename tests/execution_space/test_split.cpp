@@ -104,7 +104,7 @@ TEST_F(SplitTest, within) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     /// Each branch may be executed by a distinct host thread. So ordering of the event is not guaranteed.
-    if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+    if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
         ASSERT_THAT(recorded_events, ::testing::SizeIs(8));
         ASSERT_THAT(
             recorded_events, ::testing::Contains(MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then"))).Times(4));

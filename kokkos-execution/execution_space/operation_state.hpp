@@ -87,10 +87,10 @@ struct RequiresSynchronization {
     }
 };
 
-//! The execution space supports events and the receiver is queryable for a delegation scheduler.
+//! The execution space has non-blocking dispatch and the receiver is queryable for a delegation scheduler.
 template <typename Rcvr, typename Exec>
 concept delegate_completion_with_event =
-    Kokkos::Execution::Impl::support_events<Exec>
+    Kokkos::Execution::Impl::has_non_blocking_dispatch<Exec>
     && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, stdexec::get_delegation_scheduler_t>;
 
 template <
@@ -106,14 +106,15 @@ struct WaitEventReceiver {
     using event_t = Impl::Event<Exec>;
 
     MayDelegateCompletionWithEvent<Rcvr, Exec>* opstate;
-    event_t event;
 
     void set_value() && noexcept {
         try {
-            event.wait();
+            opstate->event->wait();
+            opstate->event.__destroy();
             opstate->storage.__destroy();
             stdexec::set_value(std::move(opstate->rcvr));
         } catch (...) {
+            opstate->event.__destroy();
             opstate->storage.__destroy();
             stdexec::set_error(std::move(opstate->rcvr), std::current_exception());
         }
@@ -147,14 +148,16 @@ struct MayDelegateCompletionWithEvent<Rcvr, Exec, true> {
 
     Rcvr rcvr;
     stdexec::__manual_lifetime<opstate_t> storage{};
+    stdexec::__manual_lifetime<Impl::Event<Exec>> event{};
 
     template <typename OpState>
     void delegate(OpState* const opstate) noexcept {
         if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
+            event.__construct(opstate->query(get_exec).get());
             storage.__construct_from(
                 stdexec::connect,
                 stdexec::schedule(stdexec::get_delegation_scheduler(stdexec::get_env(this->rcvr))),
-                receiver_t{.opstate = opstate, .event = typename receiver_t::event_t{opstate->query(get_exec).get()}});
+                receiver_t{.opstate = opstate});
             stdexec::start(storage.__get());
         } else {
             stdexec::set_value(std::move(this->rcvr));

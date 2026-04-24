@@ -16,7 +16,7 @@
 namespace Kokkos::Execution::Impl {
 
 template <>
-struct SupportEvents<Kokkos::Experimental::HPX> : std::true_type { };
+struct HasNonBlockingDispatch<Kokkos::Experimental::HPX> : std::true_type { };
 
 template <>
 struct Event<Kokkos::Experimental::HPX> {
@@ -31,17 +31,8 @@ struct Event<Kokkos::Experimental::HPX> {
 
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
-    Event(Event&& other) noexcept
-        : m_exec(std::move(other.m_exec))
-        , m_event_id(std::exchange(other.m_event_id, invalid_event_id)) {
-    }
-    Event& operator=(Event&& other) noexcept {
-        if (this != &other) {
-            m_exec = std::move(other.m_exec);
-            m_event_id = std::exchange(other.m_event_id, invalid_event_id);
-        }
-        return *this;
-    }
+    Event(Event&&) noexcept = delete;
+    Event& operator=(Event&&) noexcept = delete;
     ~Event() = default;
 
     void record(const Kokkos::Experimental::HPX& exec) {
@@ -81,8 +72,6 @@ struct Event<Kokkos::Experimental::HPX> {
         }
     }
 };
-
-Event(const Kokkos::Experimental::HPX&) -> Event<Kokkos::Experimental::HPX>;
 
 } // namespace Kokkos::Execution::Impl
 

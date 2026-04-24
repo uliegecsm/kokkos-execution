@@ -85,7 +85,7 @@ TEST_F(TransferWhenAllTest, Y) {
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
     } else {
         ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+            if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
                 return testing::ElementsAre(
                     MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                     MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),

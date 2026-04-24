@@ -72,7 +72,7 @@ TEST_F(ScopedRegionTest, many) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::support_events<TEST_EXECUTION_SPACE>) {
+        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
                 MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
