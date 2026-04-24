@@ -2,6 +2,7 @@
 #define KOKKOS_EXECUTION_IMPL_EVENT_HPP
 
 #include <concepts>
+#include <optional>
 
 #include "Kokkos_Core.hpp"
 
@@ -161,6 +162,9 @@ void wait(const ExecTo& exec, const Event<ExecFrom>& event) {
     wait_event(exec, event);
     impl_wait(exec, event);
 }
+
+template <Kokkos::ExecutionSpace Exec>
+using event_storage_t = std::optional<Event<Exec>>;
 
 } // namespace Kokkos::Execution::Impl
 

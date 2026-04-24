@@ -3,14 +3,9 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-#    include "plog/Log.h"
-#endif
-
 #include "kokkos-execution/execution_space/domain.hpp"
-#include "kokkos-execution/impl/dispatch_label.hpp"
+#include "kokkos-execution/impl/completion_signal.hpp"
 #include "kokkos-execution/impl/env.hpp"
-#include "kokkos-execution/impl/event.hpp"
 #include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
 #include "kokkos-execution/impl/make_opstate.hpp"
@@ -32,177 +27,60 @@ concept Closure = requires(const Clsr& clsr) {
     requires std::same_as<std::remove_cvref_t<decltype(clsr.get_policy().space())>, typename Clsr::execution_space>;
 };
 
-/**
- * @brief Synchronization at the boundary of the work enqueued on an execution space.
- *
- * Under special circumstances, the implementation is allowed to skip any synchronization of asynchronous work.
- * Otherwise, synchronization must occur before invoking the downstream receiver. This situation may arise, for example,
- * when the execution space scheduler is used in a @c stdexec::when_all branch. In the default implementation of @c stdexec::when_all,
- * the branches are not terminated by a @c stdexec::schedule_from, so we'd be missing a synchronization.
- */
-template <stdexec::receiver Rcvr, typename OpState>
-struct RequiresSynchronization {
-    static constexpr bool successor_handles_sync = stdexec::__is_instance_of<Rcvr, ScheduleFromReceiver>
-                                                || stdexec::__is_instance_of<Rcvr, Impl::SyncWait::Receiver>;
-
-    //! The synchronization will be handled by the successor.
-    constexpr bool operator()(const OpState&) const noexcept requires(successor_handles_sync)
-    {
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        PLOG_DEBUG << "The synchronization will be handled by the successor.";
-#endif
-        return false;
+template <typename Exec, typename Rcvr>
+consteval auto select_sync_policy() {
+    if constexpr (stdexec::__is_instance_of<Rcvr, Impl::SyncWait::Receiver>) {
+        return Impl::SyncPolicy::PassThrough{};
+    } else if constexpr (Impl::deferred_completion_receiver<Rcvr, Exec>) {
+        return Impl::SyncPolicy::DeferWaitEvent{};
+    } else if constexpr (
+        Impl::has_non_blocking_dispatch<Exec>
+        && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, stdexec::get_delegation_scheduler_t>) {
+        return Impl::SyncPolicy::ScheduleWaitEvent{};
+    } else {
+        return Impl::SyncPolicy::InlineFenceExec{};
     }
+}
 
-    /**
-     * If the receiver environment can be queried for @ref Kokkos::Execution::Impl::get_exec_t,
-     * and if the successor enqueues work on the same execution space instance, no synchronization is needed.
-     */
-    bool operator()(const OpState& opstate) const noexcept
-        requires(!successor_handles_sync && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>)
-    {
-        if constexpr (
-            std::same_as<
-                std::remove_cvref_t<stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>>,
-                stdexec::__query_result_t<OpState, Impl::get_exec_t>
-            >) {
-            const auto& src = opstate.query(Impl::get_exec).get();
-            const auto& dst = Impl::get_exec(stdexec::get_env(opstate.rcvr)).get();
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-            PLOG_DEBUG << "The synchronization happens if " << Kokkos::Tools::Experimental::device_id(src)
-                       << " is not equal to " << Kokkos::Tools::Experimental::device_id(dst) << '.';
-#endif
-            return src != dst;
-        }
-        return true;
-    }
-
-    //! As a fallback, synchronization is always required.
-    constexpr bool operator()(const OpState&) const noexcept
-        requires(!successor_handles_sync && !stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>)
-    {
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        PLOG_DEBUG << "Synchronization always required.";
-#endif
-        return true;
-    }
-};
-
-//! The execution space has non-blocking dispatch and the receiver is queryable for a delegation scheduler.
-template <typename Rcvr, typename Exec>
-concept delegate_completion_with_event =
-    Kokkos::Execution::Impl::has_non_blocking_dispatch<Exec>
-    && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, stdexec::get_delegation_scheduler_t>;
-
-template <
-    stdexec::receiver Rcvr,
-    Kokkos::ExecutionSpace Exec,
-    bool Delegate = delegate_completion_with_event<Rcvr, Exec>
->
-struct MayDelegateCompletionWithEvent;
-
-template <stdexec::receiver Rcvr, Kokkos::ExecutionSpace Exec>
-struct WaitEventReceiver {
-    using receiver_concept = stdexec::receiver_tag;
-    using event_t = Impl::Event<Exec>;
-
-    MayDelegateCompletionWithEvent<Rcvr, Exec>* opstate;
-
-    void set_value() && noexcept {
-        try {
-            Impl::wait(opstate->event.__get());
-            opstate->event.__destroy();
-            opstate->storage.__destroy();
-            stdexec::set_value(std::move(opstate->rcvr));
-        } catch (...) {
-            opstate->event.__destroy();
-            opstate->storage.__destroy();
-            stdexec::set_error(std::move(opstate->rcvr), std::current_exception());
-        }
-    }
-};
-
-template <stdexec::receiver Rcvr, Kokkos::ExecutionSpace Exec>
-struct MayDelegateCompletionWithEvent<Rcvr, Exec, false> {
-    static constexpr auto label = Impl::dispatch_label<Exec, ": after dispatch">();
-
-    Rcvr rcvr;
-
-    template <typename OpState>
-    void delegate(OpState* const opstate) noexcept {
-        if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
-            opstate->query(Impl::get_exec).get().fence(std::string(label));
-        }
-        stdexec::set_value(std::move(this->rcvr));
-    }
-};
-
-template <stdexec::receiver Rcvr, Kokkos::ExecutionSpace Exec>
-struct MayDelegateCompletionWithEvent<Rcvr, Exec, true> {
-    using receiver_t = WaitEventReceiver<Rcvr, Exec>;
-    using opstate_t = stdexec::connect_result_t<
-        stdexec::schedule_result_t<
-            stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, stdexec::get_delegation_scheduler_t>
-        >,
-        receiver_t
-    >;
-
-    Rcvr rcvr;
-    stdexec::__manual_lifetime<opstate_t> storage{};
-    stdexec::__manual_lifetime<Impl::Event<Exec>> event{};
-
-    template <typename OpState>
-    void delegate(OpState* const opstate) noexcept {
-        if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
-            event.__construct();
-            Impl::record(event.__get(), opstate->query(Impl::get_exec).get());
-            storage.__construct_from(
-                stdexec::connect,
-                stdexec::schedule(stdexec::get_delegation_scheduler(stdexec::get_env(this->rcvr))),
-                receiver_t{.opstate = opstate});
-            stdexec::start(storage.__get());
-        } else {
-            stdexec::set_value(std::move(this->rcvr));
-        }
-    }
-};
+template <typename Exec, typename Rcvr>
+using select_sync_policy_t = decltype(select_sync_policy<Exec, Rcvr>());
 
 template <stdexec::receiver Rcvr, Closure Clsr, Closure... Clsrs>
 requires(std::same_as<typename Clsr::execution_space, typename Clsrs::execution_space> && ...)
-struct OpStateBase : public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::execution_space> {
+struct OpStateBase {
     using execution_space = typename Clsr::execution_space;
-    using receiver_t = Rcvr;
+
+    using sync_policy_t = select_sync_policy_t<execution_space, Rcvr>;
+    using completion_signal_t = Impl::CompletionSignal<sync_policy_t, execution_space, Rcvr>;
     using closures_t = stdexec::__tuple<Clsr, Clsrs...>;
 
-    using may_delegate_completion_with_event_t = MayDelegateCompletionWithEvent<Rcvr, execution_space>;
-
+    completion_signal_t completion_signal;
     closures_t clsrs;
 
-    constexpr explicit OpStateBase(Rcvr rcvr_, Clsr clsr_, Clsrs... clsrs_) noexcept(
-        std::is_nothrow_constructible_v<may_delegate_completion_with_event_t, Rcvr>
-        && std::is_nothrow_move_constructible_v<Clsr> && (std::is_nothrow_move_constructible_v<Clsrs> && ...))
-        : may_delegate_completion_with_event_t{std::move(rcvr_)}
+    constexpr explicit OpStateBase(Rcvr rcvr, Clsr clsr_, Clsrs... clsrs_) noexcept(
+        std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&> && std::is_nothrow_move_constructible_v<Clsr>
+        && (std::is_nothrow_move_constructible_v<Clsrs> && ...))
+        : completion_signal(std::move(rcvr))
         , clsrs(std::move(clsr_), std::move(clsrs_)...) {
     }
 
-    void propagate_completion_signal(stdexec::set_value_t) noexcept {
+    void complete(stdexec::set_value_t) noexcept {
         try {
             stdexec::__apply([](auto&... clsr) { (clsr.execute(), ...); }, clsrs);
         } catch (...) {
-            this->propagate_completion_signal(stdexec::set_error, std::current_exception());
+            this->complete(stdexec::set_error, std::current_exception());
             return;
         }
-
-        may_delegate_completion_with_event_t::delegate(this);
+        completion_signal.propagate(stdexec::set_value, this->query(Impl::get_exec).get());
     }
 
     template <typename Error>
-    void propagate_completion_signal(stdexec::set_error_t, Error&& error) noexcept {
-        stdexec::set_error(std::move(this->rcvr), std::forward<Error>(error));
+    void complete(stdexec::set_error_t, Error&& error) noexcept {
+        completion_signal.propagate(stdexec::set_error, std::forward<Error>(error));
     }
 
-    void propagate_completion_signal(stdexec::set_stopped_t) noexcept {
-        stdexec::set_stopped(std::move(this->rcvr));
+    void complete(stdexec::set_stopped_t) noexcept {
+        completion_signal.propagate(stdexec::set_stopped);
     }
 
     //! @note All @ref clsrs are assumed to reference the same execution space instance.
@@ -211,7 +89,10 @@ struct OpStateBase : public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::
         return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).get_policy().space()};
     }
 
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, this->rcvr)
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
+        return stdexec::get_env(this->completion_signal.rcvr);
+    }
 };
 
 template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure... Clsrs>

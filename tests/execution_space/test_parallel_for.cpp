@@ -292,11 +292,7 @@ TEST_F(ParallelForTest, two_parallel_regions) {
     ASSERT_EQ(witness(), size / 2 * (size - 1) + 4 + 2 * size * (2 * size - 1) / 2);
 }
 
-/**
- * @test Check that @ref Kokkos::Execution::parallel_for with a @c stdexec::starts_on works.
- *
- * @todo Too many synchronizations.
- */
+//! @test Check that @ref Kokkos::Execution::parallel_for with a @c stdexec::starts_on works.
 TEST_F(ParallelForTest, starts_on_parallel_region) {
     constexpr size_t size = 10;
 
@@ -332,24 +328,18 @@ TEST_F(ParallelForTest, starts_on_parallel_region) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 
     ASSERT_EQ(witness(), size / 2 * (size - 1));
 }
 
-/**
- * @test The customization of @ref Kokkos::Execution::parallel_for properly forwards forwarding queries.
- *
- * @todo Too many synchronizations.
- */
+//! @test The customization of @ref Kokkos::Execution::parallel_for properly forwards forwarding queries.
 TEST_F(ParallelForTest, forwarding_env) {
     constexpr size_t size = 10;
 
@@ -381,13 +371,11 @@ TEST_F(ParallelForTest, forwarding_env) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, "my pfor"),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, "my pfor"),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 

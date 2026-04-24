@@ -114,6 +114,7 @@ target_sources(
             kokkos-execution/graph/then.hpp
             kokkos-execution/impl/attributes.hpp
             kokkos-execution/impl/bulk.hpp
+            kokkos-execution/impl/completion_signal.hpp
             kokkos-execution/impl/completion_signatures.hpp
             kokkos-execution/impl/Cuda/event.hpp
             kokkos-execution/impl/dispatch_label.hpp
@@ -125,10 +126,12 @@ target_sources(
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
             kokkos-execution/impl/make_opstate.hpp
+            kokkos-execution/impl/optional_storage.hpp
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/sender_introspection.hpp
             kokkos-execution/impl/SYCL/event.hpp
+            kokkos-execution/impl/schedulers.hpp
             kokkos-execution/impl/state.hpp
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/utils/ignore_warnings.hpp

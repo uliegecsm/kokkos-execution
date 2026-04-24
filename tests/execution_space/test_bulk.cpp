@@ -216,11 +216,7 @@ TEST_F(BulkTest, no_spurious_copy_on_connect) {
     }
 }
 
-/**
- * @test The customization of @c stdexec::bulk properly forwards forwarding queries.
- *
- * @todo Too many synchronizations.
- */
+//! @test The customization of @c stdexec::bulk properly forwards forwarding queries.
 TEST_F(BulkTest, forwarding_env) {
     constexpr size_t size = 10;
 
@@ -248,13 +244,11 @@ TEST_F(BulkTest, forwarding_env) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 

@@ -119,8 +119,6 @@ TEST_F(ThenTest, then_schedule) {
 /**
  * @test Similar to @ref Tests::ExecutionSpaceImpl::ThenTest_then_schedule_Test, but the chain is scheduled
  *       with a @c starts_on.
- *
- * @todo Too many synchronizations.
  */
 TEST_F(ThenTest, then_starts_on) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -171,14 +169,12 @@ TEST_F(ThenTest, then_starts_on) {
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 
@@ -311,11 +307,7 @@ consteval bool test_sndr_nothrow_transformable() {
 }
 static_assert(test_sndr_nothrow_transformable());
 
-/**
- * @test The customization of @c stdexec::then properly forwards forwarding queries.
- *
- * @todo Too many synchronizations.
- */
+//! @test The customization of @c stdexec::then properly forwards forwarding queries.
 TEST_F(ThenTest, forwarding_env) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
@@ -341,13 +333,11 @@ TEST_F(ThenTest, forwarding_env) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 
