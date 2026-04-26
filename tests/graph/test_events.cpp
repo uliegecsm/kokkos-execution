@@ -53,9 +53,7 @@ consteval bool test_noexcept() {
         !noexcept(Kokkos::Execution::GraphImpl::create_graph(std::declval<const EventsTest::device_handle_t&>())));
 
     static_assert(!noexcept(Kokkos::Execution::GraphImpl::graph_add_node_event<true>(
-        std::declval<const EventsTest::device_handle_t&>(),
-        std::declval<const EventsTest::graph_t::root_t&>(),
-        std::declval<const EventsTest::graph_t::root_t&>())));
+        std::declval<const EventsTest::graph_t::root_t&>(), std::declval<const EventsTest::graph_t::root_t&>())));
 
     static_assert(
         !noexcept(Kokkos::Execution::GraphImpl::graph_instantiate_event(std::declval<const EventsTest::graph_t&>())));
@@ -97,10 +95,10 @@ TEST_F(EventsTest, create_and_add_nodes) {
         const auto root = graph.root_node();
 
         const auto node_A = root.then(Kokkos::Experimental::node_props(device_handle), KOKKOS_LAMBDA(){});
-        Kokkos::Execution::GraphImpl::graph_add_node_event<true>(device_handle, root, node_A);
+        Kokkos::Execution::GraphImpl::graph_add_node_event<true>(root, node_A);
 
         const auto node_B = node_A.then(Kokkos::Experimental::node_props(device_handle), KOKKOS_LAMBDA(){});
-        Kokkos::Execution::GraphImpl::graph_add_node_event<false>(device_handle, node_A, node_B);
+        Kokkos::Execution::GraphImpl::graph_add_node_event<false>(node_A, node_B);
     });
     ASSERT_THAT(
         recorded_events,

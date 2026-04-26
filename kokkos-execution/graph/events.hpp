@@ -106,18 +106,19 @@ auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&.
  *
  * @todo There is no way to tell if the predecessor is a root node.
  */
-template <bool IsRoot, Kokkos::ExecutionSpace Exec, typename PredecessorRef, typename NodeRef>
-void graph_add_node_event(
-    const Kokkos::Impl::DeviceHandle<Exec>& handle,
-    const PredecessorRef& predecessor,
-    const NodeRef& node) {
+template <bool IsRoot, typename PredecessorRef, typename NodeRef>
+requires(
+    Kokkos::Impl::is_specialization_of_v<PredecessorRef, Kokkos::Experimental::GraphNodeRef>
+    && Kokkos::Impl::is_specialization_of_v<NodeRef, Kokkos::Experimental::GraphNodeRef>)
+void graph_add_node_event(const PredecessorRef& predecessor, const NodeRef& node) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+    auto* const node_ptr = get_node_ptr(node);
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
             .graph = get_graph_impl_ptr(predecessor),
             .predecessor = IsRoot ? nullptr : get_node_ptr(predecessor),
-            .node = get_node_ptr(node),
-            .dev_id = Kokkos::Tools::Experimental::device_id(handle.m_exec)});
+            .node = node_ptr,
+            .dev_id = Kokkos::Tools::Experimental::device_id(node_ptr->get_device_handle().m_exec)});
 #endif
 }
 
