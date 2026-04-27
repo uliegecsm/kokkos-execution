@@ -78,7 +78,8 @@ jobs:
             compiler:
               family: gnu
               version: 14
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cmake_build_type: Debug}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cmake_build_type: Release}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
@@ -124,7 +125,7 @@ jobs:
             runs-on: "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix: -volta70
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ join(matrix.kokkos_backends, '-') }}${{ matrix.tag_suffix }}
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     env: ${{ matrix.env || fromJSON('{}') }}
@@ -150,6 +151,7 @@ jobs:
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type || 'Release' }} \
             -DKokkosExecution_ENABLE_EXTRA_TYPE_CHECKING=${{ matrix.extra_type_checking && 'ON' || 'OFF' }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd || 20 }}
       - run: |

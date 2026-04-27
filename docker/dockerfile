@@ -219,6 +219,7 @@ REPLACE_REQUIREMENTS_BACKEND
 # Build Kokkos.
 FROM requirements-backend AS kokkos-compile
 
+ARG CMAKE_BUILD_TYPE
 ARG COMPILER_FAMILY
 ARG KOKKOS_ARCHS
 ARG KOKKOS_PRESET
@@ -241,7 +242,10 @@ RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kok
 
     cp /cmake/presets/kokkos.json CMakePresets.json
 
+    : "${CMAKE_BUILD_TYPE?is not defined.}"
+
     cmake -S . --preset=${KOKKOS_PRESET} -LA \
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         $([ -n "$KOKKOS_ARCHS" ] && echo $KOKKOS_ARCHS | tr ',' '\n' | sed 's/^/-DKokkos_ARCH_/; s/$/=ON/') \
         -DCMAKE_INSTALL_PREFIX=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
 
@@ -250,6 +254,7 @@ EOF
 
 FROM kokkos-compile AS kokkos-utils-compile
 
+ARG CMAKE_BUILD_TYPE
 ARG COMPILER_FAMILY
 ARG KOKKOS_PRESET
 ARG KOKKOS_SHA
@@ -270,7 +275,10 @@ RUN --mount=target=/cmake/presets/kokkos-utils.json,type=bind,source=cmake/prese
 
     export Kokkos_ROOT=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
 
+    : "${CMAKE_BUILD_TYPE?is not defined.}"
+
     cmake -S . --preset=${KOKKOS_PRESET} \
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -DCMAKE_INSTALL_PREFIX=/opt/kokkos-utils-${KOKKOS_UTILS_SHA}/${KOKKOS_PRESET}
 
     cmake --build --preset=${KOKKOS_PRESET} -j4 --target=install
