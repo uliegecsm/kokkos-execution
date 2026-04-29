@@ -1,5 +1,7 @@
 #include "gtest/gtest.h"
 
+#include "kokkos-execution/graph.hpp"
+
 #include "tests/utils/check_scheduler.hpp"
 #include "tests/utils/graph_context.hpp"
 
