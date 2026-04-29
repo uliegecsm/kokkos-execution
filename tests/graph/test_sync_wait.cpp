@@ -1,6 +1,8 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/graph.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/check_sync_wait.hpp"
 #include "tests/utils/graph_context.hpp"

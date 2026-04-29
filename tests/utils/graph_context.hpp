@@ -4,7 +4,7 @@
 #include "Kokkos_Graph_fwd.hpp"
 #include "impl/Kokkos_DeviceHandle.hpp"
 
-#include "kokkos-execution/graph.hpp"
+#include "kokkos-execution/graph/graph_fwd.hpp"
 
 #include "tests/utils/context.hpp"
 

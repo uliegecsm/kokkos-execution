@@ -3,6 +3,13 @@
 
 #include "Kokkos_Concepts.hpp"
 
+namespace Kokkos::Execution {
+
+template <Kokkos::ExecutionSpace Exec>
+struct GraphContext;
+
+} // namespace Kokkos::Execution
+
 namespace Kokkos::Execution::GraphImpl {
 
 template <typename Tag>
