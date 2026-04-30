@@ -99,24 +99,8 @@ consteval bool test_sndr_traits() {
                   >
     >);
 
-//! @bug https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
-#if defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)
-    /**
-     * It is not no throw connectable because the @ref Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure
-     * is not no throw move constructible. This is so because it holds a functor that holds a @c Kokkos::View,
-     * and the latter are not no throw move constructible.
-     *
-     * See also https://github.com/kokkos/kokkos/pull/8792.
-     */
-    static_assert(!std::is_nothrow_move_constructible_v<typename ParallelForTest::view_s_t>);
-    static_assert(!std::is_nothrow_move_constructible_v<functor_t>);
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<label_t, functor_t, policy_t>;
-    static_assert(!std::is_nothrow_move_constructible_v<closure_t>);
-    static_assert(!stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
-#else
     //! It is nothrow connectable.
     static_assert(stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
-#endif
 
     return true;
 }
@@ -161,7 +145,7 @@ consteval bool test_sndr_decomposition() {
 static_assert(test_sndr_decomposition());
 
 //! @test Check traits of @ref Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure.
-template <typename ViewType, bool ExpectNoThrowMoveConstructible>
+template <typename ViewType>
 consteval bool test_closure_traits() {
     using functor_t = Tests::Utils::Functors::SumIndices<ViewType>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
@@ -170,17 +154,12 @@ consteval bool test_closure_traits() {
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);
 
-    static_assert(std::is_nothrow_move_constructible_v<closure_t> == ExpectNoThrowMoveConstructible);
+    static_assert(std::is_nothrow_move_constructible_v<closure_t>);
 
     return true;
 }
-//! @bug https://github.com/kokkos/kokkos/blob/393d4165a6c3687e78abe5e1665853f1eabc386d/core/src/Kokkos_View.hpp#L697
-#if defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)
-static_assert(test_closure_traits<typename ParallelForTest::view_s_t, false>());
-#else
-static_assert(test_closure_traits<typename ParallelForTest::view_s_t, true>());
-#endif
-static_assert(test_closure_traits<std::span<int>, true>());
+static_assert(test_closure_traits<typename ParallelForTest::view_s_t>());
+static_assert(test_closure_traits<std::span<int>>());
 
 //! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
 static_assert(Tests::Utils::check_continues_on_after_just_stopped<
