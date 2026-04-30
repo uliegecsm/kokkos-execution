@@ -13,6 +13,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/event.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
+#include "kokkos-execution/impl/make_opstate.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
@@ -245,54 +246,10 @@ struct OpState
 };
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
-struct MakeOpStateFn {
-    using type = OpState<Sndr, Rcvr, Clsrs...>;
-
-    // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-    constexpr auto operator()(Sndr&& sndr, Rcvr rcvr, Clsrs... clsrs) const
-        noexcept(std::is_nothrow_constructible_v<type, Sndr&&, Rcvr&&, Clsrs&&...>) -> type {
-        return type(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsrs)...);
-    }
-};
-
-template <Impl::dispatching_sender Sndr, typename Rcvr, typename... Clsrs>
-struct MakeOpStateFn<Sndr, Rcvr, Clsrs...> {
-    using child_of_sndr_t = stdexec::__child_of<Sndr>;
-    using clsr_of_sndr_t = typename stdexec::transform_sender_result_t<Sndr, stdexec::env_of_t<Rcvr>>::closure_t;
-
-    using make_opstate_fn_t = MakeOpStateFn<child_of_sndr_t, Rcvr, clsr_of_sndr_t, Clsrs...>;
-    using type = typename make_opstate_fn_t::type;
-
-    static constexpr bool sndr_has_nothrow_transform_sender = stdexec::__detail::__has_nothrow_transform_sender<
-        Kokkos::Execution::ExecutionSpaceImpl::Domain,
-        stdexec::set_value_t,
-        Sndr&&,
-        stdexec::env_of_t<Rcvr>
-    >;
-
-    static constexpr bool is_nothrow_make_opstate =
-        std::is_nothrow_invocable_v<make_opstate_fn_t, child_of_sndr_t&&, Rcvr&&, clsr_of_sndr_t&&, Clsrs&&...>;
-
-    /**
-     * @note @c stdexec::__forward_like is used because @c stdexec propagates the value category
-     *       of the parent sender to its child.
-     *
-     * See https://github.com/NVIDIA/stdexec/blob/0a3afb8de52b4fde8ca7ab62ca09a23a8aa6a30f/include/stdexec/__detail/__sender_introspection.hpp#L244-L246.
-     */
-    // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-    constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs... clsrs) const
-        noexcept(sndr_has_nothrow_transform_sender && is_nothrow_make_opstate) -> type {
-        auto trnsfrmd_sndr = stdexec::transform_sender(std::forward<Sndr>(sndr), stdexec::get_env(rcvr));
-        return make_opstate_fn_t{}(
-            stdexec::__forward_like<Sndr>(trnsfrmd_sndr.sndr),
-            std::forward<Rcvr>(rcvr),
-            std::move(trnsfrmd_sndr.clsr),
-            std::move(clsrs)...);
-    }
-};
+using make_opstate_t = Impl::MakeOpState<Domain, OpState>::Huddle<Sndr, Rcvr, Clsrs...>;
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
-using opstate_t = typename MakeOpStateFn<Sndr, Rcvr, Clsrs...>::type;
+using opstate_t = typename make_opstate_t<Sndr, Rcvr, Clsrs...>::type;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 

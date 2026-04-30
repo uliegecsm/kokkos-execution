@@ -47,9 +47,9 @@ struct ParallelForSender {
 
     template <stdexec::receiver Rcvr>
     constexpr auto connect(Rcvr rcvr) && noexcept(noexcept(
-        MakeOpStateFn<Sndr, Rcvr, closure_t>{}(std::declval<Sndr>(), std::declval<Rcvr>(), std::declval<closure_t>())))
+        make_opstate_t<Sndr, Rcvr, closure_t>{}(std::declval<Sndr>(), std::declval<Rcvr>(), std::declval<closure_t>())))
         -> opstate_t<Sndr, Rcvr, closure_t> {
-        return MakeOpStateFn<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
+        return make_opstate_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
     }
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)

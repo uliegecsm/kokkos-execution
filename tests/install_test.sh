@@ -58,7 +58,7 @@ int main() {
     {
         const Kokkos::DefaultExecutionSpace exec {};
         const Kokkos::Execution::GraphContext ctx{exec};
-        stdexec::sync_wait(stdexec::schedule(ctx.get_scheduler()));
+        stdexec::sync_wait(stdexec::schedule(ctx.get_scheduler()) | stdexec::then(KOKKOS_LAMBDA(){}));
     }
     return EXIT_SUCCESS;
 }

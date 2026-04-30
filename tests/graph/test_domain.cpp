@@ -23,9 +23,9 @@ class DomainTest : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE> {
 //! @test It won't interact with other domains inheriting from the @c stdexec::default_domain.
 static_assert(!Tests::Utils::check_if_common_domain_is_default<Kokkos::Execution::GraphImpl::Domain>());
 
-//! @test It will be default-like for @c stdexec::then_t (since it does not customize it yet).
-TEST(DomainTest, default_domain_like_then) {
-    static_assert(Tests::Utils::check_if_default_domain_like_for<
+//! @test It will always be non-default-like for @c stdexec::then_t (since it customizes it).
+TEST(DomainTest, not_default_domain_like_then) {
+    static_assert(!Tests::Utils::check_if_default_domain_like_for<
                   Kokkos::Execution::GraphImpl::Domain,
                   stdexec::then_t,
                   typename DomainTest::schedule_sender_t
@@ -43,9 +43,9 @@ TEST(DomainTest, default_domain_like_bulk) {
     >());
 }
 
-//! @test It has no transform for a @c stdexec::then_t sender.
-TEST(DomainTest, has_no_transform_sender_for_then) {
-    static_assert(!Tests::Utils::check_if_domain_has_transform_sender_for<
+//! @test It has a transform for a @c stdexec::then_t sender.
+TEST(DomainTest, has_transform_sender_for_then) {
+    static_assert(Tests::Utils::check_if_domain_has_transform_sender_for<
                   Kokkos::Execution::GraphImpl::Domain,
                   stdexec::then_t,
                   typename DomainTest::schedule_sender_t
