@@ -237,7 +237,6 @@ RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kok
     tar -xzf ${KOKKOS_SHA}.tar.gz
 
     cd kokkos-${KOKKOS_SHA}
-    patch -p0 -i /patches/kokkos-exec-move-noexcept-pr-8990.patch
     patch -p0 -i /patches/kokkos-hpx-default-instance-data-lifetime-pr-8992.patch
 
     cp /cmake/presets/kokkos.json CMakePresets.json
