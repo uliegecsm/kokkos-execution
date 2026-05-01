@@ -90,10 +90,10 @@ struct OpStateBase {
 };
 
 //! Add all nodes as a sequence. Hence, only the first node may be added after the root node.
-template <bool PredecessorIsRoot, typename PredecessorRef, Closure FirstClosure, Closure... RestOfClosures>
-static auto add_nodes(PredecessorRef&& predecessor, FirstClosure&& clsr, RestOfClosures&&... clsrs) {
+template <bool PredecessorIsRoot, NodeRef Predecessor, Closure FirstClosure, Closure... RestOfClosures>
+static auto add_nodes(Predecessor&& predecessor, FirstClosure&& clsr, RestOfClosures&&... clsrs) {
     auto node = std::forward<FirstClosure>(clsr)
-                    .template add_node<PredecessorIsRoot>(std::forward<PredecessorRef>(predecessor));
+                    .template add_node<PredecessorIsRoot>(std::forward<Predecessor>(predecessor));
     if constexpr (sizeof...(RestOfClosures) == 0) {
         return node;
     } else {

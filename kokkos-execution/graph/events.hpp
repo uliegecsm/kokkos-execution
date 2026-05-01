@@ -67,16 +67,18 @@ struct GraphSubmitEvent {
     }
 };
 
+//! Constrain a type that is a specialization of @c Kokkos::Experimental::GraphNodeRef.
+template <typename T>
+concept NodeRef = Kokkos::Impl::is_specialization_of_v<T, Kokkos::Experimental::GraphNodeRef>;
+
 //! Retrieve the raw graph pointer from a node.
-template <typename NodeType>
-requires Kokkos::Impl::is_specialization_of_v<NodeType, Kokkos::Experimental::GraphNodeRef>
+template <NodeRef NodeType>
 auto* get_graph_impl_ptr(const NodeType& node) noexcept {
     return Kokkos::Impl::GraphAccess::get_graph_weak_ptr(node).lock().get();
 }
 
 //! Retrieve the raw node pointer.
-template <typename NodeType>
-requires Kokkos::Impl::is_specialization_of_v<NodeType, Kokkos::Experimental::GraphNodeRef>
+template <NodeRef NodeType>
 auto* get_node_ptr(const NodeType& node) noexcept {
     return Kokkos::Impl::GraphAccess::get_node_ptr(node).get();
 }
@@ -106,11 +108,8 @@ auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&.
  *
  * @todo There is no way to tell if the predecessor is a root node.
  */
-template <bool IsRoot, typename PredecessorRef, typename NodeRef>
-requires(
-    Kokkos::Impl::is_specialization_of_v<PredecessorRef, Kokkos::Experimental::GraphNodeRef>
-    && Kokkos::Impl::is_specialization_of_v<NodeRef, Kokkos::Experimental::GraphNodeRef>)
-void graph_add_node_event(const PredecessorRef& predecessor, const NodeRef& node) {
+template <bool IsRoot, NodeRef Predecessor, NodeRef NodeType>
+void graph_add_node_event(const Predecessor& predecessor, const NodeType& node) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
     auto* const node_ptr = get_node_ptr(node);
     Kokkos::utils::callbacks::dispatch(
