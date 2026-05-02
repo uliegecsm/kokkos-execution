@@ -132,6 +132,7 @@ jobs:
             platforms: linux/amd64
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Release}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, python_version: 3.14}
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
@@ -212,7 +213,6 @@ jobs:
           echo KOKKOS_SHA=$(jq '.github.kokkos.sha' dependencies.json -j) >> $GITHUB_ENV
           echo KOKKOS_USERNAME=$(jq '.github.kokkos.username' dependencies.json -j) >> $GITHUB_ENV
           echo KOKKOS_UTILS_SHA=$(jq '.github."kokkos-utils".sha' dependencies.json -j) >> $GITHUB_ENV
-          echo PYTHON_VERSION=$(jq '.python' dependencies.json -j) >> $GITHUB_ENV
 
       - run: |
           python3 docker/backend.py \
@@ -267,5 +267,5 @@ jobs:
                 KOKKOS_SHA=${{ env.KOKKOS_SHA }}
                 KOKKOS_USERNAME=${{ env.KOKKOS_USERNAME }}
                 KOKKOS_UTILS_SHA=${{ env.KOKKOS_UTILS_SHA }}
-                PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+                PYTHON_VERSION=${{ matrix.python_version || '3.12' }}
             labels: "org.opencontainers.image.source=${{ github.repositoryUrl }}"
