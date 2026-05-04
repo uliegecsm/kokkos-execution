@@ -232,6 +232,11 @@ struct OpState
 
     inner_opstate_t inner_opstate;
 
+    //! @bug Needed only for @ref test_any_sender.cpp.
+#if defined(KOKKOS_EXECUTION_IMPL_OPSTATE_IMMOVABLE_FIX)
+    STDEXEC_IMMOVABLE(OpState);
+#endif
+
     constexpr explicit OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         Rcvr rcvr_,
