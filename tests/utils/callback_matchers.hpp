@@ -64,7 +64,18 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::Impl, WaitEvent)
     AWaitEvent(                                                                                                        \
         ::testing::Field(                                                                                              \
             &Kokkos::Execution::Impl::WaitEvent::event_id,                                                             \
-            ::testing::Eq(std::get<Kokkos::Execution::Impl::RecordEvent>(_record_event_variant_).event_id)))
+            ::testing::Eq(std::get<Kokkos::Execution::Impl::RecordEvent>(_record_event_variant_).event_id)),           \
+        ::testing::Field(                                                                                              \
+            &Kokkos::Execution::Impl::WaitEvent::dev_id, ::testing::Eq(Kokkos::Execution::Impl::invalid_dev_id)))
+
+#define MATCHER_FOR_WAIT_EXEC_EVENT(_exec_, _record_event_variant_)                                                    \
+    AWaitEvent(                                                                                                        \
+        ::testing::Field(                                                                                              \
+            &Kokkos::Execution::Impl::WaitEvent::event_id,                                                             \
+            ::testing::Eq(std::get<Kokkos::Execution::Impl::RecordEvent>(_record_event_variant_).event_id)),           \
+        ::testing::Field(                                                                                              \
+            &Kokkos::Execution::Impl::WaitEvent::dev_id,                                                               \
+            ::testing::Eq(Kokkos::Tools::Experimental::device_id(_exec_))))
 // NOLINTEND(cppcoreguidelines-macro-usage)
 
 //! Matcher to filter out events that are just noise for tests.

@@ -20,11 +20,6 @@ struct Event<Kokkos::HIP> {
     uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
-
-    explicit Event(const Kokkos::HIP& exec) {
-        record(exec);
-    }
-
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&&) noexcept = delete;
@@ -40,16 +35,20 @@ struct Event<Kokkos::HIP> {
             KOKKOS_IMPL_HIP_SAFE_CALL(hipEventCreateWithFlags(&m_event, hipEventDisableTiming));
         }
         KOKKOS_IMPL_HIP_SAFE_CALL(hipEventRecord(m_event, exec.hip_stream()));
-        record_event(exec, m_event_id);
     }
 
     void wait() const {
-        wait_event(m_event_id);
         if (hipEventQuery(m_event) != hipSuccess) {
             KOKKOS_IMPL_HIP_SAFE_CALL(hipEventSynchronize(m_event));
         }
     }
 };
+
+template <>
+void impl_wait(const Kokkos::HIP& exec, const Event<Kokkos::HIP>& event) {
+    KOKKOS_EXPECTS(bool(event.m_event));
+    KOKKOS_IMPL_HIP_SAFE_CALL(hipStreamWaitEvent(exec.hip_stream(), event.m_event));
+}
 
 } // namespace Kokkos::Execution::Impl
 

@@ -110,7 +110,7 @@ struct WaitEventReceiver {
 
     void set_value() && noexcept {
         try {
-            opstate->event->wait();
+            Impl::wait(opstate->event.__get());
             opstate->event.__destroy();
             opstate->storage.__destroy();
             stdexec::set_value(std::move(opstate->rcvr));
@@ -154,7 +154,8 @@ struct MayDelegateCompletionWithEvent<Rcvr, Exec, true> {
     template <typename OpState>
     void delegate(OpState* const opstate) noexcept {
         if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
-            event.__construct(opstate->query(get_exec).get());
+            event.__construct();
+            Impl::record(event.__get(), opstate->query(get_exec).get());
             storage.__construct_from(
                 stdexec::connect,
                 stdexec::schedule(stdexec::get_delegation_scheduler(stdexec::get_env(this->rcvr))),

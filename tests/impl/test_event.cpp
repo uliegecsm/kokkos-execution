@@ -47,7 +47,9 @@ class EventTest
 //! @test Check that @ref Kokkos::Execution::Impl::Event satisfies @ref Kokkos::Execution::Impl::event.
 template <Kokkos::ExecutionSpace Exec>
 consteval bool test_models_event() {
-    return Kokkos::Execution::Impl::event<Kokkos::Execution::Impl::Event<Exec>, Exec>;
+    static_assert(Kokkos::Execution::Impl::event<Kokkos::Execution::Impl::Event<Exec>, Exec>);
+
+    return true;
 }
 static_assert(test_models_event<TEST_EXECUTION_SPACE>());
 
@@ -68,15 +70,15 @@ TEST(WaitEvent, description) {
     std::ostringstream oss;
     oss << event;
 
-    ASSERT_EQ(oss.str(), "WaitEvent: {event_id = 1337}");
+    ASSERT_EQ(oss.str(), "WaitEvent: {dev_id = 0, event_id = 1337}");
 }
 
 //! @test Record an event and wait for it. Check that it marks both steps.
 TEST_F(EventTest, record_and_wait) {
     const auto recorded_events = recorder_listener_t::record([this]() {
         Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event;
-        event.record(exec);
-        event.wait();
+        Kokkos::Execution::Impl::record(event, exec);
+        Kokkos::Execution::Impl::wait(event);
     });
 
     ASSERT_THAT(recorded_events, testing::SizeIs(2));
@@ -89,7 +91,7 @@ TEST_F(EventTest, record_but_dont_wait) {
     const auto recorded_events = recorder_listener_t::record([this]() {
         Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event;
         Kokkos::parallel_for(Kokkos::RangePolicy(exec, 0, 1), Tests::Utils::Functors::NoOp{});
-        event.record(exec);
+        Kokkos::Execution::Impl::record(event, exec);
 
         exec.fence("some-label");
     });
@@ -103,12 +105,12 @@ TEST_F(EventTest, record_but_dont_wait) {
 TEST_F(EventTest, record_and_wait_many_times) {
     const auto recorded_events = recorder_listener_t::record([this]() {
         Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event;
-        event.record(exec);
-        event.wait();
-        event.wait();
-        event.wait();
-        event.wait();
-        event.wait();
+        Kokkos::Execution::Impl::record(event, exec);
+        Kokkos::Execution::Impl::wait(event);
+        Kokkos::Execution::Impl::wait(event);
+        Kokkos::Execution::Impl::wait(event);
+        Kokkos::Execution::Impl::wait(event);
+        Kokkos::Execution::Impl::wait(event);
     });
 
     ASSERT_THAT(recorded_events, ::testing::SizeIs(6));
@@ -124,10 +126,10 @@ TEST_F(EventTest, record_and_wait_many_times) {
 TEST_F(EventTest, record_and_wait_and_record_and_wait) {
     const auto recorded_events = recorder_listener_t::record([this]() {
         Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event;
-        event.record(exec);
-        event.wait();
-        event.record(exec);
-        event.wait();
+        Kokkos::Execution::Impl::record(event, exec);
+        Kokkos::Execution::Impl::wait(event);
+        Kokkos::Execution::Impl::record(event, exec);
+        Kokkos::Execution::Impl::wait(event);
     });
 
     ASSERT_THAT(recorded_events, ::testing::SizeIs(4));
@@ -143,9 +145,9 @@ TEST_F(EventTest, record_and_wait_and_record_and_wait) {
 TEST_F(EventTest, uniqueness) {
     const auto recorded_events = recorder_listener_t::record([this]() {
         Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event_before, event_after;
-        event_before.record(exec);
+        Kokkos::Execution::Impl::record(event_before, exec);
         Kokkos::parallel_for(Kokkos::RangePolicy(exec, 0, 1), Tests::Utils::Functors::NoOp{});
-        event_after.record(exec);
+        Kokkos::Execution::Impl::record(event_after, exec);
 
         exec.fence("some-label");
     });
@@ -169,13 +171,48 @@ TEST_F(EventTest, default_instance) {
 
     const auto recorded_events = recorder_listener_t::record([&default_exec]() {
         Kokkos::parallel_for(Kokkos::RangePolicy(default_exec, 0, 1), Tests::Utils::Functors::NoOp{});
-        const Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event{default_exec};
-        event.wait();
+        Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event;
+        Kokkos::Execution::Impl::record(event, default_exec);
+        Kokkos::Execution::Impl::wait(event);
     });
 
     ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(default_exec));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
+}
+
+//! @test Check @ref Kokkos::Execution::Impl::wait when the underlying execution space type is the same.
+TEST_F(EventTest, wait_exec_event_for_same_type) {
+    const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
+
+    const auto recorded_events = recorder_listener_t::record([&exec_A, &exec_B]() {
+        Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event_A;
+        Kokkos::Execution::Impl::record(event_A, exec_A);
+        Kokkos::Execution::Impl::wait(exec_B, event_A);
+    });
+
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec_A));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(0)));
+}
+
+//! @test Check @ref Kokkos::Execution::Impl::wait when the underlying execution space type is different.
+TEST_F(EventTest, wait_exec_event_different_type) {
+    if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::DefaultHostExecutionSpace>) {
+        GTEST_SKIP() << "The default host execution space is the same type as the test execution space.";
+    }
+
+    const Kokkos::DefaultHostExecutionSpace exec_h;
+
+    const auto recorded_events = recorder_listener_t::record([this, &exec_h]() {
+        Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event_d;
+        Kokkos::Execution::Impl::record(event_d, this->exec);
+        Kokkos::Execution::Impl::wait(exec_h, event_d);
+    });
+
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(this->exec));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EXEC_EVENT(exec_h, recorded_events.at(0)));
 }
 
 /**
@@ -187,31 +224,38 @@ TEST_F(EventTest, default_instance) {
 TEST_F(EventTest, works_intended_usage_pattern) {
     constexpr size_t size = 128;
 
-    const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
+    const auto [exec_A, exec_B, exec_C] = Kokkos::Experimental::partition_space(exec, 1, 1, 1);
 
     const Kokkos::View<int, TEST_EXECUTION_SPACE> data(Kokkos::view_alloc(exec_A, "data"));
     const auto data_h = Kokkos::create_mirror_view(Kokkos::WithoutInitializing, data);
 
-    std::optional<Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE>> event;
+    std::optional<Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE>> event_A;
 
     stdexec::run_loop loop;
     std::thread consumer([&] { loop.run(); });
 
     Kokkos::parallel_for(
         Kokkos::RangePolicy(exec_A, 0, size), KOKKOS_LAMBDA(const auto idx) { Kokkos::atomic_add(&data(), idx); });
-    event.emplace(exec_A);
+    event_A.emplace();
+    Kokkos::Execution::Impl::record(*event_A, exec_A);
 
     bool upon_error = false;
 
     auto opstate = stdexec::connect(
         stdexec::schedule(loop.get_scheduler()) | stdexec::then([&] {
-            event->wait();
-            event.reset();
+            event_A->wait();
+            event_A.reset();
             Kokkos::parallel_for(
-                Kokkos::RangePolicy(exec_B, 0, 1),
-                KOKKOS_LAMBDA(const auto) { Kokkos::atomic_compare_exchange(&data(), size / 2 * (size - 1), 1); });
-            Kokkos::deep_copy(exec_B, data_h, data);
-            exec_B.fence("wait for the deep copy to complete");
+                Kokkos::RangePolicy(exec_B, 0, size),
+                KOKKOS_LAMBDA(const auto idx) { Kokkos::atomic_add(&data(), idx); });
+            Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event_B;
+            Kokkos::Execution::Impl::record(event_B, exec_B);
+            Kokkos::Execution::Impl::wait(exec_C, event_B);
+            Kokkos::parallel_for(
+                Kokkos::RangePolicy(exec_C, 0, 1),
+                KOKKOS_LAMBDA(const auto) { Kokkos::atomic_compare_exchange(&data(), size * (size - 1), 1); });
+            Kokkos::deep_copy(exec_C, data_h, data);
+            exec_C.fence("wait for the deep copy to complete");
             loop.finish();
         }) | stdexec::upon_error([&](const auto& eptr) {
             upon_error = true;
@@ -228,7 +272,7 @@ TEST_F(EventTest, works_intended_usage_pattern) {
 
     consumer.join();
 
-    ASSERT_FALSE(event.has_value());
+    ASSERT_FALSE(event_A.has_value());
 
 //! See @ref KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP for an explanation.
 #if defined(KOKKOS_ENABLE_THREADS)

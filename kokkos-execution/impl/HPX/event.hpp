@@ -24,11 +24,6 @@ struct Event<Kokkos::Experimental::HPX> {
     uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
-
-    explicit Event(const Kokkos::Experimental::HPX& exec) {
-        record(exec);
-    }
-
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&&) noexcept = delete;
@@ -37,7 +32,6 @@ struct Event<Kokkos::Experimental::HPX> {
 
     void record(const Kokkos::Experimental::HPX& exec) {
         m_exec = exec;
-        record_event(exec, m_event_id);
     }
 
     /**
@@ -56,7 +50,6 @@ struct Event<Kokkos::Experimental::HPX> {
      * it's the most reasonable way forward for now.
      */
     void wait() const {
-        wait_event(m_event_id);
         if (m_exec.has_value()) {
             auto& instance_data = m_exec->impl_get_instance_data();
 

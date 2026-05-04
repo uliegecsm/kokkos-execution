@@ -20,11 +20,6 @@ struct Event<Kokkos::SYCL> {
     uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
-
-    explicit Event(const Kokkos::SYCL& exec) {
-        record(exec);
-    }
-
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&& other) noexcept = delete;
@@ -36,17 +31,21 @@ struct Event<Kokkos::SYCL> {
      */
     void record(const Kokkos::SYCL& exec) {
         m_event = exec.sycl_queue().ext_oneapi_submit_barrier();
-        record_event(exec, m_event_id);
     }
 
     void wait() const {
-        wait_event(m_event_id);
         if (m_event.has_value()) {
             m_event->wait_and_throw();
             m_event = std::nullopt;
         }
     }
 };
+
+template <>
+void impl_wait(const Kokkos::SYCL& exec, const Event<Kokkos::SYCL>& event) {
+    KOKKOS_EXPECTS(event.m_event.has_value());
+    exec.sycl_queue().submit([&](sycl::handler& cgh) { cgh.depends_on(*event.m_event); });
+}
 
 } // namespace Kokkos::Execution::Impl
 
