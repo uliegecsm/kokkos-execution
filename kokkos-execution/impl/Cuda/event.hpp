@@ -20,11 +20,6 @@ struct Event<Kokkos::Cuda> {
     uint64_t m_event_id = invalid_event_id;
 
     Event() = default;
-
-    explicit Event(const Kokkos::Cuda& exec) {
-        record(exec);
-    }
-
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
     Event(Event&&) noexcept = delete;
@@ -40,16 +35,20 @@ struct Event<Kokkos::Cuda> {
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventCreateWithFlags(&m_event, cudaEventDisableTiming));
         }
         KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventRecord(m_event, exec.cuda_stream()));
-        record_event(exec, m_event_id);
     }
 
     void wait() const {
-        wait_event(m_event_id);
         if (cudaEventQuery(m_event) != cudaSuccess) {
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventSynchronize(m_event));
         }
     }
 };
+
+template <>
+void impl_wait(const Kokkos::Cuda& exec, const Event<Kokkos::Cuda>& event) {
+    KOKKOS_EXPECTS(bool(event.m_event));
+    KOKKOS_IMPL_CUDA_SAFE_CALL(cudaStreamWaitEvent(exec.cuda_stream(), event.m_event));
+}
 
 } // namespace Kokkos::Execution::Impl
 
