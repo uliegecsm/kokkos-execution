@@ -27,13 +27,3 @@ foreach(DEVICE IN LISTS Kokkos_DEVICES)
     "CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_EXECUTION_SPACE_SCHEDULER.*BECAUSE_THERE_IS_NO_EXECUTION_SPACE_SCHEDULER_IN_THE_ENVIRONMENT"
   )
 endforeach()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION STREQUAL 14.2.0)
-  foreach(DEVICE IN LISTS Kokkos_DEVICES)
-    set(target_name tests_execution_space_any_sender.${DEVICE})
-    add_build_failure_test(
-      ${target_name}.compiler ${target_name}
-      "error: use of deleted function \'Kokkos::Execution::Impl::Immovable::Immovable"
-    )
-  endforeach()
-endif()
