@@ -43,6 +43,15 @@ TEST(DomainTest, not_default_domain_like_bulk) {
     >());
 }
 
+//! @test It has an @c apply_sender for @c stdexec::sync_wait_t.
+TEST(DomainTest, has_apply_sender_for_sync_wait) {
+    static_assert(stdexec::__detail::__has_apply_sender<
+                  Kokkos::Execution::GraphImpl::Domain,
+                  stdexec::sync_wait_t,
+                  typename DomainTest::schedule_sender_t
+    >);
+}
+
 //! @test It has a transform for a @c stdexec::then_t sender.
 TEST(DomainTest, has_transform_sender_for_then) {
     static_assert(Tests::Utils::check_if_domain_has_transform_sender_for<
