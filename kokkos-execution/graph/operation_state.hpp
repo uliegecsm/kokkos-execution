@@ -210,6 +210,14 @@ using opstate_t = typename make_opstate_t<Sndr, Rcvr, Clsrs...>::type;
         return make_opstate_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));    \
     }
 
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+#    define KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(_type_, _node_, _predecessor_)                          \
+        PLOG_INFO << "Adding '" _type_ "' node " << get_node_ptr(_node_) << " to graph " << get_graph_impl_ptr(_node_) \
+                  << " after " << get_node_ptr(_predecessor_) << " on device "                                         \
+                  << Kokkos::Tools::Experimental::device_id(get_node_ptr(_node_)->get_device_handle().m_exec) << '.';
+#else
+#    define KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(_type_, _node_, _predecessor_)
+#endif
 } // namespace Kokkos::Execution::GraphImpl
 
 #endif // KOKKOS_EXECUTION_GRAPH_OPERATION_STATE_HPP
