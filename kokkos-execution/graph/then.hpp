@@ -36,9 +36,10 @@ struct ThenClosure {
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
+        auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
         auto node = predecessor.then(std::move(node_props), std::forward<Functor>(functor));
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("then", node, predecessor)
-        graph_add_node_event(predecessor, node);
+        graph_add_node_event(predecessor, node, device_handle);
         return node;
     }
     node_props_t node_props;

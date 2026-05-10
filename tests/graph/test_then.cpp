@@ -7,6 +7,8 @@
 
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/check_rcvr_env.hpp"
+#include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/no_op.hpp"
@@ -16,6 +18,7 @@
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
 #include "tests/utils/sync_wait.hpp"
+#include "tests/utils/tracking_allocator.hpp"
 
 /**
  * @addtogroup unittests
@@ -266,6 +269,37 @@ TEST_F(ThenTest, then_starts_on) {
     >);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
+
+    ASSERT_EQ(data(), 1);
+}
+
+//! @test The customization of @c stdexec::then properly forwards forwarding queries.
+TEST_F(ThenTest, forwarding_env) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    std::atomic<size_t> count = 0;
+
+    const context_t gctx{exec};
+
+    //! @todo Use @ref Tests::Utils::round_trip_allocate as in @ref Tests::ExecutionSpaceImpl::ThenTest_forwarding_env_Test.
+    stdexec::sender auto sndr =
+        stdexec::schedule(gctx.get_scheduler())
+        | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data)
+        | stdexec::write_env(stdexec::prop{stdexec::get_allocator, Tests::Utils::TrackingAllocator<int>{&count}});
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_TEST_UTILS_GRAPH_FENCE(exec);
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 

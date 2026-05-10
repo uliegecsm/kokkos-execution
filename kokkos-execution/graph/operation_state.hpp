@@ -114,9 +114,9 @@ struct OpState
 
     using rcvr_t = Impl::Receiver<OpState, stdexec::env_of_t<Rcvr>>;
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
-    using graph_composition_policy_t = GraphComposition::policy_t<inner_opstate_t>;
+    using graph_composition_policy_t = GraphComposition::policy_t<inner_opstate_t, Rcvr>;
     using state_t = State<graph_composition_policy_t, execution_space>;
-    using predecessor_t = GraphComposition::node_t<execution_space, inner_opstate_t>;
+    using predecessor_t = GraphComposition::node_t<execution_space, inner_opstate_t, Rcvr>;
 
     static constexpr bool after_root = std::same_as<graph_composition_policy_t, GraphComposition::Create>;
 
@@ -141,9 +141,9 @@ struct OpState
         , node{add_nodes(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Operation state graph composition policy is "
-                  << Kokkos::Impl::TypeInfo<graph_composition_policy_t>::name()
-                  << " and the inner operation state is of type " << Kokkos::Impl::TypeInfo<inner_opstate_t>::name()
-                  << '.';
+                  << Kokkos::Impl::TypeInfo<graph_composition_policy_t>::name() << ", the receiver is of type "
+                  << Kokkos::Impl::TypeInfo<Rcvr>::name() << " and the inner operation state is of type "
+                  << Kokkos::Impl::TypeInfo<inner_opstate_t>::name() << '.';
 #endif
     }
 
@@ -151,19 +151,20 @@ struct OpState
      * If the graph composition policy is @ref GraphComposition::Create, return the root node of @ref state graph.
      * Otherwise, return the result of querying @ref inner_opstate for @ref get_node_t.
      */
-    predecessor_t get_predecessor() const {
-        if constexpr (after_root) {
+    predecessor_t get_predecessor() const noexcept requires after_root
+    {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-            PLOG_INFO << "The predecessor is the root node of graph " << get_graph_impl_ptr(state.graph.root_node())
-                      << '.';
+        PLOG_INFO << "The predecessor is the root node of graph " << get_graph_impl_ptr(state.graph.root_node()) << '.';
 #endif
-            return state.graph.root_node();
-        } else {
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-            PLOG_INFO << "The predecessor is the node " << get_node_ptr(inner_opstate.query(get_node)) << " of graph "
-                      << get_graph_impl_ptr(inner_opstate.query(get_node)) << '.';
-#endif
+        return state.graph.root_node();
+    }
+
+    const predecessor_t& get_predecessor() const noexcept requires(!after_root)
+    {
+        if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
             return inner_opstate.query(get_node);
+        } else {
+            return this->completion_signal.rcvr.query(get_node);
         }
     }
 
@@ -213,7 +214,7 @@ using opstate_t = typename make_opstate_t<Sndr, Rcvr, Clsrs...>::type;
         return make_opstate_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));    \
     }
 
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING) // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #    define KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(_type_, _node_, _predecessor_)                          \
         PLOG_INFO << "Adding '" _type_ "' node " << get_node_ptr(_node_) << " to graph " << get_graph_impl_ptr(_node_) \
                   << " after " << get_node_ptr(_predecessor_) << " on device "                                         \
