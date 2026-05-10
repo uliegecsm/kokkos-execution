@@ -174,6 +174,7 @@ TEST_F(BulkTest, bulk_schedule) {
     const context_t gctx{exec};
 
     using load_check_add_t = Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>;
+    using sum_indices_t = Tests::Utils::Functors::SumIndices<view_s_t>;
 
     auto sndr = stdexec::schedule(gctx.get_scheduler()) | BULK_SUM_INDICES(4, data)
               | stdexec::then(load_check_add_t{.prev = 6, .value = 3, .data = data.data()}) | BULK_SUM_INDICES(4, data);
@@ -185,14 +186,15 @@ TEST_F(BulkTest, bulk_schedule) {
     static_assert(
         std::same_as<
             stdexec::__demangle_t<stdexec::transform_sender_result_t<sndr_t, stdexec::env<>>>,
-            Kokkos::Execution::GraphImpl::BulkSender<
-                TEST_EXECUTION_SPACE,
+            Kokkos::Execution::GraphImpl::ParallelForSender<
                 Tests::Utils::basic_sender_t<
                     stdexec::then_t,
                     load_check_add_t,
                     Tests::Utils::basic_sender_t<stdexec::bulk_t, bulk_data_t, typename BulkTest::schedule_sender_t>
                 >,
-                bulk_data_t
+                std::string,
+                sum_indices_t,
+                Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
             >
         >);
 
