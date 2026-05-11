@@ -426,14 +426,13 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
     const context_t esc{exec};
     experimental::execution::single_thread_context stc{};
 
-    auto sndr =
-        stdexec::when_all(
-            stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
-            stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
-                | Tests::Utils::check_rcvr_env_not_queryable_with<Kokkos::Execution::ExecutionSpaceImpl::get_exec_t>()
-                | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
-                | stdexec::continues_on(esc.get_scheduler()))
-        | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+    auto sndr = stdexec::when_all(
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
+                    stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
+                        | Tests::Utils::check_rcvr_env_not_queryable_with<Kokkos::Execution::Impl::get_exec_t>()
+                        | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+                        | stdexec::continues_on(esc.get_scheduler()))
+              | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 

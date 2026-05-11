@@ -1,9 +1,9 @@
-#ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_GET_EXEC_HPP
-#define KOKKOS_EXECUTION_EXECUTION_SPACE_GET_EXEC_HPP
+#ifndef KOKKOS_EXECUTION_IMPL_GET_EXEC_HPP
+#define KOKKOS_EXECUTION_IMPL_GET_EXEC_HPP
 
 #include "Kokkos_Core.hpp"
 
-namespace Kokkos::Execution::ExecutionSpaceImpl {
+namespace Kokkos::Execution::Impl {
 
 /**
  * Query an object for its @c Kokkos execution space instance.
@@ -52,6 +52,6 @@ struct ExecutionSpaceRef {
     }
 };
 
-} // namespace Kokkos::Execution::ExecutionSpaceImpl
+} // namespace Kokkos::Execution::Impl
 
-#endif // KOKKOS_EXECUTION_EXECUTION_SPACE_GET_EXEC_HPP
+#endif // KOKKOS_EXECUTION_IMPL_GET_EXEC_HPP

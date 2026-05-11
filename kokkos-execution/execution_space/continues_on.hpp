@@ -2,7 +2,6 @@
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_CONTINUES_ON_HPP
 
 #include "kokkos-execution/execution_space/env.hpp"
-#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 

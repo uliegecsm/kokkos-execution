@@ -4,7 +4,7 @@
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
 #include "kokkos-execution/execution_space/env.hpp"
-#include "kokkos-execution/execution_space/get_exec.hpp"
+#include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/stdexec.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -32,8 +32,7 @@ struct __sexpr_impl<Kokkos::Execution::ExecutionSpaceImpl::when_all_t> : stdexec
 
             if constexpr (std::same_as<exec_env_policy_t, Kokkos::Execution::ExecutionSpaceImpl::WithExecEnvPolicy>) {
                 return Kokkos::Execution::ExecutionSpaceImpl::join_env_with_exec(
-                    std::move(env),
-                    Kokkos::Execution::ExecutionSpaceImpl::get_exec(stdexec::get_env(state.__rcvr_)).get());
+                    std::move(env), Kokkos::Execution::Impl::get_exec(stdexec::get_env(state.__rcvr_)).get());
             } else {
                 return std::move(env);
             }

@@ -6,10 +6,10 @@
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
 #include "kokkos-execution/execution_space/env.hpp"
-#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -26,18 +26,18 @@ struct ScheduleFromReceiver<WithDelegatedSyncPolicy, WithoutExecEnvPolicy, Schd,
     Rcvr rcvr;
 
     void set_value() && noexcept {
-        /// If the downstream receiver environment is queryable for @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec
+        /// If the downstream receiver environment is queryable for @ref Kokkos::Execution::Impl::get_exec
         /// and it shares the same execution space instance, skip the fence.
         const bool requires_synchronization = [&]() {
-            if constexpr (stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>) {
+            if constexpr (stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>) {
                 if constexpr (
                     std::same_as<
                         typename std::remove_cvref_t<
-                            stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, get_exec_t>
+                            stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>
                         >::execution_space,
                         typename Schd::execution_space
                     >) {
-                    return get_exec(stdexec::get_env(rcvr)).get() != schd.state->exec;
+                    return Impl::get_exec(stdexec::get_env(rcvr)).get() != schd.state->exec;
                 }
             }
             return true;

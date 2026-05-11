@@ -93,7 +93,6 @@ target_sources(
             kokkos-execution/execution_space/domain.hpp
             kokkos-execution/execution_space/env.hpp
             kokkos-execution/execution_space/execution_space_fwd.hpp
-            kokkos-execution/execution_space/get_exec.hpp
             kokkos-execution/execution_space/operation_state.hpp
             kokkos-execution/execution_space/parallel_for.hpp
             kokkos-execution/execution_space/schedule_from.hpp
@@ -120,6 +119,7 @@ target_sources(
             kokkos-execution/impl/dispatch_label.hpp
             kokkos-execution/impl/domain.hpp
             kokkos-execution/impl/env.hpp
+            kokkos-execution/impl/get_exec.hpp
             kokkos-execution/impl/event.hpp
             kokkos-execution/impl/HIP/event.hpp
             kokkos-execution/impl/HPX/event.hpp
