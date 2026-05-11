@@ -77,4 +77,12 @@ inline constexpr check_completion_scheduler_type_t<Tag, Schd> check_completion_s
 
 } // namespace Tests::Utils
 
+// NOLINTBEGIN(bugprone-reserved-identifier)
+namespace stdexec::__detail {
+template <stdexec::sender Sndr, typename Tag, stdexec::scheduler Schd>
+extern __mtype<Tests::Utils::CheckCompletionSchedulerTypeSender<__demangle_t<Sndr>, Tag, Schd>>
+    __demangle_v<Tests::Utils::CheckCompletionSchedulerTypeSender<Sndr, Tag, Schd>>;
+} // namespace stdexec::__detail
+// NOLINTEND(bugprone-reserved-identifier)
+
 #endif // KOKKOS_EXECUTION_TESTS_UTILS_CHECK_COMPLETION_SCHEDULER_TYPE_HPP
