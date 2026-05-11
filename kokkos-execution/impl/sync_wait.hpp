@@ -3,7 +3,6 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/impl/state.hpp"

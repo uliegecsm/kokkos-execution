@@ -8,10 +8,10 @@
 #endif
 
 #include "kokkos-execution/execution_space/domain.hpp"
-#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/event.hpp"
+#include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
 #include "kokkos-execution/impl/make_opstate.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
@@ -55,19 +55,19 @@ struct RequiresSynchronization {
     }
 
     /**
-     * If the receiver environment can be queried for @ref Kokkos::Execution::ExecutionSpaceImpl::get_exec_t,
+     * If the receiver environment can be queried for @ref Kokkos::Execution::Impl::get_exec_t,
      * and if the successor enqueues work on the same execution space instance, no synchronization is needed.
      */
     bool operator()(const OpState& opstate) const noexcept
-        requires(!successor_handles_sync && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
+        requires(!successor_handles_sync && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>)
     {
         if constexpr (
             std::same_as<
-                std::remove_cvref_t<stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, get_exec_t>>,
-                stdexec::__query_result_t<OpState, get_exec_t>
+                std::remove_cvref_t<stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>>,
+                stdexec::__query_result_t<OpState, Impl::get_exec_t>
             >) {
-            const auto& src = opstate.query(get_exec).get();
-            const auto& dst = get_exec(stdexec::get_env(opstate.rcvr)).get();
+            const auto& src = opstate.query(Impl::get_exec).get();
+            const auto& dst = Impl::get_exec(stdexec::get_env(opstate.rcvr)).get();
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
             PLOG_DEBUG << "The synchronization happens if " << Kokkos::Tools::Experimental::device_id(src)
                        << " is not equal to " << Kokkos::Tools::Experimental::device_id(dst) << '.';
@@ -79,7 +79,7 @@ struct RequiresSynchronization {
 
     //! As a fallback, synchronization is always required.
     constexpr bool operator()(const OpState&) const noexcept
-        requires(!successor_handles_sync && !stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
+        requires(!successor_handles_sync && !stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>)
     {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_DEBUG << "Synchronization always required.";
@@ -131,7 +131,7 @@ struct MayDelegateCompletionWithEvent<Rcvr, Exec, false> {
     template <typename OpState>
     void delegate(OpState* const opstate) noexcept {
         if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
-            opstate->query(get_exec).get().fence(std::string(label));
+            opstate->query(Impl::get_exec).get().fence(std::string(label));
         }
         stdexec::set_value(std::move(this->rcvr));
     }
@@ -155,7 +155,7 @@ struct MayDelegateCompletionWithEvent<Rcvr, Exec, true> {
     void delegate(OpState* const opstate) noexcept {
         if (RequiresSynchronization<Rcvr, OpState>{}(*opstate)) {
             event.__construct();
-            Impl::record(event.__get(), opstate->query(get_exec).get());
+            Impl::record(event.__get(), opstate->query(Impl::get_exec).get());
             storage.__construct_from(
                 stdexec::connect,
                 stdexec::schedule(stdexec::get_delegation_scheduler(stdexec::get_env(this->rcvr))),
@@ -207,8 +207,8 @@ struct OpStateBase : public MayDelegateCompletionWithEvent<Rcvr, typename Clsr::
 
     //! @note All @ref clsrs are assumed to reference the same execution space instance.
     [[nodiscard]]
-    constexpr auto query(get_exec_t) const noexcept -> ExecutionSpaceRef<execution_space> {
-        return ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).get_policy().space()};
+    constexpr auto query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> {
+        return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).get_policy().space()};
     }
 
     KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, this->rcvr)

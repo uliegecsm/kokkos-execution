@@ -3,7 +3,7 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#include "kokkos-execution/execution_space/get_exec.hpp"
+#include "kokkos-execution/impl/get_exec.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -14,7 +14,7 @@ struct WithoutExecEnvPolicy { };
 template <typename Env, Kokkos::ExecutionSpace Exec>
 constexpr auto join_env_with_exec(Env&& env, const Exec& exec) noexcept {
     return stdexec::__env::__join(
-        stdexec::prop{get_exec, ExecutionSpaceRef{exec}}, stdexec::__fwd_env(std::forward<Env>(env)));
+        stdexec::prop{Impl::get_exec, Impl::ExecutionSpaceRef{exec}}, stdexec::__fwd_env(std::forward<Env>(env)));
 }
 
 //! Join @p exec to @p env if the policy is @ref WithExecEnvPolicy.
@@ -31,7 +31,7 @@ template <typename ExecEnvPolicy, typename Env, Kokkos::ExecutionSpace Exec>
 using join_env_with_exec_t = decltype(join_env_with_exec<ExecEnvPolicy>(std::declval<Env>(), std::declval<Exec>()));
 
 /**
- * If the policy is @ref WithExecEnvPolicy, extract the @ref ExecutionSpaceRef and re-inject it into the
+ * If the policy is @ref WithExecEnvPolicy, extract the @ref Impl::ExecutionSpaceRef and re-inject it into the
  * environment to extend its availability.
  *
  * @note This is not the same intent as using a forwarding query.
@@ -39,9 +39,9 @@ using join_env_with_exec_t = decltype(join_env_with_exec<ExecEnvPolicy>(std::dec
 template <typename ExecEnvPolicy, typename Env>
 constexpr auto extend_env(Env&& env) noexcept {
     if constexpr (std::same_as<ExecEnvPolicy, WithExecEnvPolicy>) {
-        auto ref = get_exec(env);
+        auto ref = Impl::get_exec(env);
         return stdexec::__env::__join(
-            stdexec::prop{get_exec, std::move(ref)}, stdexec::__fwd_env(std::forward<Env>(env)));
+            stdexec::prop{Impl::get_exec, std::move(ref)}, stdexec::__fwd_env(std::forward<Env>(env)));
     } else {
         return stdexec::__fwd_env(std::forward<Env>(env));
     }
@@ -50,10 +50,10 @@ constexpr auto extend_env(Env&& env) noexcept {
 template <typename ExecEnvPolicy, typename Env>
 using extend_env_t = decltype(extend_env<ExecEnvPolicy>(std::declval<Env>()));
 
-//! If @p Env is queryable with @ref get_exec_t, use @ref WithExecEnvPolicy.
+//! If @p Env is queryable with @ref Impl::get_exec_t, use @ref WithExecEnvPolicy.
 template <typename Env>
 using exec_env_policy_t =
-    std::conditional_t<stdexec::__queryable_with<Env, get_exec_t>, WithExecEnvPolicy, WithoutExecEnvPolicy>;
+    std::conditional_t<stdexec::__queryable_with<Env, Impl::get_exec_t>, WithExecEnvPolicy, WithoutExecEnvPolicy>;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 

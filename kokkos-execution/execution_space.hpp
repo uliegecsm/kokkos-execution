@@ -8,7 +8,6 @@
 #include "kokkos-execution/execution_space/bulk.hpp"
 #include "kokkos-execution/execution_space/continues_on.hpp"
 #include "kokkos-execution/execution_space/domain.hpp"
-#include "kokkos-execution/execution_space/get_exec.hpp"
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/execution_space/schedule_from.hpp"
 #include "kokkos-execution/execution_space/scoped_region.hpp"

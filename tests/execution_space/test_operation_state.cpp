@@ -140,7 +140,7 @@ TEST_F(OpStateTest, construct_query_and_start) {
     auto op_state = Kokkos::Execution::ExecutionSpaceImpl::OpState{
         stdexec::schedule(esc.get_scheduler()), Tests::Utils::SinkReceiver{}, std::move(clsr)};
 
-    ASSERT_EQ(Kokkos::Execution::ExecutionSpaceImpl::get_exec(op_state).get(), exec);
+    ASSERT_EQ(Kokkos::Execution::Impl::get_exec(op_state).get(), exec);
 
     op_state.start();
     exec.fence();
