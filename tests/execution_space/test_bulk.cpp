@@ -1,7 +1,10 @@
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/counter.hpp"
 #include "tests/utils/functors/labeled.hpp"
@@ -11,6 +14,7 @@
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
 #include "tests/utils/sync_wait.hpp"
+#include "tests/utils/tracking_allocator.hpp"
 
 /**
  * @addtogroup unittests
@@ -210,6 +214,54 @@ TEST_F(BulkTest, no_spurious_copy_on_connect) {
         ASSERT_EQ(Tests::Utils::Functors::Counter::copy_constructions, 0);
         ASSERT_EQ(Tests::Utils::Functors::Counter::move_assignments, 0);
     }
+}
+
+/**
+ * @test The customization of @c stdexec::bulk properly forwards forwarding queries.
+ *
+ * @todo Too many synchronizations.
+ */
+TEST_F(BulkTest, forwarding_env) {
+    constexpr size_t size = 10;
+
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    std::atomic<size_t> count = 0;
+
+    int value;
+
+    const context_t esc{exec};
+
+    stdexec::sender auto sndr =
+        stdexec::read_env(stdexec::get_allocator)
+        | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
+        | stdexec::continues_on(esc.get_scheduler())
+        | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | BULK_SUM_INDICES(size, data)
+        | stdexec::write_env(stdexec::prop{stdexec::get_allocator, Tests::Utils::TrackingAllocator<int>{&count}});
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        }
+    }());
+
+    ASSERT_EQ(data(), size / 2 * (size - 1));
+
+    ASSERT_EQ(value, 42);
+    ASSERT_EQ(count, 1);
 }
 
 } // namespace Tests::ExecutionSpaceImpl
