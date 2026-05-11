@@ -129,6 +129,10 @@ struct OpStateBase {
 
     constexpr explicit OpStateBase(Rcvr rcvr) noexcept(std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&>)
         : completion_signal(std::move(rcvr)) {
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        PLOG_INFO << "Completion signal policy is " << Kokkos::Impl::TypeInfo<completion_signal_policy_t>::name()
+                  << " from receiver " << Kokkos::Impl::TypeInfo<Rcvr>::name();
+#endif
     }
 
     template <typename Error>
@@ -212,12 +216,10 @@ struct OpState
                       << '.';
 #endif
             return state.get_root_node();
+        } else if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
+            return inner_opstate.query(get_node);
         } else {
-            if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
-                return inner_opstate.query(get_node);
-            } else {
-                return this->completion_signal.rcvr.query(get_node);
-            }
+            return this->completion_signal.rcvr.query(get_node);
         }
     }
 

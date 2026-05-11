@@ -17,4 +17,16 @@
         return stdexec::get_env(_obj_);                                                                                \
     }
 
+namespace Kokkos::Execution::Impl {
+
+//! An environment whose sole query is @c stdexec::get_domain_t.
+template <typename Domain>
+struct domain_queryable_env_t {
+    static constexpr auto query(stdexec::get_domain_t) noexcept -> Domain {
+        return {};
+    }
+};
+
+} // namespace Kokkos::Execution::Impl
+
 #endif // KOKKOS_EXECUTION_IMPL_ENV_HPP
