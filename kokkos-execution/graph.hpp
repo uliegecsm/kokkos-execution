@@ -8,6 +8,7 @@
 #include "kokkos-execution/graph/bulk.hpp"
 #include "kokkos-execution/graph/continues_on.hpp"
 #include "kokkos-execution/graph/domain.hpp"
+#include "kokkos-execution/graph/fork_join.hpp"
 #include "kokkos-execution/graph/parallel_for.hpp"
 #include "kokkos-execution/graph/parallel_reduce.hpp"
 #include "kokkos-execution/graph/schedule_from.hpp"
