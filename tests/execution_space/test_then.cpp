@@ -4,6 +4,7 @@
 #include "kokkos-execution/execution_space.hpp"
 
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/no_op.hpp"
@@ -11,6 +12,7 @@
 #include "tests/utils/just_stopped.hpp"
 #include "tests/utils/stdexec.hpp"
 #include "tests/utils/sync_wait.hpp"
+#include "tests/utils/tracking_allocator.hpp"
 
 /**
  * @addtogroup unittests
@@ -308,5 +310,51 @@ consteval bool test_sndr_nothrow_transformable() {
     return true;
 }
 static_assert(test_sndr_nothrow_transformable());
+
+/**
+ * @test The customization of @c stdexec::then properly forwards forwarding queries.
+ *
+ * @todo Too many synchronizations.
+ */
+TEST_F(ThenTest, forwarding_env) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    std::atomic<size_t> count = 0;
+
+    int value;
+
+    const context_t esc{exec};
+
+    stdexec::sender auto sndr =
+        stdexec::read_env(stdexec::get_allocator)
+        | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
+        | stdexec::continues_on(esc.get_scheduler())
+        | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data)
+        | stdexec::write_env(stdexec::prop{stdexec::get_allocator, Tests::Utils::TrackingAllocator<int>{&count}});
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        } else {
+            return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        }
+    }());
+
+    ASSERT_EQ(data(), 1);
+
+    ASSERT_EQ(value, 42);
+    ASSERT_EQ(count, 1);
+}
 
 } // namespace Tests::ExecutionSpaceImpl
