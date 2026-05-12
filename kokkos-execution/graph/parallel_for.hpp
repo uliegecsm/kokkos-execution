@@ -24,12 +24,12 @@ struct ParallelForClosure {
         std::declval<Functor&&>()));
 
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
-    template <bool PredecessorIsRoot, NodeRef Predecessor>
+    template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
         auto node = predecessor.then_parallel_for(
             std::move(node_props), std::forward<ExecPolicy>(policy), std::forward<Functor>(functor));
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("parallel_for", node, predecessor)
-        graph_add_node_event<PredecessorIsRoot>(predecessor, node);
+        graph_add_node_event(predecessor, node);
         return node;
     }
     node_props_t node_props;

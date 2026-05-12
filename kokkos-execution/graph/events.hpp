@@ -106,16 +106,39 @@ auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&.
 /**
  * @brief Record an event for a @p node added after @p predecessor.
  *
- * @todo There is no way to tell if the predecessor is a root node.
+ * @todo Use https://github.com/kokkos/kokkos/pull/9170 to determine if the predecessor is a root node.
  */
-template <bool IsRoot, NodeRef Predecessor, NodeRef NodeType>
+template <NodeRef Predecessor, NodeRef NodeType>
 void graph_add_node_event(const Predecessor& predecessor, const NodeType& node) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
     auto* const node_ptr = get_node_ptr(node);
+    auto* const pred_ptr = get_node_ptr(predecessor);
+    auto* const graph_ptr = get_graph_impl_ptr(predecessor);
+
+    // NOLINTBEGIN(bugprone-branch-clone)
+    constexpr bool is_root = []() {
+        using aggregate_t = decltype(graph_ptr->create_aggregate_ptr());
+
+        if constexpr (requires { typename std::remove_cvref_t<decltype(*pred_ptr)>::kernel_type; }) {
+            using kernel_t = typename std::remove_cvref_t<decltype(*pred_ptr)>::kernel_type;
+            if constexpr (Kokkos::Impl::is_graph_kernel_v<kernel_t>) {
+                return false;
+            } else if constexpr (Kokkos::Impl::is_graph_capture_v<kernel_t>) {
+                return false;
+            } else if constexpr (Kokkos::Impl::is_graph_then_host_v<kernel_t>) {
+                return false;
+            }
+        } else if constexpr (std::same_as<Predecessor, aggregate_t>) {
+            return false;
+        }
+        return true;
+    }();
+    // NOLINTEND(bugprone-branch-clone)
+
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
-            .graph = get_graph_impl_ptr(predecessor),
-            .predecessor = IsRoot ? nullptr : get_node_ptr(predecessor),
+            .graph = graph_ptr,
+            .predecessor = is_root ? nullptr : pred_ptr,
             .node = node_ptr,
             .dev_id = Kokkos::Tools::Experimental::device_id(node_ptr->get_device_handle().m_exec)});
 #endif

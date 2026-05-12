@@ -34,11 +34,11 @@ struct ThenClosure {
                                 .then(std::declval<node_props_t&&>(), std::declval<Functor&&>()));
 
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
-    template <bool PredecessorIsRoot, NodeRef Predecessor>
+    template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
         auto node = predecessor.then(std::move(node_props), std::forward<Functor>(functor));
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("then", node, predecessor)
-        graph_add_node_event<PredecessorIsRoot>(predecessor, node);
+        graph_add_node_event(predecessor, node);
         return node;
     }
     node_props_t node_props;
