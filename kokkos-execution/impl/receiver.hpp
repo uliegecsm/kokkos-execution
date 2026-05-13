@@ -7,27 +7,30 @@
 
 namespace Kokkos::Execution::Impl {
 
-//! Receiver for an object @ref parent_op that implements @c propagate_completion_signal.
-template <typename ParentOp>
+//! Receiver for an object @ref parent_op that implements @c complete.
+template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
 struct Receiver {
     using receiver_concept = stdexec::receiver_tag;
 
     ParentOp* parent_op;
 
     void set_value() && noexcept {
-        parent_op->propagate_completion_signal(stdexec::set_value);
+        parent_op->complete(stdexec::set_value);
     }
 
     template <typename Error>
     void set_error(Error&& error) && noexcept {
-        parent_op->propagate_completion_signal(stdexec::set_error, std::forward<Error>(error));
+        parent_op->complete(stdexec::set_error, std::forward<Error>(error));
     }
 
     void set_stopped() && noexcept {
-        parent_op->propagate_completion_signal(stdexec::set_stopped);
+        parent_op->complete(stdexec::set_stopped);
     }
 
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(typename ParentOp::receiver_t, parent_op->rcvr)
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> stdexec::__fwd_env_t<Env> {
+        return stdexec::__fwd_env(stdexec::get_env(*parent_op));
+    }
 };
 
 } // namespace Kokkos::Execution::Impl

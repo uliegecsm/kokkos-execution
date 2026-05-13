@@ -8,6 +8,8 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-utils/concepts/View.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/stdexec.hpp"
@@ -34,6 +36,7 @@ class LetValueTest
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t = RecorderListener<
+        EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
         BeginParallelForEvent,
         AllocateDataEvent,
@@ -155,21 +158,41 @@ TEST_F(LetValueTest, scoped_allocation) {
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(check)
 
-    ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(check)), // NOLINT(performance-move-const-arg)
-        ContainsInOrder<variant_t>(
-            Kokkos::utils::callbacks::AAllocateDataEvent(
-                testing::Field(
-                    &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
-                    testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")),
-            Kokkos::utils::callbacks::ADeallocateDataEvent(
-                testing::Field(
-                    &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
-                    testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch"))))));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(check)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_THAT(recorded_events, [&]() {
+        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
+            return ContainsInOrder<variant_t>(
+                Kokkos::utils::callbacks::AAllocateDataEvent(
+                    testing::Field(
+                        &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
+                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
+                Kokkos::utils::callbacks::ADeallocateDataEvent(
+                    testing::Field(
+                        &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
+                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))));
+        } else {
+            return ContainsInOrder<variant_t>(
+                Kokkos::utils::callbacks::AAllocateDataEvent(
+                    testing::Field(
+                        &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
+                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                Kokkos::utils::callbacks::ADeallocateDataEvent(
+                    testing::Field(
+                        &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
+                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))));
+        }
+    }());
 
     ASSERT_EQ(data(), 2 * (0 + 1 + 2 + 3 + 4));
 }

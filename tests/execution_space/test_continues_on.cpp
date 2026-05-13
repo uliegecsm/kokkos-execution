@@ -125,7 +125,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
 
     auto op_state = stdexec::connect(
         std::move(schs_A_then_con_B_then_con_h_then), // NOLINT(performance-move-const-arg)
-        Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space>{
+        Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space, std::true_type>{
             .state = std::addressof(esc_h.m_state), .runloop_state = nullptr, .result = nullptr});
 
     /**
@@ -133,14 +133,14 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
      * is queryable with @ref Kokkos::Execution::Impl::get_exec_t.
      */
     using then_rcvr_t = Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-        Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space>,
+        Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space, std::true_type>,
         Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
             std::string_view,
             Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'h'>>,
             Kokkos::RangePolicy<host_execution_space, Kokkos::LaunchBounds<1>>
         >
     >>;
-    static_assert(std::same_as<decltype(op_state.inner_opstate.rcvr.rcvr.rcvr), then_rcvr_t>);
+    static_assert(std::same_as<decltype(op_state.inner_opstate.completion_signal.rcvr.rcvr.rcvr), then_rcvr_t>);
     static_assert(!stdexec::__queryable_with<stdexec::env_of_t<then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
 
     //! Our customization of @c continues_on forwards the environment.
@@ -149,7 +149,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         Kokkos::Execution::ExecutionSpaceImpl::Scheduler<host_execution_space>,
         then_rcvr_t
     >;
-    static_assert(std::same_as<decltype(op_state.inner_opstate.rcvr.rcvr), con_h_then_rcvr_t>);
+    static_assert(std::same_as<decltype(op_state.inner_opstate.completion_signal.rcvr.rcvr), con_h_then_rcvr_t>);
     static_assert(stdexec::__queryable_with<stdexec::env_of_t<con_h_then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
     static_assert(std::same_as<
                   stdexec::env_of_t<con_h_then_rcvr_t>,
@@ -161,7 +161,9 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                       stdexec::__env::__fwd<Kokkos::Execution::Impl::SyncWait::env>
                   >
     >);
-    ASSERT_EQ(Kokkos::Execution::Impl::get_exec(stdexec::get_env(op_state.inner_opstate.rcvr.rcvr)).get(), exec_h);
+    ASSERT_EQ(
+        Kokkos::Execution::Impl::get_exec(stdexec::get_env(op_state.inner_opstate.completion_signal.rcvr.rcvr)).get(),
+        exec_h);
 
     //! @ref Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromReceiver updates the @ref Kokkos::Execution::Impl::get_exec_t query.
     using sfrom_con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromReceiver<
@@ -170,7 +172,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         scheduler_t,
         con_h_then_rcvr_t
     >;
-    static_assert(std::same_as<decltype(op_state.inner_opstate.rcvr), sfrom_con_h_then_rcvr_t>);
+    static_assert(std::same_as<decltype(op_state.inner_opstate.completion_signal.rcvr), sfrom_con_h_then_rcvr_t>);
     static_assert(
         !stdexec::__queryable_with<stdexec::env_of_t<sfrom_con_h_then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
 
@@ -183,8 +185,10 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                 Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
             >
         >>;
-    static_assert(
-        std::same_as<decltype(op_state.inner_opstate.inner_opstate.rcvr.rcvr.rcvr), then_sfrom_con_h_then_rcvr_t>);
+    static_assert(std::same_as<
+                  decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr.rcvr),
+                  then_sfrom_con_h_then_rcvr_t
+    >);
     static_assert(!stdexec::__queryable_with<
                   stdexec::env_of_t<then_sfrom_con_h_then_rcvr_t>,
                   Kokkos::Execution::Impl::get_exec_t
@@ -195,8 +199,10 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         scheduler_t,
         then_sfrom_con_h_then_rcvr_t
     >;
-    static_assert(
-        std::same_as<decltype(op_state.inner_opstate.inner_opstate.rcvr.rcvr), con_B_then_sfrom_con_h_then_rcvr_t>);
+    static_assert(std::same_as<
+                  decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr),
+                  con_B_then_sfrom_con_h_then_rcvr_t
+    >);
     static_assert(stdexec::__queryable_with<
                   stdexec::env_of_t<con_B_then_sfrom_con_h_then_rcvr_t>,
                   Kokkos::Execution::Impl::get_exec_t
@@ -218,7 +224,9 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   >
     >);
     ASSERT_EQ(
-        Kokkos::Execution::Impl::get_exec(stdexec::get_env(op_state.inner_opstate.inner_opstate.rcvr.rcvr)).get(),
+        Kokkos::Execution::Impl::get_exec(
+            stdexec::get_env(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr))
+            .get(),
         exec_B);
 
     using sfrom_con_B_then_sfrom_con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromReceiver<
@@ -227,8 +235,10 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
         scheduler_t,
         con_B_then_sfrom_con_h_then_rcvr_t
     >;
-    static_assert(
-        std::same_as<decltype(op_state.inner_opstate.inner_opstate.rcvr), sfrom_con_B_then_sfrom_con_h_then_rcvr_t>);
+    static_assert(std::same_as<
+                  decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr),
+                  sfrom_con_B_then_sfrom_con_h_then_rcvr_t
+    >);
     static_assert(!stdexec::__queryable_with<
                   stdexec::env_of_t<sfrom_con_B_then_sfrom_con_h_then_rcvr_t>,
                   Kokkos::Execution::Impl::get_exec_t

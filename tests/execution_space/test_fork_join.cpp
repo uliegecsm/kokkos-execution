@@ -47,11 +47,7 @@ class ForkJoinTest
     >;
 };
 
-/**
- * @test Use @c experimental::execution::fork_join to produce a diamond-like topology.
- *
- * @todo Too many synchronizations.
- */
+//! @test Use @c experimental::execution::fork_join to produce a diamond-like topology.
 TEST_F(ForkJoinTest, diamond) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
@@ -91,8 +87,6 @@ TEST_F(ForkJoinTest, diamond) {
  * @test Use @c experimental::execution::fork_join after a @c stdexec::continues_on.
  *
  * Inspired by https://github.com/NVIDIA/stdexec/issues/1823.
- *
- * @todo Too many synchronizations.
  */
 TEST_F(ForkJoinTest, continues_on) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -118,13 +112,11 @@ TEST_F(ForkJoinTest, continues_on) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 
@@ -135,8 +127,6 @@ TEST_F(ForkJoinTest, continues_on) {
  * @test Use @c experimental::execution::fork_join after a @c stdexec::continues_on and a @c stdexec::bulk.
  *
  * Inspired by https://github.com/NVIDIA/stdexec/issues/1823.
- *
- * @todo Too many synchronizations.
  */
 TEST_F(ForkJoinTest, continues_on_bulk) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -162,15 +152,13 @@ TEST_F(ForkJoinTest, continues_on_bulk) {
                 MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 

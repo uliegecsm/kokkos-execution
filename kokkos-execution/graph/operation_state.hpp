@@ -14,6 +14,8 @@
 #include "kokkos-execution/graph/get_graph.hpp"
 #include "kokkos-execution/graph/get_node.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
+#include "kokkos-execution/impl/completion_signal.hpp"
+#include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
 #include "kokkos-execution/impl/make_opstate.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
@@ -59,33 +61,32 @@ struct State<GraphComposition::Create, Exec> {
 };
 
 /**
- * @brief Operation state whose sole purpose is to propagate the completion signal to @ref rcvr.
+ * @brief Operation state whose sole purpose is to propagate the completion signal.
  *
  * Inspired by https://github.com/NVIDIA/stdexec/blob/56613d3498bc39724dfbae0914cff2aaf3f9dcc6/include/stdexec/__detail/__receiver_adaptor.hpp#L111.
  */
-template <stdexec::receiver Rcvr>
+template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct OpStateBase {
-    using receiver_t = Rcvr;
+    using sync_policy_t = Impl::SyncPolicy::PassThrough;
+    using completion_signal_t = Impl::CompletionSignal<sync_policy_t, Exec, Rcvr>;
 
-    receiver_t rcvr;
+    completion_signal_t completion_signal;
 
-    void propagate_completion_signal(stdexec::set_value_t) noexcept
-        requires(stdexec::__callable<stdexec::set_value_t, receiver_t &&>)
-    {
-        stdexec::set_value(std::move(rcvr));
+    constexpr explicit OpStateBase(Rcvr rcvr) noexcept(std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&>)
+        : completion_signal(std::move(rcvr)) {
+    }
+
+    void complete(stdexec::set_value_t) noexcept {
+        completion_signal.propagate(stdexec::set_value);
     }
 
     template <typename Error>
-    void propagate_completion_signal(stdexec::set_error_t, Error&& error) noexcept
-        requires(stdexec::__callable<stdexec::set_error_t, receiver_t &&, Error>)
-    {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(error));
+    void complete(stdexec::set_error_t, Error&& error) noexcept {
+        completion_signal.propagate(stdexec::set_error, std::forward<Error>(error));
     }
 
-    void propagate_completion_signal(stdexec::set_stopped_t) noexcept
-        requires(stdexec::__callable<stdexec::set_stopped_t, receiver_t &&>)
-    {
-        stdexec::set_stopped(std::move(rcvr));
+    void complete(stdexec::set_stopped_t) noexcept {
+        completion_signal.propagate(stdexec::set_stopped);
     }
 };
 
@@ -105,7 +106,7 @@ static auto add_nodes(Predecessor&& predecessor, FirstClosure&& clsr, RestOfClos
 template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure FirstClosure, Closure... RestOfClosures>
 struct OpState
     : public Impl::Immovable
-    , public OpStateBase<Rcvr> {
+    , public OpStateBase<typename FirstClosure::execution_space, Rcvr> {
     using operation_state_concept = stdexec::operation_state_tag;
 
     using execution_space = typename FirstClosure::execution_space;
@@ -114,7 +115,7 @@ struct OpState
     //! Ensure that all closures are on the same execution space type.
     static_assert((std::same_as<typename RestOfClosures::execution_space, execution_space> && ...));
 
-    using rcvr_t = Impl::Receiver<OpState>;
+    using rcvr_t = Impl::Receiver<OpState, stdexec::env_of_t<Rcvr>>;
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
     using graph_composition_policy_t = GraphComposition::policy_t<inner_opstate_t>;
     using state_t = State<graph_composition_policy_t, execution_space>;
@@ -132,12 +133,12 @@ struct OpState
     node_t node;
 
     //! @warning Unconditionally **not** @c noexcept because both graph and node construction may throw.
-    OpState(
+    constexpr OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
-        Rcvr rcvr_,
+        Rcvr rcvr,
         FirstClosure clsr,
         RestOfClosures... clsrs) noexcept(false)
-        : OpStateBase<Rcvr>{.rcvr = std::move(rcvr_)}
+        : OpStateBase<execution_space, Rcvr>(std::move(rcvr))
         , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
         , state{Kokkos::Impl::get_property<device_handle_t>(clsr.node_props)}
         , node{add_nodes<after_root>(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
@@ -169,15 +170,18 @@ struct OpState
         }
     }
 
-    void propagate_completion_signal(stdexec::set_value_t) noexcept {
+    void complete(stdexec::set_value_t) noexcept {
         if constexpr (after_root) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
             PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
                       << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
             submit_graph(state.graph, state.get_device_handle().m_exec);
+
+            //! @bug This synchronization should be carried out elsewhere.
+            state.get_device_handle().m_exec.fence(std::string(Impl::dispatch_label<execution_space, ": sync_wait">()));
         }
-        OpStateBase<Rcvr>::propagate_completion_signal(stdexec::set_value);
+        OpStateBase<execution_space, Rcvr>::complete(stdexec::set_value);
     }
 
     const auto& query(get_node_t) const & noexcept {
@@ -194,6 +198,11 @@ struct OpState
 
     void start() & noexcept {
         stdexec::start(inner_opstate);
+    }
+
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
+        return stdexec::get_env(this->completion_signal.rcvr);
     }
 };
 

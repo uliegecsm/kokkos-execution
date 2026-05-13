@@ -3,7 +3,9 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "kokkos-execution/impl/completion_signal.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
+#include "kokkos-execution/impl/event.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/impl/state.hpp"
 
@@ -42,7 +44,7 @@ struct State<std::false_type> {
 //! Receiver for @c stdexec::sync_wait.
 template <Kokkos::ExecutionSpace Exec, typename HasErrorPtr = std::false_type, typename ResultType = std::tuple<>>
 struct Receiver {
-    using receiver_concept = stdexec::receiver_tag;
+    using receiver_concept = Impl::DeferredCompletionReceiverTag;
 
     static constexpr auto label = Impl::dispatch_label<Exec, ": sync_wait">();
 
@@ -52,7 +54,6 @@ struct Receiver {
 
     template <typename... Args>
     void set_value(Args&&... args) && noexcept {
-        state->exec.fence(std::string(label));
         result->emplace(std::forward<Args>(args)...);
         runloop_state->loop.finish();
     }
@@ -67,6 +68,18 @@ struct Receiver {
 
     void set_stopped() && noexcept {
         state->exec.fence(std::string(label));
+        runloop_state->loop.finish();
+    }
+
+    void continues_after() && noexcept {
+        state->exec.fence(std::string(label));
+        result->emplace();
+        runloop_state->loop.finish();
+    }
+
+    void continues_after(const Impl::Event<Exec>& event) && noexcept {
+        Impl::wait(event);
+        result->emplace();
         runloop_state->loop.finish();
     }
 

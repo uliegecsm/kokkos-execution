@@ -57,8 +57,6 @@ static_assert(test_sndr_traits());
  * @test Check that @ref Kokkos::Execution::Profiling::scoped_region works as intended.
  *
  * The push/pop events and the preceding fences must be placed appropriately.
- *
- * @todo Too many synchronizations.
  */
 TEST_F(ScopedRegionTest, many) {
     const view_s_t data(Kokkos::view_alloc("data - shared space", exec));
@@ -81,8 +79,7 @@ TEST_F(ScopedRegionTest, many) {
                 MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
-                MATCHER_FOR_POP_REGION(),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_POP_REGION());
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
@@ -91,8 +88,7 @@ TEST_F(ScopedRegionTest, many) {
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
-                MATCHER_FOR_POP_REGION(),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+                MATCHER_FOR_POP_REGION());
         }
     }());
 }

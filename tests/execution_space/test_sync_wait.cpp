@@ -41,11 +41,7 @@ static_assert(Tests::Utils::check_nothrow_apply_sender<
               typename SyncWaitTest::schedule_sender_t
 >());
 
-/**
- * @test Ensure that @c sync_wait is properly customized.
- *
- * Improperly customized @c sync_wait should result in a missing synchronization.
- */
+//! @test Check that calling @c stdexec::sync_wait on a sender that does not have any operation in it will not result in a spurious fence.
 TEST_F(SyncWaitTest, sync_wait) {
     const context_t esc{exec};
 
@@ -57,7 +53,7 @@ TEST_F(SyncWaitTest, sync_wait) {
             static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
             ASSERT_TRUE(value.has_value());
         }),
-        testing::ElementsAre(MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+        testing::IsEmpty());
 }
 
 //! @test Check that the @c stdexec::sync_wait of @ref Kokkos::Execution::ExecutionSpaceContext properly rethrows if needed.
