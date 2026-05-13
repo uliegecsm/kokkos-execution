@@ -9,6 +9,7 @@
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
+#include "kokkos-execution/impl/continuation_prop.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/event.hpp"
@@ -76,14 +77,10 @@ struct RequiresSync {
 
 struct DeferredCompletionReceiverTag : public stdexec::receiver_tag { };
 
-template <typename Rcvr, typename Exec>
+template <typename Rcvr>
 concept deferred_completion_receiver =
     stdexec::receiver<Rcvr>
-    && std::derived_from<typename std::remove_cvref_t<Rcvr>::receiver_concept, DeferredCompletionReceiverTag>
-    && requires(std::remove_reference_t<Rcvr> rcvr, const Event<Exec>& event) {
-           std::move(rcvr).continues_after();
-           std::move(rcvr).continues_after(event);
-       };
+    && std::derived_from<typename std::remove_cvref_t<Rcvr>::receiver_concept, DeferredCompletionReceiverTag>;
 
 struct SyncPolicy {
     struct InlineFenceExec { };
@@ -205,8 +202,8 @@ struct CompletionSignal<SyncPolicy::PassThrough, Exec, Rcvr> {
         stdexec::set_value(std::move(rcvr));
     }
 
-    void propagate(stdexec::set_value_t, const Exec&) & noexcept {
-        std::move(rcvr).continues_after();
+    void propagate(stdexec::set_value_t, const Exec& exec) & noexcept {
+        std::move(rcvr).emit(Impl::ContinuationProp{Impl::OrderedOn(exec)});
     }
 
     template <typename Error>
@@ -238,11 +235,11 @@ struct CompletionSignal<SyncPolicy::DeferWaitEvent, Exec, Rcvr> {
 
     void propagate(stdexec::set_value_t, const Exec& exec) & noexcept {
         if (!RequiresSync<Exec, Rcvr>{}(exec, rcvr)) {
-            std::move(rcvr).continues_after();
+            std::move(rcvr).emit(Impl::ContinuationProp{Impl::OrderedOn(exec)});
         } else {
             event.emplace();
             record(*event, exec);
-            std::move(rcvr).continues_after(*event);
+            std::move(rcvr).emit(Impl::ContinuationProp{Impl::DependsOn(*event)});
         }
     }
 

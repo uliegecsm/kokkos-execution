@@ -141,15 +141,13 @@ struct Receiver {
         loop->finish();
     }
 
-    void continues_after() && noexcept requires(IsDeferredCompletionReceiver)
-    {
-        loop->finish();
-    }
-
-    void continues_after(const Kokkos::Execution::Impl::Event<Exec>& event) && noexcept
+    template <typename Prop>
+    void emit(const Kokkos::Execution::Impl::ContinuationProp<Prop>& prop) && noexcept
         requires(IsDeferredCompletionReceiver)
     {
-        Kokkos::Execution::Impl::wait(event);
+        if constexpr (Kokkos::Execution::Impl::is_depends_on_event<Prop>) {
+            Kokkos::Execution::Impl::wait(prop.get().event());
+        }
         loop->finish();
     }
 
@@ -225,10 +223,7 @@ TEST_F(CompletionSignalTest, defer_wait_event_policy) {
             | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
         Receiver<TEST_EXECUTION_SPACE, true>{&esc_B.m_state, &loop});
 
-    static_assert(Kokkos::Execution::Impl::deferred_completion_receiver<
-                  Receiver<TEST_EXECUTION_SPACE, true>,
-                  TEST_EXECUTION_SPACE
-    >);
+    static_assert(Kokkos::Execution::Impl::deferred_completion_receiver<Receiver<TEST_EXECUTION_SPACE, true>>);
     static_assert(
         std::same_as<typename decltype(op_state)::sync_policy_t, Kokkos::Execution::Impl::SyncPolicy::DeferWaitEvent>);
 

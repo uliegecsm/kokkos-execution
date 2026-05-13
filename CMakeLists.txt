@@ -116,6 +116,7 @@ target_sources(
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signal.hpp
             kokkos-execution/impl/completion_signatures.hpp
+            kokkos-execution/impl/continuation_prop.hpp
             kokkos-execution/impl/Cuda/event.hpp
             kokkos-execution/impl/dispatch_label.hpp
             kokkos-execution/impl/domain.hpp

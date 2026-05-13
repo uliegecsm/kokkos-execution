@@ -31,7 +31,7 @@ template <typename Exec, typename Rcvr>
 consteval auto select_sync_policy() {
     if constexpr (stdexec::__is_instance_of<Rcvr, Impl::SyncWait::Receiver>) {
         return Impl::SyncPolicy::PassThrough{};
-    } else if constexpr (Impl::deferred_completion_receiver<Rcvr, Exec>) {
+    } else if constexpr (Impl::deferred_completion_receiver<Rcvr>) {
         return Impl::SyncPolicy::DeferWaitEvent{};
     } else if constexpr (
         Impl::has_non_blocking_dispatch<Exec>

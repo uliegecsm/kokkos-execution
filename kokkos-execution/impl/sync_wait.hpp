@@ -71,14 +71,13 @@ struct Receiver {
         runloop_state->loop.finish();
     }
 
-    void continues_after() && noexcept {
-        state->exec.fence(std::string(label));
-        result->emplace();
-        runloop_state->loop.finish();
-    }
-
-    void continues_after(const Impl::Event<Exec>& event) && noexcept {
-        Impl::wait(event);
+    template <typename Prop>
+    void emit(const Impl::ContinuationProp<Prop>& prop) && noexcept {
+        if constexpr (Impl::is_depends_on_event<Prop>) {
+            Impl::wait(prop.get().event());
+        } else {
+            state->exec.fence(std::string(label));
+        }
         result->emplace();
         runloop_state->loop.finish();
     }
