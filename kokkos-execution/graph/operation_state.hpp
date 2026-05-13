@@ -91,14 +91,14 @@ struct OpStateBase {
 };
 
 //! Add all nodes as a sequence. Hence, only the first node may be added after the root node.
-template <bool PredecessorIsRoot, NodeRef Predecessor, Closure FirstClosure, Closure... RestOfClosures>
+template <typename Predecessor, Closure FirstClosure, Closure... RestOfClosures>
+requires NodeRef<std::remove_cvref_t<Predecessor>>
 static auto add_nodes(Predecessor&& predecessor, FirstClosure&& clsr, RestOfClosures&&... clsrs) {
-    auto node = std::forward<FirstClosure>(clsr)
-                    .template add_node<PredecessorIsRoot>(std::forward<Predecessor>(predecessor));
+    auto node = std::forward<FirstClosure>(clsr).add_node(std::forward<Predecessor>(predecessor));
     if constexpr (sizeof...(RestOfClosures) == 0) {
         return node;
     } else {
-        return add_nodes<false>(std::move(node), std::forward<RestOfClosures>(clsrs)...);
+        return add_nodes(std::move(node), std::forward<RestOfClosures>(clsrs)...);
     }
 }
 
@@ -123,7 +123,7 @@ struct OpState
 
     static constexpr bool after_root = std::same_as<graph_composition_policy_t, GraphComposition::Create>;
 
-    using node_t = decltype(add_nodes<after_root>(
+    using node_t = decltype(add_nodes(
         std::declval<predecessor_t>(),
         std::declval<FirstClosure>(),
         std::declval<RestOfClosures>()...));
@@ -141,7 +141,7 @@ struct OpState
         : OpStateBase<execution_space, Rcvr>(std::move(rcvr))
         , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
         , state{Kokkos::Impl::get_property<device_handle_t>(clsr.node_props)}
-        , node{add_nodes<after_root>(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
+        , node{add_nodes(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Operation state graph composition policy is "
                   << Kokkos::Impl::TypeInfo<graph_composition_policy_t>::name()
