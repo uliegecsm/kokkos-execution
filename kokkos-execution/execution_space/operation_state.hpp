@@ -62,6 +62,7 @@ struct OpStateBase {
 
     completion_signal_t completion_signal;
     closures_t clsrs;
+    bool submitted = false;
 
     constexpr explicit OpStateBase(Rcvr rcvr, Clsr clsr_, Clsrs... clsrs_) noexcept(
         std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&> && std::is_nothrow_move_constructible_v<Clsr>
