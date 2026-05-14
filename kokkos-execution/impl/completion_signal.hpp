@@ -27,25 +27,9 @@ namespace Kokkos::Execution::Impl {
  */
 template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct RequiresSync {
-    static constexpr bool successor_handles_sync =
-        stdexec::__is_instance_of<Rcvr, Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromReceiver>;
-
-    /**
-     * @brief The synchronization will be handled by the successor.
-     *
-     * @todo This should go away once these cases can all be mapped to @ref SyncPolicy::PassThrough.
-     */
-    bool operator()(const Exec&, const Rcvr&) const noexcept requires(successor_handles_sync)
-    {
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        PLOG_DEBUG << "The synchronization will be handled by the successor.";
-#endif
-        return false;
-    }
-
     //! @todo Simplify by moving and using @ref Tests::Utils::are_same_instances.
     bool operator()(const Exec& exec, const Rcvr& rcvr) const noexcept
-        requires(!successor_handles_sync && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
+        requires(stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
     {
         if constexpr (
             std::same_as<
@@ -65,7 +49,7 @@ struct RequiresSync {
 
     //! @todo This is compile-time only and should go away.
     constexpr bool operator()(const Exec&, const Rcvr&) const noexcept
-        requires(!successor_handles_sync && !stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
+        requires(!stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
     {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_DEBUG << "Synchronization always required.";

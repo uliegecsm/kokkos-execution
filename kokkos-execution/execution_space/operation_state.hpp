@@ -29,7 +29,9 @@ concept Closure = requires(const Clsr& clsr) {
 
 template <typename Exec, typename Rcvr>
 consteval auto select_sync_policy() {
-    if constexpr (stdexec::__is_instance_of<Rcvr, Impl::SyncWait::Receiver>) {
+    if constexpr (
+        stdexec::__is_instance_of<Rcvr, Impl::SyncWait::Receiver>
+        || stdexec::__is_instance_of<Rcvr, ScheduleFromReceiver>) {
         return Impl::SyncPolicy::PassThrough{};
     } else if constexpr (Impl::deferred_completion_receiver<Rcvr, Exec>) {
         return Impl::SyncPolicy::DeferWaitEvent{};
