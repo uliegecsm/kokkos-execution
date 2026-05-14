@@ -19,7 +19,7 @@ template <typename Clsr>
 concept Closure = requires(const Clsr& clsr) {
     typename Clsr::execution_space;
 
-    { clsr.execute() } -> std::same_as<void>;
+    { clsr.submit() } -> std::same_as<void>;
 
     { clsr.get_policy() };
     requires Kokkos::ExecutionPolicy<std::remove_cvref_t<decltype(clsr.get_policy())>>;
@@ -68,7 +68,7 @@ struct OpStateBase {
 
     void complete(stdexec::set_value_t) noexcept {
         try {
-            stdexec::__apply([](auto&... clsr) { (clsr.execute(), ...); }, clsrs);
+            stdexec::__apply([](auto&... clsr) { (clsr.submit(), ...); }, clsrs);
         } catch (...) {
             this->complete(stdexec::set_error, std::current_exception());
             return;
