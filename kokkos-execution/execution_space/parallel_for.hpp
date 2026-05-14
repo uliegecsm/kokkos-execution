@@ -20,7 +20,7 @@ struct ParallelForClosure {
 
     Kokkos::Execution::Impl::ParallelForData<Label, Functor, policy_t> data;
 
-    void execute() const & {
+    void submit() const & {
         if constexpr (std::convertible_to<Label, std::string>) {
             Kokkos::parallel_for(data.label, data.policy, data.functor);
         } else {
