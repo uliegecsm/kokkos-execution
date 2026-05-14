@@ -44,7 +44,7 @@ struct State<std::false_type> {
 //! Receiver for @c stdexec::sync_wait.
 template <Kokkos::ExecutionSpace Exec, typename HasErrorPtr = std::false_type, typename ResultType = std::tuple<>>
 struct Receiver {
-    using receiver_concept = Impl::DeferredCompletionReceiverTag;
+    using receiver_concept = Impl::SubmittedReceiverTag;
 
     static constexpr auto label = Impl::dispatch_label<Exec, ": sync_wait">();
 
@@ -71,13 +71,13 @@ struct Receiver {
         runloop_state->loop.finish();
     }
 
-    void continues_after() && noexcept {
+    void submitted() & noexcept {
         state->exec.fence(std::string(label));
         result->emplace();
         runloop_state->loop.finish();
     }
 
-    void continues_after(const Impl::Event<Exec>& event) && noexcept {
+    void submitted(const Impl::Event<Exec>& event) & noexcept {
         Impl::wait(event);
         result->emplace();
         runloop_state->loop.finish();

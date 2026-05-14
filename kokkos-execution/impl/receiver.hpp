@@ -10,7 +10,7 @@ namespace Kokkos::Execution::Impl {
 //! Receiver for an object @ref parent_op that implements @c complete.
 template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
 struct Receiver {
-    using receiver_concept = stdexec::receiver_tag;
+    using receiver_concept = SubmittedReceiverTag;
 
     ParentOp* parent_op;
 
@@ -25,6 +25,11 @@ struct Receiver {
 
     void set_stopped() && noexcept {
         parent_op->complete(stdexec::set_stopped);
+    }
+
+    template <typename... Args>
+    void submitted(Args&&... args) & noexcept {
+        parent_op->submit(std::forward<Args>(args)...);
     }
 
     [[nodiscard]]
