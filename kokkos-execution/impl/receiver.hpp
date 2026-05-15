@@ -4,6 +4,7 @@
 #include "kokkos-execution/stdexec.hpp"
 
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/submitted.hpp"
 
 namespace Kokkos::Execution::Impl {
 
@@ -27,9 +28,8 @@ struct Receiver {
         parent_op->complete(stdexec::set_stopped);
     }
 
-    template <typename... Args>
-    void submitted(Args&&... args) & noexcept {
-        parent_op->submit(std::forward<Args>(args)...);
+    void submitted(Impl::OrderOn<typename ParentOp::execution_space> order_on) const & noexcept {
+        parent_op->submit(order_on);
     }
 
     [[nodiscard]]

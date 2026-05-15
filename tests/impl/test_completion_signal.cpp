@@ -140,14 +140,15 @@ struct Receiver {
         loop->finish();
     }
 
-    void submitted() & noexcept requires(SubmittedReceiver)
+    void submitted(Kokkos::Execution::Impl::OrderOn<Exec>) & noexcept requires(SubmittedReceiver)
     {
         loop->finish();
     }
 
-    void submitted(const Kokkos::Execution::Impl::Event<Exec>& event) & noexcept requires(SubmittedReceiver)
+    void submitted(Kokkos::Execution::Impl::DependOn<Kokkos::Execution::Impl::Event<Exec>> depend_on) & noexcept
+        requires(SubmittedReceiver)
     {
-        Kokkos::Execution::Impl::wait(event);
+        Kokkos::Execution::Impl::wait(depend_on.event());
         loop->finish();
     }
 

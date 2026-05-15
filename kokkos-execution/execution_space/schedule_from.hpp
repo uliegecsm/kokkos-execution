@@ -11,6 +11,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/submitted.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -29,7 +30,7 @@ struct ScheduleFromReceiver<WithDelegatedSyncPolicy, WithoutExecEnvPolicy, Schd,
         stdexec::set_value(std::move(rcvr));
     }
 
-    void submitted() & noexcept {
+    void submitted(Impl::OrderOn<typename Schd::execution_space>) & noexcept {
         /// If the downstream receiver environment is queryable for @ref Kokkos::Execution::Impl::get_exec
         /// and it shares the same execution space instance, skip the fence.
         const bool requires_synchronization = [&]() {

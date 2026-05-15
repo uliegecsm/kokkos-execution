@@ -130,6 +130,7 @@ target_sources(
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/sender_introspection.hpp
+            kokkos-execution/impl/submitted.hpp
             kokkos-execution/impl/SYCL/event.hpp
             kokkos-execution/impl/schedulers.hpp
             kokkos-execution/impl/state.hpp

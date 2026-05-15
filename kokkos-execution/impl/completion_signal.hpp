@@ -15,6 +15,7 @@
 #include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/optional_storage.hpp"
 #include "kokkos-execution/impl/schedulers.hpp"
+#include "kokkos-execution/impl/submitted.hpp"
 
 namespace Kokkos::Execution::Impl {
 
@@ -57,12 +58,6 @@ struct RequiresSync {
         return true;
     }
 };
-
-struct SubmittedReceiverTag : public stdexec::receiver_tag { };
-
-template <typename Rcvr>
-concept supports_submitted =
-    std::derived_from<typename std::remove_cvref_t<Rcvr>::receiver_concept, SubmittedReceiverTag>;
 
 template <typename Policy, Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct CompletionSignal;
@@ -174,8 +169,8 @@ template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct CompletionSignal<SubmittedPolicy::OrderOnExec, Exec, Rcvr> {
     Rcvr rcvr;
 
-    void propagate(const Exec&) & noexcept {
-        rcvr.submitted();
+    void propagate(const Exec& exec) & noexcept {
+        rcvr.submitted(Impl::OrderOn{exec});
     }
 };
 
@@ -198,11 +193,11 @@ struct CompletionSignal<SubmittedPolicy::DependOnEvent, Exec, Rcvr> {
 
     void propagate(const Exec& exec) & noexcept {
         if (!RequiresSync<Exec, Rcvr>{}(exec, rcvr)) {
-            rcvr.submitted();
+            rcvr.submitted(Impl::OrderOn{exec});
         } else {
             event.emplace();
             record(*event, exec);
-            rcvr.submitted(*event);
+            rcvr.submitted(Impl::DependOn{*event});
         }
     }
 };
