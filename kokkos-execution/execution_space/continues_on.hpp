@@ -10,7 +10,7 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 //! Receiver for @c continues_on.
 template <typename ExecEnvPolicy, stdexec::scheduler Schd, stdexec::receiver Rcvr>
 struct ContinuesOnReceiver {
-    using receiver_concept = stdexec::receiver_tag;
+    using receiver_concept = Impl::SubmittedReceiverTag;
 
     Schd schd;
     Rcvr rcvr;
@@ -26,6 +26,26 @@ struct ContinuesOnReceiver {
 
     void set_stopped() && noexcept {
         stdexec::set_stopped(std::move(rcvr));
+    }
+
+    template <Kokkos::ExecutionSpace Exec>
+    void submitted(Impl::OrderOn<Exec> order_on) & noexcept {
+        if constexpr (std::same_as<Exec, typename Schd::execution_space>) {
+            // Continue on same instance.
+            if (order_on.exec() == schd.state->exec) {
+                // No wait.
+            }
+            // Transition to another instance of the same execution space type.
+            else {
+                // @todo Make an event and stream-wait-event. This requires an opstate to store the event.
+                order_on.exec().fence(std::format("{}: continues_on", Kokkos::Impl::TypeInfo<Exec>::name()));
+            }
+        }
+        //! Transition to exec of different type.
+        else {
+            order_on.exec().fence(std::format("{}: continues_on", Kokkos::Impl::TypeInfo<Exec>::name()));
+        }
+        stdexec::set_value(std::move(rcvr));
     }
 
     [[nodiscard]]

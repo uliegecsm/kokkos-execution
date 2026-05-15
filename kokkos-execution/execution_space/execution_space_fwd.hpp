@@ -16,7 +16,7 @@ struct Domain;
 template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
-template <typename...>
+template <typename ExecEnvPolicy, stdexec::receiver Rcvr>
 struct ScheduleFromReceiver;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl

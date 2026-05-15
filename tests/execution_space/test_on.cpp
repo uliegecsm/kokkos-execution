@@ -109,9 +109,9 @@ TEST_F(OnTest, on_another_execution_space_instance_same_type) {
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "schedule_from")),
+                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "continues_on")),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec, "schedule_from")),
+                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec, "continues_on")),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
     }
@@ -156,9 +156,9 @@ TEST_F(OnTest, many_execution_space_instances_of_different_type) {
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "continues_on")),
                 MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "schedule_from")),
+                MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "continues_on")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     }
