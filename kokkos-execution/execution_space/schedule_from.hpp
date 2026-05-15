@@ -43,7 +43,7 @@ struct ScheduleFromReceiver {
         //! Transition to another domain.
         else {
             try {
-                order_on.exec().fence(std::format("{}: schedule_from", Kokkos::Impl::TypeInfo<Exec>::name()));
+                order_on.synchronize(std::format("{}: schedule_from", Kokkos::Impl::TypeInfo<Exec>::name()));
                 stdexec::set_value(std::move(rcvr));
             } catch (...) {
                 stdexec::set_error(std::move(rcvr), std::current_exception());

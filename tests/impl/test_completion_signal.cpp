@@ -148,7 +148,7 @@ struct Receiver {
     void submitted(Kokkos::Execution::Impl::DependOn<Kokkos::Execution::Impl::Event<Exec>> depend_on) & noexcept
         requires(SubmittedReceiver)
     {
-        Kokkos::Execution::Impl::wait(depend_on.event());
+        depend_on.synchronize();
         loop->finish();
     }
 

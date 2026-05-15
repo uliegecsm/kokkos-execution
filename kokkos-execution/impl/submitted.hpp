@@ -28,6 +28,10 @@ struct OrderOn {
         return m_exec_ref.get();
     }
 
+    void synchronize(const std::string& label) const {
+        exec().fence(label);
+    }
+
     //! Operations submitted after this point on @p ExecTo depend on operations previously submitted on @p Exec.
     template <Kokkos::ExecutionSpace ExecTo>
     OrderOn<ExecTo> transition(const ExecTo& exec_to, event_storage_t<Exec>& event_storage) const {
@@ -53,6 +57,10 @@ struct DependOn {
 
     constexpr auto event() const & noexcept -> const EventType& {
         return *m_event;
+    }
+
+    void synchronize() const {
+        wait(event());
     }
 
     template <Kokkos::ExecutionSpace ExecTo>

@@ -71,14 +71,14 @@ struct Receiver {
         runloop_state->loop.finish();
     }
 
-    void submitted(Impl::OrderOn<Exec>) & noexcept {
-        state->exec.fence(std::string(label));
+    void submitted(Impl::OrderOn<Exec> order_on) & noexcept {
+        order_on.synchronize(std::string(label));
         result->emplace();
         runloop_state->loop.finish();
     }
 
     void submitted(Impl::DependOn<Impl::Event<Exec>> depend_on) & noexcept {
-        Impl::wait(depend_on.event());
+        depend_on.synchronize();
         result->emplace();
         runloop_state->loop.finish();
     }
