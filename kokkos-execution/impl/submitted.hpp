@@ -33,6 +33,11 @@ struct OrderOn {
     }
 
     //! Operations submitted after this point on @p ExecTo depend on operations previously submitted on @p Exec.
+    // think of how to specialize transitions
+    // event creation useful only cuda to cuda, and so on
+    // skip if exec_from == exec_to?
+    // optimize for case with nothing has to be done, so don't do anything
+    // submitted with orderedon is not needed
     template <Kokkos::ExecutionSpace ExecTo>
     OrderOn<ExecTo> transition(const ExecTo& exec_to, event_storage_t<Exec>& event_storage) const {
         auto& event = event_storage.emplace();
