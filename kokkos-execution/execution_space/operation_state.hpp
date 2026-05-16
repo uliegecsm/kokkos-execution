@@ -88,6 +88,10 @@ struct OpStateBase {
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
+        return stdexec::get_env(this->completion_signal.rcvr);
+    }
 };
 
 template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure... Clsrs>
@@ -98,7 +102,9 @@ struct OpState
     using operation_state_concept = Impl::SubmittedOperationStateTag;
 
     using base_t = OpStateBase<Rcvr, Clsrs...>;
-    using rcvr_t = Impl::Receiver<base_t>;
+    using typename base_t::execution_space;
+
+    using rcvr_t = Impl::Receiver<OpState>;
 
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 
@@ -116,10 +122,35 @@ struct OpState
 
     constexpr explicit OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
-        Rcvr rcvr_,
+        Rcvr rcvr,
         Clsrs... clsrs_) noexcept(opstate_base_is_nothrow_constructible && inner_opstate_is_nothrow_constructible)
-        : base_t(std::move(rcvr_), std::move(clsrs_)...)
+        : base_t(std::move(rcvr), std::move(clsrs_)...)
         , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
+    }
+
+    template <typename Error>
+    void complete(stdexec::set_error_t, Error&& error) noexcept {
+        stdexec::set_error(std::move(this->completion_signal.rcvr), std::forward<Error>(error));
+    }
+
+    void complete(stdexec::set_stopped_t) noexcept {
+        stdexec::set_stopped(std::move(this->completion_signal.rcvr));
+    }
+
+    void submit() noexcept {
+        try {
+            stdexec::__apply([](auto&... clsr) { (clsr.submit(), ...); }, this->clsrs);
+        } catch (...) {
+            this->complete(stdexec::set_error, std::current_exception());
+            return;
+        }
+        this->completion_signal.propagate(this->query(Impl::get_exec).get());
+    }
+
+    //! @note All @ref clsrs are assumed to reference the same execution space instance.
+    [[nodiscard]]
+    constexpr auto query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> {
+        return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(this->clsrs).get_policy().space()};
     }
 
     void start() & noexcept {
