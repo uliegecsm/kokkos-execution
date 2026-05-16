@@ -10,6 +10,8 @@
 #    include "kokkos-utils/callbacks/Manager.hpp"
 #endif
 
+#include "kokkos-execution/impl/optional_ref.hpp"
+
 /**
  * @file
  *
@@ -165,6 +167,10 @@ void wait(const ExecTo& exec, const Event<ExecFrom>& event) {
 
 template <Kokkos::ExecutionSpace Exec>
 using event_storage_t = std::optional<Event<Exec>>;
+
+//! Optionally stores a reference to a @c const @ref Impl::Event.
+template <Kokkos::ExecutionSpace Exec>
+using OptionalConstEventRef = OptionalRef<const Event<Exec>>;
 
 } // namespace Kokkos::Execution::Impl
 

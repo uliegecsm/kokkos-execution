@@ -4,18 +4,19 @@
 #include "kokkos-execution/stdexec.hpp"
 
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/submitted.hpp"
 
 namespace Kokkos::Execution::Impl {
 
 //! Receiver for an object @ref parent_op that implements @c complete.
 template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
 struct Receiver {
-    using receiver_concept = stdexec::receiver_tag;
+    using receiver_concept = SubmittedReceiverTag;
 
     ParentOp* parent_op;
 
     void set_value() && noexcept {
-        parent_op->complete(stdexec::set_value);
+        parent_op->submit();
     }
 
     template <typename Error>
@@ -25,6 +26,10 @@ struct Receiver {
 
     void set_stopped() && noexcept {
         parent_op->complete(stdexec::set_stopped);
+    }
+
+    void submitted() && noexcept {
+        parent_op->submit();
     }
 
     [[nodiscard]]

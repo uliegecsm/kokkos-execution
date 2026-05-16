@@ -11,6 +11,7 @@
 #include "kokkos-execution/impl/make_opstate.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
+#include "kokkos-execution/impl/submitted.hpp"
 #include "kokkos-execution/impl/sync_wait.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -28,13 +29,11 @@ concept Closure = requires(const Clsr& clsr) {
 };
 
 template <typename Exec, typename Rcvr>
-consteval auto select_sync_policy() {
-    if constexpr (
-        stdexec::__is_instance_of<Rcvr, Impl::SyncWait::Receiver>
-        || stdexec::__is_instance_of<Rcvr, ScheduleFromReceiver>) {
-        return Impl::SyncPolicy::PassThrough{};
-    } else if constexpr (Impl::deferred_completion_receiver<Rcvr, Exec>) {
-        return Impl::SyncPolicy::DeferWaitEvent{};
+consteval auto select_opstate_completion_signal_policy() {
+    if constexpr (Impl::supports_submitted_order_on<Rcvr>) {
+        return Impl::SubmittedPolicy::OrderOnExec{};
+    } else if constexpr (Impl::supports_submitted_depend_on<Rcvr, Exec>) {
+        return Impl::SubmittedPolicy::DependOnEvent{};
     } else if constexpr (
         Impl::has_non_blocking_dispatch<Exec>
         && stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, stdexec::get_delegation_scheduler_t>) {
@@ -45,15 +44,15 @@ consteval auto select_sync_policy() {
 }
 
 template <typename Exec, typename Rcvr>
-using select_sync_policy_t = decltype(select_sync_policy<Exec, Rcvr>());
+using opstate_completion_signal_policy_t = decltype(select_opstate_completion_signal_policy<Exec, Rcvr>());
 
 template <stdexec::receiver Rcvr, Closure Clsr, Closure... Clsrs>
 requires(std::same_as<typename Clsr::execution_space, typename Clsrs::execution_space> && ...)
 struct OpStateBase {
     using execution_space = typename Clsr::execution_space;
 
-    using sync_policy_t = select_sync_policy_t<execution_space, Rcvr>;
-    using completion_signal_t = Impl::CompletionSignal<sync_policy_t, execution_space, Rcvr>;
+    using completion_signal_policy_t = opstate_completion_signal_policy_t<execution_space, Rcvr>;
+    using completion_signal_t = Impl::CompletionSignal<completion_signal_policy_t, execution_space, Rcvr>;
     using closures_t = stdexec::__tuple<Clsr, Clsrs...>;
 
     completion_signal_t completion_signal;
@@ -66,23 +65,23 @@ struct OpStateBase {
         , clsrs(std::move(clsr_), std::move(clsrs_)...) {
     }
 
-    void complete(stdexec::set_value_t) noexcept {
+    template <typename Error>
+    void complete(stdexec::set_error_t, Error&& error) noexcept {
+        stdexec::set_error(std::move(completion_signal.rcvr), std::forward<Error>(error));
+    }
+
+    void complete(stdexec::set_stopped_t) noexcept {
+        stdexec::set_stopped(std::move(completion_signal.rcvr));
+    }
+
+    void submit() noexcept {
         try {
             stdexec::__apply([](auto&... clsr) { (clsr.submit(), ...); }, clsrs);
         } catch (...) {
             this->complete(stdexec::set_error, std::current_exception());
             return;
         }
-        completion_signal.propagate(stdexec::set_value, this->query(Impl::get_exec).get());
-    }
-
-    template <typename Error>
-    void complete(stdexec::set_error_t, Error&& error) noexcept {
-        completion_signal.propagate(stdexec::set_error, std::forward<Error>(error));
-    }
-
-    void complete(stdexec::set_stopped_t) noexcept {
-        completion_signal.propagate(stdexec::set_stopped);
+        completion_signal.propagate(this->query(Impl::get_exec).get());
     }
 
     //! @note All @ref clsrs are assumed to reference the same execution space instance.
@@ -102,7 +101,7 @@ requires(!Impl::dispatching_sender<Sndr>)
 struct OpState
     : public Impl::Immovable
     , public OpStateBase<Rcvr, Clsrs...> {
-    using operation_state_concept = stdexec::operation_state_tag;
+    using operation_state_concept = Impl::SubmittedOperationStateTag;
 
     using base_t = OpStateBase<Rcvr, Clsrs...>;
     using rcvr_t = Impl::Receiver<base_t>;

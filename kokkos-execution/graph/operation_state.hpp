@@ -20,6 +20,7 @@
 #include "kokkos-execution/impl/make_opstate.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
+#include "kokkos-execution/impl/submitted.hpp"
 
 namespace Kokkos::Execution::GraphImpl {
 
@@ -67,8 +68,8 @@ struct State<GraphComposition::Create, Exec> {
  */
 template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct OpStateBase {
-    using sync_policy_t = Impl::SyncPolicy::PassThrough;
-    using completion_signal_t = Impl::CompletionSignal<sync_policy_t, Exec, Rcvr>;
+    using completion_signal_policy_t = Impl::SyncPolicy::InlineFenceExec;
+    using completion_signal_t = Impl::CompletionSignal<completion_signal_policy_t, Exec, Rcvr>;
 
     completion_signal_t completion_signal;
 
@@ -76,17 +77,13 @@ struct OpStateBase {
         : completion_signal(std::move(rcvr)) {
     }
 
-    void complete(stdexec::set_value_t) noexcept {
-        completion_signal.propagate(stdexec::set_value);
-    }
-
     template <typename Error>
     void complete(stdexec::set_error_t, Error&& error) noexcept {
-        completion_signal.propagate(stdexec::set_error, std::forward<Error>(error));
+        stdexec::set_error(std::move(completion_signal.rcvr), std::forward<Error>(error));
     }
 
     void complete(stdexec::set_stopped_t) noexcept {
-        completion_signal.propagate(stdexec::set_stopped);
+        stdexec::set_stopped(std::move(completion_signal.rcvr));
     }
 };
 
@@ -107,7 +104,7 @@ template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure FirstClosure, Cl
 struct OpState
     : public Impl::Immovable
     , public OpStateBase<typename FirstClosure::execution_space, Rcvr> {
-    using operation_state_concept = stdexec::operation_state_tag;
+    using operation_state_concept = Impl::SubmittedOperationStateTag;
 
     using execution_space = typename FirstClosure::execution_space;
     using device_handle_t = typename FirstClosure::device_handle_t;
@@ -170,18 +167,15 @@ struct OpState
         }
     }
 
-    void complete(stdexec::set_value_t) noexcept {
+    void submit() noexcept {
         if constexpr (after_root) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
             PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
                       << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
             submit_graph(state.graph, state.get_device_handle().m_exec);
-
-            //! @bug This synchronization should be carried out elsewhere.
-            state.get_device_handle().m_exec.fence(std::string(Impl::dispatch_label<execution_space, ": sync_wait">()));
         }
-        OpStateBase<execution_space, Rcvr>::complete(stdexec::set_value);
+        this->completion_signal.propagate(state.get_device_handle().m_exec);
     }
 
     const auto& query(get_node_t) const & noexcept {
