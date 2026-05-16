@@ -77,13 +77,9 @@ struct OpStateBase {
         : completion_signal(std::move(rcvr)) {
     }
 
-    template <typename Error>
-    void complete(stdexec::set_error_t, Error&& error) noexcept {
-        stdexec::set_error(std::move(completion_signal.rcvr), std::forward<Error>(error));
-    }
-
-    void complete(stdexec::set_stopped_t) noexcept {
-        stdexec::set_stopped(std::move(completion_signal.rcvr));
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
+        return stdexec::get_env(this->completion_signal.rcvr);
     }
 };
 
@@ -106,14 +102,18 @@ struct OpState
     , public OpStateBase<typename FirstClosure::execution_space, Rcvr> {
     using operation_state_concept = Impl::SubmittedOperationStateTag;
 
+    using base_t = OpStateBase<typename FirstClosure::execution_space, Rcvr>;
+
     using execution_space = typename FirstClosure::execution_space;
     using device_handle_t = typename FirstClosure::device_handle_t;
 
     //! Ensure that all closures are on the same execution space type.
     static_assert((std::same_as<typename RestOfClosures::execution_space, execution_space> && ...));
 
-    using rcvr_t = Impl::Receiver<OpState, stdexec::env_of_t<Rcvr>>;
+    using rcvr_t = Impl::Receiver<OpState>;
+
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
+
     using graph_composition_policy_t = GraphComposition::policy_t<inner_opstate_t>;
     using state_t = State<graph_composition_policy_t, execution_space>;
     using predecessor_t = GraphComposition::node_t<execution_space, inner_opstate_t>;
@@ -167,6 +167,15 @@ struct OpState
         }
     }
 
+    template <typename Error>
+    void complete(stdexec::set_error_t, Error&& error) noexcept {
+        stdexec::set_error(std::move(this->completion_signal.rcvr), std::forward<Error>(error));
+    }
+
+    void complete(stdexec::set_stopped_t) noexcept {
+        stdexec::set_stopped(std::move(this->completion_signal.rcvr));
+    }
+
     void submit() noexcept {
         if constexpr (after_root) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
@@ -192,11 +201,6 @@ struct OpState
 
     void start() & noexcept {
         stdexec::start(inner_opstate);
-    }
-
-    [[nodiscard]]
-    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
-        return stdexec::get_env(this->completion_signal.rcvr);
     }
 };
 
