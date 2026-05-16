@@ -6,6 +6,7 @@
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/type_traits.hpp"
 
 #include "tests/utils/stdexec.hpp"
 
@@ -42,17 +43,16 @@ struct CheckRcvrEnvQueryableWithSender {
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(CheckRcvrEnvQueryableWithSender)
 
-    template <stdexec::receiver Rcvr>
-    constexpr auto connect(Rcvr rcvr) && noexcept(stdexec::__nothrow_connectable<Sndr&&, Rcvr&&>) {
+    template <stdexec::__decays_to<CheckRcvrEnvQueryableWithSender> Self, stdexec::receiver Rcvr>
+    [[nodiscard]]
+    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
+        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+        noexcept(stdexec::__nothrow_connectable<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&>)
+            -> stdexec::connect_result_t<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&> {
         static_assert(check_rcvr_env<Rcvr>());
-        return stdexec::connect(std::forward<Sndr>(sndr), std::move(rcvr));
+        return stdexec::connect(std::forward<Self>(self).sndr, std::move(rcvr));
     }
-
-    template <stdexec::receiver Rcvr>
-    constexpr auto connect(Rcvr rcvr) const & noexcept(stdexec::__nothrow_connectable<const Sndr&, Rcvr&&>) {
-        static_assert(check_rcvr_env<Rcvr>());
-        return stdexec::connect(sndr, std::move(rcvr));
-    }
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <stdexec::receiver Rcvr>
     static consteval bool check_rcvr_env() {

@@ -21,16 +21,24 @@ constexpr struct PropA : public ::stdexec::__query<PropA> {
 struct PropB : public ::stdexec::__query<PropB> { };
 
 /**
- * @test Write @ref PropA in the environment with @c stdexec::write_env and check that @ref Tests::Utils::check_rcvr_env_queryable_with
- *       indicates that the environment is queryable with @ref PropA and
- *       @ref Tests::Utils::check_rcvr_env_not_queryable_with indicates that the environment is not queryable with @ref PropB.
+ * Write @ref PropA in the environment with @c stdexec::write_env and check that @ref Tests::Utils::check_rcvr_env_queryable_with
+ * indicates that the environment is queryable with @ref PropA and
+ * @ref Tests::Utils::check_rcvr_env_not_queryable_with indicates that the environment is not queryable with @ref PropB.
  */
-TEST(check_rcvr_env_queryable_with, and_not) {
-    auto sndr = stdexec::just() | Tests::Utils::check_rcvr_env_queryable_with<PropA>()
-              | Tests::Utils::check_rcvr_env_not_queryable_with<PropB>()
-              | stdexec::write_env(stdexec::prop{prop_a, 42.});
+consteval auto get_sndr() {
+    return stdexec::just() | Tests::Utils::check_rcvr_env_queryable_with<PropA>()
+         | Tests::Utils::check_rcvr_env_not_queryable_with<PropB>() | stdexec::write_env(stdexec::prop{prop_a, 42.});
+}
 
-    stdexec::sync_wait(std::move(sndr)); // NOLINT(performance-move-const-arg)
+//! @test Check @ref Tests::Utils::check_rcvr_env_queryable_with and @ref Tests::Utils::check_rcvr_env_not_queryable_with with an rvalue sender.
+TEST(check_rcvr_env_queryable_with, and_not_rvalue) {
+    stdexec::sync_wait(get_sndr());
+}
+
+//! @test Check @ref Tests::Utils::check_rcvr_env_queryable_with and @ref Tests::Utils::check_rcvr_env_not_queryable_with with an lvalue sender.
+TEST(check_rcvr_env_queryable_with, and_not_lvalue) {
+    auto sndr = get_sndr();
+    stdexec::sync_wait(sndr);
 }
 
 } // namespace Tests

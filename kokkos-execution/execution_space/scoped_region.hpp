@@ -13,6 +13,7 @@
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/type_traits.hpp"
 
 /**
  * @file
@@ -80,17 +81,30 @@ struct RegionSender {
     template <typename Rcvr>
     using rcvr_t = RegionReceiver<kind, schd_t<Rcvr>, Rcvr>;
 
-    template <stdexec::receiver Rcvr>
-    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(
-        std::is_nothrow_constructible_v<rcvr_t<Rcvr>, std::string&&, schd_t<Rcvr>&&, Rcvr&&>
-        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) {
-        auto schd =
-            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::get_env(rcvr));
+    template <stdexec::__decays_to<RegionSender> Self, stdexec::receiver Rcvr>
+    [[nodiscard]]
+    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
+        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+        noexcept(
+            std::is_nothrow_constructible_v<
+                rcvr_t<Rcvr>,
+                KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, name),
+                schd_t<Rcvr>&&,
+                Rcvr&&
+            >
+            && stdexec::__nothrow_connectable<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), rcvr_t<Rcvr>&&>)
+            -> stdexec::connect_result_t<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), rcvr_t<Rcvr>&&> {
+        auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+            stdexec::get_env(self.sndr), stdexec::get_env(rcvr));
 
         return stdexec::connect(
-            std::forward<Sndr>(sndr),
-            rcvr_t<Rcvr>{.name = std::move(name), .schd = std::move(schd), .rcvr = std::move(rcvr)});
+            KOKKOS_EXECUTION_IMPL_FORWARD_THIS(Self, self).sndr,
+            rcvr_t<Rcvr>{
+                .name = KOKKOS_EXECUTION_IMPL_FORWARD_THIS(Self, self).name,
+                .schd = std::move(schd),
+                .rcvr = std::move(rcvr)});
     }
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
     std::string name{};
     Sndr sndr;
