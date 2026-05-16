@@ -58,29 +58,28 @@ struct RequiresSync {
     }
 };
 
-struct DeferredCompletionReceiverTag : public stdexec::receiver_tag { };
-
-template <typename Rcvr, typename Exec>
-concept deferred_completion_receiver =
-    stdexec::receiver<Rcvr>
-    && std::derived_from<typename std::remove_cvref_t<Rcvr>::receiver_concept, DeferredCompletionReceiverTag>
-    && requires(std::remove_reference_t<Rcvr> rcvr, const Event<Exec>& event) {
-           std::move(rcvr).continues_after();
-           std::move(rcvr).continues_after(event);
-       };
-
-struct SyncPolicy {
-    struct InlineFenceExec { };
-    struct ScheduleWaitEvent { };
-    struct PassThrough { };
-    struct DeferWaitEvent { };
-};
-
 template <typename Policy, Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct CompletionSignal;
 
+struct SyncPolicyTag { };
+
 /**
- * @brief Fence the execution space instance to complete the operation and call @c set_value on the receiver.
+ * @brief Under a sync policy, a terminal completion is propagated: in-flight operations must complete.
+ *
+ * The receiver is invoked after a synchronization through:
+ *   - a fence under @ref InlineFenceExec
+ *   - waiting for an event under @ref ScheduleWaitEvent
+ */
+struct SyncPolicy {
+    struct InlineFenceExec : SyncPolicyTag { };
+    struct ScheduleWaitEvent : SyncPolicyTag { };
+};
+
+template <typename Policy>
+concept sync_policy = std::derived_from<Policy, SyncPolicyTag>;
+
+/**
+ * @brief Fence the execution space instance to complete the operation and then invoke the receiver.
  *
  * Skip the fence if synchronization is not required.
  */
@@ -90,7 +89,7 @@ struct CompletionSignal<SyncPolicy::InlineFenceExec, Exec, Rcvr> {
 
     Rcvr rcvr;
 
-    void propagate(stdexec::set_value_t, const Exec& exec) & noexcept {
+    void propagate(const Exec& exec) & noexcept {
         if (!RequiresSync<Exec, Rcvr>{}(exec, rcvr)) {
             stdexec::set_value(std::move(rcvr));
         } else {
@@ -101,15 +100,6 @@ struct CompletionSignal<SyncPolicy::InlineFenceExec, Exec, Rcvr> {
                 stdexec::set_error(std::move(rcvr), std::current_exception());
             }
         }
-    }
-
-    template <typename Error>
-    void propagate(stdexec::set_error_t, Error&& err) & noexcept {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
-    }
-
-    void propagate(stdexec::set_stopped_t) & noexcept {
-        stdexec::set_stopped(std::move(rcvr));
     }
 };
 
@@ -131,7 +121,7 @@ struct ScheduleWaitEventReceiver {
 
 /**
  * @brief Create an event in the execution space instance, and schedule on the delegation scheduler a task that waits
- *        on this event and then calls @c set_value on the receiver.
+ *        on this event and then invoke the receiver.
  *
  * Skip the scheduling of the task if synchronization is not required.
  */
@@ -145,14 +135,10 @@ struct CompletionSignal<SyncPolicy::ScheduleWaitEvent, Exec, Rcvr> {
     >;
 
     Rcvr rcvr;
-    event_storage_t event;
-    OptionalStorage<inner_opstate_t> inner_opstate;
+    event_storage_t event = std::nullopt;
+    OptionalStorage<inner_opstate_t> inner_opstate{};
 
-    constexpr explicit CompletionSignal(Rcvr rcvr_) noexcept(std::is_nothrow_move_constructible_v<Rcvr>)
-        : rcvr(std::move(rcvr_)) {
-    }
-
-    void propagate(stdexec::set_value_t, const Exec& exec) & noexcept {
+    void propagate(const Exec& exec) & noexcept {
         if (!RequiresSync<Exec, Rcvr>{}(exec, rcvr)) {
             stdexec::set_value(std::move(rcvr));
         } else {
@@ -169,37 +155,31 @@ struct CompletionSignal<SyncPolicy::ScheduleWaitEvent, Exec, Rcvr> {
             }
         }
     }
-
-    template <typename Error>
-    void propagate(stdexec::set_error_t, Error&& err) & noexcept {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
-    }
-
-    void propagate(stdexec::set_stopped_t) & noexcept {
-        stdexec::set_stopped(std::move(rcvr));
-    }
 };
 
+struct SubmittedPolicyTag { };
+
+/**
+ * Under a submitted policy, an intermediate completion is propagated, signaling
+ * to the receiver that the operation has been submitted to the execution space instance,
+ * but has not necessarily completed yet:
+ *   - @ref OrderOnExec informs that the operation was submitted on the underlying execution space instance
+ *   - @ref DependOnEvent provides an event recorded on the underlying execution space instance after submission
+ */
+struct SubmittedPolicy {
+    struct OrderOnExec : SubmittedPolicyTag { };
+    struct DependOnEvent : SubmittedPolicyTag { };
+};
+
+template <typename Policy>
+concept submitted_policy = std::derived_from<Policy, SubmittedPolicyTag>;
+
 template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
-struct CompletionSignal<SyncPolicy::PassThrough, Exec, Rcvr> {
+struct CompletionSignal<SubmittedPolicy::OrderOnExec, Exec, Rcvr> {
     Rcvr rcvr;
 
-    //! @todo Elaborate this overload, which is currently used by the graph customization.
-    void propagate(stdexec::set_value_t) & noexcept {
-        stdexec::set_value(std::move(rcvr));
-    }
-
-    void propagate(stdexec::set_value_t, const Exec&) & noexcept {
-        std::move(rcvr).continues_after();
-    }
-
-    template <typename Error>
-    void propagate(stdexec::set_error_t, Error&& err) & noexcept {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
-    }
-
-    void propagate(stdexec::set_stopped_t) & noexcept {
-        stdexec::set_stopped(std::move(rcvr));
+    void propagate(const Exec&) & noexcept {
+        std::move(rcvr).submitted();
     }
 };
 
@@ -210,33 +190,20 @@ struct CompletionSignal<SyncPolicy::PassThrough, Exec, Rcvr> {
  * Skip the creation of the event if synchronization is not required.
  */
 template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
-struct CompletionSignal<SyncPolicy::DeferWaitEvent, Exec, Rcvr> {
+struct CompletionSignal<SubmittedPolicy::DependOnEvent, Exec, Rcvr> {
     using event_storage_t = Impl::event_storage_t<Exec>;
 
     Rcvr rcvr;
-    event_storage_t event;
+    event_storage_t event_storage = std::nullopt;
 
-    constexpr explicit CompletionSignal(Rcvr rcvr_) noexcept(std::is_nothrow_move_constructible_v<Rcvr>)
-        : rcvr(std::move(rcvr_)) {
-    }
-
-    void propagate(stdexec::set_value_t, const Exec& exec) & noexcept {
-        if (!RequiresSync<Exec, Rcvr>{}(exec, rcvr)) {
-            std::move(rcvr).continues_after();
+    void propagate(const Exec& exec) & noexcept {
+        if (RequiresSync<Exec, Rcvr>{}(exec, rcvr)) {
+            auto& event = event_storage.emplace();
+            Impl::record(event, exec);
+            std::move(rcvr).submitted(OptionalConstEventRef{event});
         } else {
-            event.emplace();
-            record(*event, exec);
-            std::move(rcvr).continues_after(*event);
+            std::move(rcvr).submitted(OptionalConstEventRef<Exec>{});
         }
-    }
-
-    template <typename Error>
-    void propagate(stdexec::set_error_t, Error&& err) & noexcept {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
-    }
-
-    void propagate(stdexec::set_stopped_t) & noexcept {
-        stdexec::set_stopped(std::move(rcvr));
     }
 };
 

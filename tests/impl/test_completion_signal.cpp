@@ -79,25 +79,25 @@ consteval bool test_completion_signal_traits() {
         > sizeof(Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE>)
               + sizeof(Kokkos::Execution::Impl::event_storage_t<TEST_EXECUTION_SPACE>));
 
-    using completion_signal_passthrough_event_t = Kokkos::Execution::Impl::CompletionSignal<
-        Kokkos::Execution::Impl::SyncPolicy::PassThrough,
+    using completion_signal_order_on_exec_t = Kokkos::Execution::Impl::CompletionSignal<
+        Kokkos::Execution::Impl::SubmittedPolicy::OrderOnExec,
         TEST_EXECUTION_SPACE,
         Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE>
     >;
 
     static_assert(
-        sizeof(completion_signal_passthrough_event_t)
+        sizeof(completion_signal_order_on_exec_t)
         == sizeof(Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE>));
 
-    using completion_signal_defer_wait_event_t = Kokkos::Execution::Impl::CompletionSignal<
-        Kokkos::Execution::Impl::SyncPolicy::DeferWaitEvent,
+    using completion_signal_depend_on_event_t = Kokkos::Execution::Impl::CompletionSignal<
+        Kokkos::Execution::Impl::SubmittedPolicy::DependOnEvent,
         TEST_EXECUTION_SPACE,
         Tests::Utils::SinkReceiver
     >;
 
     //! The size is larger than the sum of the sizes of the members because of padding.
     static_assert(
-        sizeof(completion_signal_defer_wait_event_t)
+        sizeof(completion_signal_depend_on_event_t)
         > sizeof(Tests::Utils::SinkReceiver) + sizeof(Kokkos::Execution::Impl::event_storage_t<TEST_EXECUTION_SPACE>));
 
     return true;
@@ -111,8 +111,11 @@ TEST_F(CompletionSignalTest, inline_fence_exec_policy) {
             | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
         Tests::Utils::SinkReceiver{});
 
-    static_assert(
-        std::same_as<typename decltype(op_state)::sync_policy_t, Kokkos::Execution::Impl::SyncPolicy::InlineFenceExec>);
+    static_assert(std::same_as<
+                  typename decltype(op_state)::completion_signal_policy_t,
+                  Kokkos::Execution::Impl::SyncPolicy::InlineFenceExec
+    >);
+    static_assert(!Kokkos::Execution::Impl::signals_submitted<decltype(op_state)>);
 
     ASSERT_THAT(
         recorder_listener_t::record([&]() { op_state.start(); }),
@@ -121,11 +124,11 @@ TEST_F(CompletionSignalTest, inline_fence_exec_policy) {
     ASSERT_EQ(data(), size / 2 * (size - 1));
 }
 
-template <Kokkos::ExecutionSpace Exec, bool IsDeferredCompletionReceiver>
+template <Kokkos::ExecutionSpace Exec, bool SubmittedOrderOn, bool SubmittedDependOn>
 struct Receiver {
     using receiver_concept = std::conditional_t<
-        IsDeferredCompletionReceiver,
-        Kokkos::Execution::Impl::DeferredCompletionReceiverTag,
+        SubmittedOrderOn || SubmittedDependOn,
+        Kokkos::Execution::Impl::SubmittedReceiverTag,
         stdexec::receiver_tag
     >;
 
@@ -141,15 +144,16 @@ struct Receiver {
         loop->finish();
     }
 
-    void continues_after() && noexcept requires(IsDeferredCompletionReceiver)
+    void submitted() && noexcept requires(SubmittedOrderOn)
     {
         loop->finish();
     }
 
-    void continues_after(const Kokkos::Execution::Impl::Event<Exec>& event) && noexcept
-        requires(IsDeferredCompletionReceiver)
+    void submitted(Kokkos::Execution::Impl::OptionalConstEventRef<Exec> dep) && noexcept requires(SubmittedDependOn)
     {
-        Kokkos::Execution::Impl::wait(event);
+        if (dep.has_value()) {
+            Kokkos::Execution::Impl::wait(dep.get());
+        }
         loop->finish();
     }
 
@@ -174,7 +178,7 @@ TEST_F(CompletionSignalTest, schedule_wait_event_policy) {
     auto op_state = stdexec::connect(
         stdexec::schedule(esc_A.get_scheduler())
             | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
-        Receiver<TEST_EXECUTION_SPACE, false>{&esc_B.m_state, &loop});
+        Receiver<TEST_EXECUTION_SPACE, false, false>{&esc_B.m_state, &loop});
 
     const auto recorded_events_before_run = recorder_listener_t::record([&]() { op_state.start(); });
 
@@ -188,8 +192,8 @@ TEST_F(CompletionSignalTest, schedule_wait_event_policy) {
     ASSERT_EQ(data(), size / 2 * (size - 1));
 }
 
-//! @test Check @ref Kokkos::Execution::Impl::CompletionSignal with @ref Kokkos::Execution::Impl::SyncPolicy::PassThrough.
-TEST_F(CompletionSignalTest, passthrough_policy) {
+//! @test Check @ref Kokkos::Execution::Impl::CompletionSignal with @ref Kokkos::Execution::Impl::SubmittedPolicy::OrderOnExec.
+TEST_F(CompletionSignalTest, order_on_exec_policy) {
     Kokkos::Execution::Impl::SyncWait::State<std::true_type> runloop_state;
     std::optional<std::tuple<>> result;
 
@@ -201,8 +205,11 @@ TEST_F(CompletionSignalTest, passthrough_policy) {
             .runloop_state = std::addressof(runloop_state),
             .result = std::addressof(result)});
 
-    static_assert(
-        std::same_as<typename decltype(op_state)::sync_policy_t, Kokkos::Execution::Impl::SyncPolicy::PassThrough>);
+    static_assert(std::same_as<
+                  typename decltype(op_state)::completion_signal_policy_t,
+                  Kokkos::Execution::Impl::SubmittedPolicy::OrderOnExec
+    >);
+    static_assert(Kokkos::Execution::Impl::signals_submitted<decltype(op_state)>);
 
     ASSERT_THAT(
         recorder_listener_t::record([&]() { op_state.start(); }),
@@ -213,8 +220,8 @@ TEST_F(CompletionSignalTest, passthrough_policy) {
     runloop_state.loop.run();
 }
 
-//! @test Check @ref Kokkos::Execution::Impl::CompletionSignal with @ref Kokkos::Execution::Impl::SyncPolicy::DeferWaitEvent.
-TEST_F(CompletionSignalTest, defer_wait_event_policy) {
+//! @test Check @ref Kokkos::Execution::Impl::CompletionSignal with @ref Kokkos::Execution::Impl::SubmittedPolicy::DependOnEvent.
+TEST_F(CompletionSignalTest, depend_on_event_policy) {
     const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
     const context_t esc_A{exec_A}, esc_B{exec_B};
 
@@ -223,14 +230,14 @@ TEST_F(CompletionSignalTest, defer_wait_event_policy) {
     auto op_state = stdexec::connect(
         stdexec::schedule(esc_A.get_scheduler())
             | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
-        Receiver<TEST_EXECUTION_SPACE, true>{&esc_B.m_state, &loop});
+        Receiver<TEST_EXECUTION_SPACE, false, true>{&esc_B.m_state, &loop});
 
-    static_assert(Kokkos::Execution::Impl::deferred_completion_receiver<
-                  Receiver<TEST_EXECUTION_SPACE, true>,
-                  TEST_EXECUTION_SPACE
+    static_assert(Kokkos::Execution::Impl::supports_submitted<Receiver<TEST_EXECUTION_SPACE, false, true>>);
+    static_assert(std::same_as<
+                  typename decltype(op_state)::completion_signal_policy_t,
+                  Kokkos::Execution::Impl::SubmittedPolicy::DependOnEvent
     >);
-    static_assert(
-        std::same_as<typename decltype(op_state)::sync_policy_t, Kokkos::Execution::Impl::SyncPolicy::DeferWaitEvent>);
+    static_assert(Kokkos::Execution::Impl::signals_submitted<decltype(op_state)>);
 
     const auto recorded_events = recorder_listener_t::record([&]() { op_state.start(); });
 

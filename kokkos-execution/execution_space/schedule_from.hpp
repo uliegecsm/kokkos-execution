@@ -20,7 +20,7 @@ struct WithoutDelegatedSyncPolicy { };
 //! Receiver for @c schedule_from.
 template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
 struct ScheduleFromReceiver<WithDelegatedSyncPolicy, WithoutExecEnvPolicy, Schd, Rcvr> {
-    using receiver_concept = Impl::DeferredCompletionReceiverTag;
+    using receiver_concept = Impl::SubmittedReceiverTag;
 
     Schd schd;
     Rcvr rcvr;
@@ -29,7 +29,7 @@ struct ScheduleFromReceiver<WithDelegatedSyncPolicy, WithoutExecEnvPolicy, Schd,
         stdexec::set_value(std::move(rcvr));
     }
 
-    void continues_after() && noexcept {
+    void submitted() && noexcept {
         /// If the downstream receiver environment is queryable for @ref Kokkos::Execution::Impl::get_exec
         /// and it shares the same execution space instance, skip the fence.
         const bool requires_synchronization = [&]() {

@@ -126,6 +126,7 @@ target_sources(
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
             kokkos-execution/impl/make_opstate.hpp
+            kokkos-execution/impl/optional_ref.hpp
             kokkos-execution/impl/optional_storage.hpp
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp
@@ -133,6 +134,7 @@ target_sources(
             kokkos-execution/impl/SYCL/event.hpp
             kokkos-execution/impl/schedulers.hpp
             kokkos-execution/impl/state.hpp
+            kokkos-execution/impl/submitted.hpp
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/impl/type_traits.hpp
             kokkos-execution/utils/ignore_warnings.hpp
