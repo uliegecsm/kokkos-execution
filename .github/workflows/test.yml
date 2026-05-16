@@ -86,6 +86,7 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "20", extra_type_checking: true}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "23"}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "20", cmake_build_type: Debug}
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
