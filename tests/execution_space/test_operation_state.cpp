@@ -1,3 +1,5 @@
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/sum_indices.hpp"

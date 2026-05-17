@@ -1,5 +1,7 @@
 #include "gtest/gtest.h"
 
+#include "kokkos-execution/execution_space.hpp"
+
 #include "tests/utils/check_scheduler.hpp"
 #include "tests/utils/execution_space_context.hpp"
 
