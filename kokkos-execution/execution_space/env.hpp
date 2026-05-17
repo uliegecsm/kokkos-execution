@@ -52,7 +52,7 @@ using extend_env_t = decltype(extend_env<ExecEnvPolicy>(std::declval<Env>()));
 
 //! If @p Env is queryable with @ref Impl::get_exec_t, use @ref WithExecEnvPolicy.
 template <typename Env>
-using exec_env_policy_t =
+using extend_exec_env_policy_t =
     std::conditional_t<stdexec::__queryable_with<Env, Impl::get_exec_t>, WithExecEnvPolicy, WithoutExecEnvPolicy>;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
