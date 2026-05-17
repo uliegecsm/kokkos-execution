@@ -42,12 +42,17 @@ struct Event<Kokkos::HIP> {
             KOKKOS_IMPL_HIP_SAFE_CALL(hipEventSynchronize(m_event));
         }
     }
+
+    [[nodiscard]]
+    constexpr hipEvent_t hip_event() const noexcept {
+        return m_event;
+    }
 };
 
 template <>
 void impl_wait(const Kokkos::HIP& exec, const Event<Kokkos::HIP>& event) {
-    KOKKOS_EXPECTS(bool(event.m_event));
-    KOKKOS_IMPL_HIP_SAFE_CALL(hipStreamWaitEvent(exec.hip_stream(), event.m_event));
+    KOKKOS_EXPECTS(bool(event.hip_event()));
+    KOKKOS_IMPL_HIP_SAFE_CALL(hipStreamWaitEvent(exec.hip_stream(), event.hip_event()));
 }
 
 } // namespace Kokkos::Execution::Impl

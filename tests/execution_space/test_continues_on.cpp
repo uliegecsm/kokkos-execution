@@ -47,14 +47,9 @@ class ContinuesOnTest
 
 //! @test Check traits of the sender created by the customized @c stdexec::schedule_from.
 consteval bool test_schedule_from_sndr_traits() {
-    using schd_t = typename ContinuesOnTest::scheduler_t;
     using schd_sndr_t = typename ContinuesOnTest::schedule_sender_t;
 
-    using schedule_from_sndr_t = Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromSender<
-        Kokkos::Execution::ExecutionSpaceImpl::WithDelegatedSyncPolicy,
-        schd_t,
-        schd_sndr_t
-    >;
+    using schedule_from_sndr_t = Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromSender<schd_sndr_t>;
 
     static_assert(stdexec::__nothrow_connectable<schedule_from_sndr_t, Tests::Utils::SinkReceiver>);
 
@@ -132,8 +127,9 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
 
     /**
      * The environment of the receiver created by the customization of the most downstream @c then
-     * is queryable with @ref Kokkos::Execution::Impl::get_exec_t.
+     * is not queryable with @ref Kokkos::Execution::Impl::get_exec_t.
      */
+    const auto& then_opstate = op_state;
     using then_rcvr_t = Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
         Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space, std::true_type>,
         Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
@@ -142,16 +138,16 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
             Kokkos::RangePolicy<host_execution_space, Kokkos::LaunchBounds<1>>
         >
     >>;
-    static_assert(std::same_as<decltype(op_state.inner_opstate.completion_signal.rcvr.rcvr.rcvr), then_rcvr_t>);
+    static_assert(std::same_as<decltype(then_opstate.inner_opstate.rcvr), then_rcvr_t>);
     static_assert(!stdexec::__queryable_with<stdexec::env_of_t<then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
 
     //! Our customization of @c continues_on forwards the environment.
-    using con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnReceiver<
-        Kokkos::Execution::ExecutionSpaceImpl::WithExecEnvPolicy,
-        Kokkos::Execution::ExecutionSpaceImpl::Scheduler<host_execution_space>,
-        then_rcvr_t
-    >;
-    static_assert(std::same_as<decltype(op_state.inner_opstate.completion_signal.rcvr.rcvr), con_h_then_rcvr_t>);
+    const auto& con_h_then_opstate = then_opstate.inner_opstate;
+    static_assert(stdexec::__is_instance_of<
+                  std::remove_cvref_t<decltype(con_h_then_opstate)>,
+                  Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnOpState
+    >);
+    using con_h_then_rcvr_t = decltype(con_h_then_opstate.inner_opstate.rcvr);
     static_assert(stdexec::__queryable_with<stdexec::env_of_t<con_h_then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
     static_assert(std::same_as<
                   stdexec::env_of_t<con_h_then_rcvr_t>,
@@ -163,48 +159,34 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                       stdexec::__env::__fwd<Kokkos::Execution::Impl::SyncWait::env>
                   >
     >);
-    ASSERT_EQ(
-        Kokkos::Execution::Impl::get_exec(stdexec::get_env(op_state.inner_opstate.completion_signal.rcvr.rcvr)).get(),
-        exec_h);
+    ASSERT_EQ(Kokkos::Execution::Impl::get_exec(stdexec::get_env(con_h_then_opstate.inner_opstate.rcvr)).get(), exec_h);
 
-    //! @ref Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromReceiver updates the @ref Kokkos::Execution::Impl::get_exec_t query.
-    using sfrom_con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromReceiver<
-        Kokkos::Execution::ExecutionSpaceImpl::WithDelegatedSyncPolicy,
-        Kokkos::Execution::ExecutionSpaceImpl::WithoutExecEnvPolicy,
-        scheduler_t,
-        con_h_then_rcvr_t
-    >;
-    static_assert(std::same_as<decltype(op_state.inner_opstate.completion_signal.rcvr), sfrom_con_h_then_rcvr_t>);
+    const auto& sfrom_con_h_then_opstate = con_h_then_opstate.inner_opstate;
+    static_assert(stdexec::__is_instance_of<
+                  std::remove_cvref_t<decltype(sfrom_con_h_then_opstate)>,
+                  Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromOpState
+    >);
+    using sfrom_con_h_then_rcvr_t = decltype(sfrom_con_h_then_opstate.inner_opstate.completion_signal.rcvr);
     static_assert(
         !stdexec::__queryable_with<stdexec::env_of_t<sfrom_con_h_then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
 
-    using then_sfrom_con_h_then_rcvr_t =
-        Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-            sfrom_con_h_then_rcvr_t,
-            Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-                std::string_view,
-                Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'B'>>,
-                Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
-            >
-        >>;
-    static_assert(std::same_as<
-                  decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr.rcvr),
-                  then_sfrom_con_h_then_rcvr_t
+    const auto& then_sfrom_con_h_then_opstate = sfrom_con_h_then_opstate.inner_opstate;
+    static_assert(stdexec::__is_instance_of<
+                  std::remove_cvref_t<decltype(then_sfrom_con_h_then_opstate)>,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState
     >);
+    using then_sfrom_con_h_then_rcvr_t = decltype(then_sfrom_con_h_then_opstate.inner_opstate.rcvr);
     static_assert(!stdexec::__queryable_with<
                   stdexec::env_of_t<then_sfrom_con_h_then_rcvr_t>,
                   Kokkos::Execution::Impl::get_exec_t
     >);
 
-    using con_B_then_sfrom_con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnReceiver<
-        Kokkos::Execution::ExecutionSpaceImpl::WithExecEnvPolicy,
-        scheduler_t,
-        then_sfrom_con_h_then_rcvr_t
-    >;
-    static_assert(std::same_as<
-                  decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr),
-                  con_B_then_sfrom_con_h_then_rcvr_t
+    const auto& con_B_then_sfrom_con_h_then_opstate = then_sfrom_con_h_then_opstate.inner_opstate;
+    static_assert(stdexec::__is_instance_of<
+                  std::remove_cvref_t<decltype(con_B_then_sfrom_con_h_then_opstate)>,
+                  Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnOpState
     >);
+    using con_B_then_sfrom_con_h_then_rcvr_t = decltype(con_B_then_sfrom_con_h_then_opstate.inner_opstate.rcvr);
     static_assert(stdexec::__queryable_with<
                   stdexec::env_of_t<con_B_then_sfrom_con_h_then_rcvr_t>,
                   Kokkos::Execution::Impl::get_exec_t
@@ -226,39 +208,29 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   >
     >);
     ASSERT_EQ(
-        Kokkos::Execution::Impl::get_exec(
-            stdexec::get_env(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr))
+        Kokkos::Execution::Impl::get_exec(stdexec::get_env(con_B_then_sfrom_con_h_then_opstate.inner_opstate.rcvr))
             .get(),
         exec_B);
 
-    using sfrom_con_B_then_sfrom_con_h_then_rcvr_t = Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromReceiver<
-        Kokkos::Execution::ExecutionSpaceImpl::WithDelegatedSyncPolicy,
-        Kokkos::Execution::ExecutionSpaceImpl::WithoutExecEnvPolicy,
-        scheduler_t,
-        con_B_then_sfrom_con_h_then_rcvr_t
-    >;
-    static_assert(std::same_as<
-                  decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr),
-                  sfrom_con_B_then_sfrom_con_h_then_rcvr_t
+    const auto& sfrom_con_B_then_sfrom_con_h_then_opstate = con_B_then_sfrom_con_h_then_opstate.inner_opstate;
+    static_assert(stdexec::__is_instance_of<
+                  std::remove_cvref_t<decltype(sfrom_con_B_then_sfrom_con_h_then_opstate)>,
+                  Kokkos::Execution::ExecutionSpaceImpl::ScheduleFromOpState
     >);
+    using sfrom_con_B_then_sfrom_con_h_then_rcvr_t = decltype(sfrom_con_B_then_sfrom_con_h_then_opstate.inner_opstate
+                                                                  .completion_signal.rcvr);
     static_assert(!stdexec::__queryable_with<
                   stdexec::env_of_t<sfrom_con_B_then_sfrom_con_h_then_rcvr_t>,
                   Kokkos::Execution::Impl::get_exec_t
     >);
 
-    using then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t =
-        Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-            sfrom_con_B_then_sfrom_con_h_then_rcvr_t,
-            Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-                std::string_view,
-                Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'A'>>,
-                Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
-            >
-        >>;
-    static_assert(std::same_as<
-                  decltype(op_state.inner_opstate.inner_opstate.inner_opstate.rcvr),
-                  then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t
+    const auto& then_sfrom_B_then_sfrom_con_h_then_opstate = sfrom_con_B_then_sfrom_con_h_then_opstate.inner_opstate;
+    static_assert(stdexec::__is_instance_of<
+                  std::remove_cvref_t<decltype(then_sfrom_B_then_sfrom_con_h_then_opstate)>,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState
     >);
+    using then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t = decltype(then_sfrom_B_then_sfrom_con_h_then_opstate
+                                                                       .inner_opstate.rcvr);
     static_assert(!stdexec::__queryable_with<
                   stdexec::env_of_t<then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t>,
                   Kokkos::Execution::Impl::get_exec_t
@@ -334,24 +306,38 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain));
 
-    if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
+    if constexpr (Kokkos::Execution::Impl::has_exec_wait_event<TEST_EXECUTION_SPACE>) {
         ASSERT_THAT(
             recorded_events,
             ::testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec_A),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(1)),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec_B),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec_A, recorded_events.at(4)),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
     } else {
-        ASSERT_THAT(
-            recorded_events,
-            ::testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "schedule_from")),
-                MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec, "schedule_from")),
-                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
+        if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
+            ASSERT_THAT(
+                recorded_events,
+                ::testing::ElementsAre(
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
+        } else {
+            ASSERT_THAT(
+                recorded_events,
+                ::testing::ElementsAre(
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "dependency")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec, "dependency")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
+        }
     }
 
     ASSERT_EQ(data(), 3) << "A synchronization is missing.";
@@ -410,9 +396,9 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
             recorded_events,
             ::testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "dependency")),
                 MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "schedule_from")),
+                MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "dependency")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     }

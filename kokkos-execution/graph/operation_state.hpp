@@ -187,6 +187,10 @@ struct OpState
         }
     }
 
+    void complete(stdexec::set_value_t) noexcept {
+        this->submit();
+    }
+
     void submit() noexcept {
         if constexpr (after_root) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)

@@ -37,7 +37,7 @@ using join_env_with_exec_t = decltype(join_env_with_exec<ExecEnvPolicy>(std::dec
  * @note This is not the same intent as using a forwarding query.
  */
 template <typename ExecEnvPolicy, typename Env>
-constexpr auto extend_env(Env&& env) noexcept {
+constexpr auto extend_env_with_exec(Env&& env) noexcept {
     if constexpr (std::same_as<ExecEnvPolicy, WithExecEnvPolicy>) {
         auto ref = Impl::get_exec(env);
         return stdexec::__env::__join(
@@ -48,11 +48,11 @@ constexpr auto extend_env(Env&& env) noexcept {
 }
 
 template <typename ExecEnvPolicy, typename Env>
-using extend_env_t = decltype(extend_env<ExecEnvPolicy>(std::declval<Env>()));
+using extend_env_with_exec_t = decltype(extend_env_with_exec<ExecEnvPolicy>(std::declval<Env>()));
 
 //! If @p Env is queryable with @ref Impl::get_exec_t, use @ref WithExecEnvPolicy.
 template <typename Env>
-using exec_env_policy_t =
+using extend_env_with_exec_policy_t =
     std::conditional_t<stdexec::__queryable_with<Env, Impl::get_exec_t>, WithExecEnvPolicy, WithoutExecEnvPolicy>;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl

@@ -18,10 +18,6 @@ template <typename Tag, stdexec::sender Sndr, typename... Env>
 using completion_scheduler_of_t =
     std::invoke_result_t<stdexec::get_completion_scheduler_t<Tag>, stdexec::env_of_t<Sndr>, Env...>;
 
-//! Type of the execution space extracted from a sender's completion scheduler.
-template <typename Sndr, typename... Env>
-using exec_of_t = typename completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env...>::execution_space;
-
 //! Check that a sender has one child.
 template <typename Sndr>
 concept has_child = requires {
