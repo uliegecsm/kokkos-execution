@@ -27,8 +27,9 @@ struct __sexpr_impl<Kokkos::Execution::ExecutionSpaceImpl::when_all_t> : stdexec
         []<typename State>(stdexec::__ignore, const State& state) noexcept {
             auto env = stdexec::__when_all::__when_all_impl::__get_env(stdexec::__ignore{}, state);
 
-            using exec_env_policy_t =
-                Kokkos::Execution::ExecutionSpaceImpl::exec_env_policy_t<stdexec::env_of_t<decltype(state.__rcvr_)>>;
+            using exec_env_policy_t = Kokkos::Execution::ExecutionSpaceImpl::extend_exec_env_policy_t<
+                stdexec::env_of_t<decltype(state.__rcvr_)>
+            >;
 
             if constexpr (std::same_as<exec_env_policy_t, Kokkos::Execution::ExecutionSpaceImpl::WithExecEnvPolicy>) {
                 return Kokkos::Execution::ExecutionSpaceImpl::join_env_with_exec(
