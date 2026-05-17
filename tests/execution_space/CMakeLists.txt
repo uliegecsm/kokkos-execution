@@ -1,6 +1,6 @@
 add_one_test(NAME any_sender)
 add_one_test(NAME bulk)
-# add_one_test(NAME continues_on)
+add_one_test(NAME continues_on)
 add_one_test(NAME domain)
 add_one_test(NAME ensure_started)
 add_one_test(NAME fork_join)
