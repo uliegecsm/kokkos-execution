@@ -31,7 +31,11 @@ struct ScheduleFromReceiver {
     }
 
     void set_value() && noexcept {
-        stdexec::set_value(std::move(parent_op_base->rcvr));
+        if constexpr (!Impl::signals_submitted<typename ParentOp::inner_opstate_t>) {
+            static_assert(
+                std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
+            stdexec::set_value(std::move(parent_op_base->rcvr));
+        }
     }
 
     template <typename Error>
@@ -45,11 +49,10 @@ struct ScheduleFromReceiver {
 
     void submitted() && noexcept {
         //! Stay in the @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
-        if constexpr (stdexec::__is_instance_of<decltype(parent_op_base->rcvr), ContinuesOnReceiver>) {
-            //static_assert(
-            //    std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>);
-            //std::move(parent_op_base->rcvr).submitted();
-            stdexec::set_value(std::move(parent_op_base->rcvr));
+        if constexpr (Impl::supports_submitted_order_on<decltype(parent_op_base->rcvr)>) {
+            static_assert(
+                std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>);
+            std::move(parent_op_base->rcvr).submitted();
         }
         //! Transition to another domain.
         else {
@@ -73,25 +76,24 @@ struct ScheduleFromReceiver {
     }
 };
 
-template <typename Rcvr>
+template <typename InnerOp, typename Rcvr>
 consteval auto select_schedule_from_opstate_completion_signal_policy() {
-    if constexpr (Impl::supports_submitted_order_on<Rcvr>) {
+    if constexpr (Impl::signals_submitted<InnerOp> && Impl::supports_submitted_order_on<Rcvr>) {
         return Impl::SubmittedPolicy::OrderOnExec{};
     } else {
         return Impl::SyncPolicy::InlineFenceExec{};
     }
 }
 
-template <typename Rcvr>
+template <typename InnerOp, typename Rcvr>
 using schedule_from_opstate_completion_signal_policy_t =
-    decltype(select_schedule_from_opstate_completion_signal_policy<Rcvr>());
+    decltype(select_schedule_from_opstate_completion_signal_policy<InnerOp, Rcvr>());
 
 template <stdexec::receiver Rcvr>
 struct ScheduleFromOpStateBase {
     Rcvr rcvr;
 
     using exec_env_policy_t = extend_exec_env_policy_t<stdexec::env_of_t<Rcvr>>;
-    using completion_signal_policy_t = schedule_from_opstate_completion_signal_policy_t<Rcvr>;
 
     [[nodiscard]]
     constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
@@ -110,6 +112,7 @@ struct ScheduleFromOpState
     using rcvr_t = ScheduleFromReceiver<ScheduleFromOpState>;
 
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
+    using completion_signal_policy_t = schedule_from_opstate_completion_signal_policy_t<inner_opstate_t, Rcvr>;
 
     inner_opstate_t inner_opstate;
 
