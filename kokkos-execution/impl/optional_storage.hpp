@@ -14,6 +14,8 @@ namespace Kokkos::Execution::Impl {
  * 2. Similarly to @c std::optional, it will destroy the underlying storage automatically in the destructor if @ref m_has_value is @c true.
  * 3. It provides similar storage semantics as @c stdexec::__manual_lifetime: it is not movable, and can be used as a placeholder storage for types that are not movable, like @c stdexec operation states.
  *    Notably, the member function @ref emplace_from allows in-place construction from the result of a callable.
+ *
+ * Similar to https://github.com/NVIDIA/stdexec/blob/6d7ad689f4d4831c5136e4abe1c601f9a3b64e43/include/stdexec/__detail/__optional.hpp#L57.
  */
 template <typename T>
 class OptionalStorage {
