@@ -80,6 +80,7 @@ struct OpStateBase {
     [[nodiscard]]
     constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
         return stdexec::get_env(this->completion_signal.rcvr);
+    }
 };
 
 //! Add all nodes as a sequence. Hence, only the first node may be added after the root node.
@@ -109,7 +110,7 @@ struct OpState
     //! Ensure that all closures are on the same execution space type.
     static_assert((std::same_as<typename RestOfClosures::execution_space, execution_space> && ...));
 
-    using rcvr_t = Impl::Receiver<OpState, stdexec::env_of_t<Rcvr>>;
+    using rcvr_t = Impl::Receiver<OpState>;
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
     using graph_composition_policy_t = GraphComposition::policy_t<inner_opstate_t>;
     using state_t = State<graph_composition_policy_t, execution_space>;

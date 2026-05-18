@@ -81,7 +81,7 @@ struct OpState
     using base_t = OpStateBase<Rcvr, Clsrs...>;
     using typename base_t::execution_space;
 
-    using rcvr_t = Impl::Receiver<OpState, stdexec::env_of_t<Rcvr>>;
+    using rcvr_t = Impl::Receiver<OpState>;
 
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 

@@ -132,15 +132,18 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
      * The environment of the receiver created by the customization of the most downstream @c then
      * is queryable with @ref Kokkos::Execution::Impl::get_exec_t.
      */
-    using then_rcvr_t = Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-        Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space, std::true_type>,
-        Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-            std::string_view,
-            Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'h'>>,
-            Kokkos::RangePolicy<host_execution_space, Kokkos::LaunchBounds<1>>
-        >
-    >>;
-    static_assert(std::same_as<decltype(op_state.inner_opstate.completion_signal.rcvr.rcvr.rcvr), then_rcvr_t>);
+    using then_rcvr_t = decltype(op_state.inner_opstate.completion_signal.rcvr.rcvr.rcvr);
+    static_assert(std::same_as<
+                  typename then_rcvr_t::parent_op_base_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
+                      Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space, std::true_type>,
+                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          std::string_view,
+                          Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'h'>>,
+                          Kokkos::RangePolicy<host_execution_space, Kokkos::LaunchBounds<1>>
+                      >
+                  >
+    >);
     static_assert(!stdexec::__queryable_with<stdexec::env_of_t<then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
 
     //! Our customization of @c continues_on forwards the environment.
@@ -176,18 +179,18 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     static_assert(
         !stdexec::__queryable_with<stdexec::env_of_t<sfrom_con_h_then_rcvr_t>, Kokkos::Execution::Impl::get_exec_t>);
 
-    using then_sfrom_con_h_then_rcvr_t =
-        Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-            sfrom_con_h_then_rcvr_t,
-            Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-                std::string_view,
-                Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'B'>>,
-                Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
-            >
-        >>;
+    using then_sfrom_con_h_then_rcvr_t = decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr
+                                                      .rcvr);
     static_assert(std::same_as<
-                  decltype(op_state.inner_opstate.inner_opstate.completion_signal.rcvr.rcvr.rcvr),
-                  then_sfrom_con_h_then_rcvr_t
+                  typename then_sfrom_con_h_then_rcvr_t::parent_op_base_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
+                      sfrom_con_h_then_rcvr_t,
+                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          std::string_view,
+                          Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'B'>>,
+                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
+                      >
+                  >
     >);
     static_assert(!stdexec::__queryable_with<
                   stdexec::env_of_t<then_sfrom_con_h_then_rcvr_t>,
@@ -244,18 +247,18 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   Kokkos::Execution::Impl::get_exec_t
     >);
 
-    using then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t =
-        Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
-            sfrom_con_B_then_sfrom_con_h_then_rcvr_t,
-            Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-                std::string_view,
-                Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'A'>>,
-                Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
-            >
-        >>;
+    using then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t = decltype(op_state.inner_opstate.inner_opstate.inner_opstate
+                                                                       .rcvr);
     static_assert(std::same_as<
-                  decltype(op_state.inner_opstate.inner_opstate.inner_opstate.rcvr),
-                  then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t
+                  typename then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t::parent_op_base_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
+                      sfrom_con_B_then_sfrom_con_h_then_rcvr_t,
+                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          std::string_view,
+                          Kokkos::Execution::ExecutionSpaceImpl::ThenWrapper<Tests::Utils::Functors::Labeled<'A'>>,
+                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::LaunchBounds<1>>
+                      >
+                  >
     >);
     static_assert(!stdexec::__queryable_with<
                   stdexec::env_of_t<then_sfrom_con_B_then_sfrom_con_h_then_rcvr_t>,
