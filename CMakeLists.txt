@@ -134,6 +134,7 @@ target_sources(
             kokkos-execution/impl/schedulers.hpp
             kokkos-execution/impl/state.hpp
             kokkos-execution/impl/sync_wait.hpp
+            kokkos-execution/impl/type_traits.hpp
             kokkos-execution/utils/ignore_warnings.hpp
 )
 
