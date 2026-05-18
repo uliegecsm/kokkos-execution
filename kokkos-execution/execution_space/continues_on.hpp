@@ -23,9 +23,9 @@ struct ContinuesOnReceiver {
     }
 
     void set_value() && noexcept {
-        if constexpr (!Impl::signals_submitted<typename ParentOp::inner_opstate_t>) {
-            static_assert(
-                std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
+        using policy_t = typename ParentOp::completion_signal_policy_t;
+
+        if constexpr (std::same_as<policy_t, Impl::SyncPolicy::InlineFenceExec>) {
             stdexec::set_value(std::move(parent_op_base->rcvr));
         }
     }
@@ -41,24 +41,19 @@ struct ContinuesOnReceiver {
 
     void submitted() && noexcept {
         static_assert(stdexec::__queryable_with<typename ParentOp::inner_opstate_t, Impl::get_exec_t>);
+        using policy_t = typename ParentOp::completion_signal_policy_t;
+
         const auto& exec_from = parent_op->inner_opstate.query(Impl::get_exec).get();
         const auto& exec_to = parent_op_base->query(Impl::get_exec).get();
         try {
-            if constexpr (
-                std::same_as<std::remove_cvref_t<decltype(exec_from)>, std::remove_cvref_t<decltype(exec_to)>>) {
-                static_assert(
-                    std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>);
-                if (exec_from == exec_to) {
-                    // nothing to do
-                } else {
+            if constexpr (std::same_as<policy_t, Impl::SubmittedPolicy::OrderOnExec>) {
+                if (exec_from != exec_to) {
                     auto& event = parent_op->event_storage.emplace();
                     Impl::record(event, exec_from);
                     Impl::wait(exec_to, event);
                 }
                 std::move(parent_op_base->rcvr).submitted();
-            } else {
-                static_assert(
-                    std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
+            } else if constexpr (std::same_as<policy_t, Impl::SyncPolicy::InlineFenceExec>) {
                 exec_from.fence(
                     std::format(
                         "{}: continues_on", Kokkos::Impl::TypeInfo<std::remove_cvref_t<decltype(exec_from)>>::name()));

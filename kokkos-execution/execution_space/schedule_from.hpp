@@ -31,9 +31,9 @@ struct ScheduleFromReceiver {
     }
 
     void set_value() && noexcept {
-        if constexpr (!Impl::signals_submitted<typename ParentOp::inner_opstate_t>) {
-            static_assert(
-                std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
+        using policy_t = typename ParentOp::completion_signal_policy_t;
+
+        if constexpr (std::same_as<policy_t, Impl::SyncPolicy::InlineFenceExec>) {
             stdexec::set_value(std::move(parent_op_base->rcvr));
         }
     }
@@ -48,16 +48,14 @@ struct ScheduleFromReceiver {
     }
 
     void submitted() && noexcept {
+        using policy_t = typename ParentOp::completion_signal_policy_t;
+
         //! Stay in the @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
-        if constexpr (Impl::supports_submitted_order_on<decltype(parent_op_base->rcvr)>) {
-            static_assert(
-                std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>);
+        if constexpr (std::same_as<policy_t, Impl::SubmittedPolicy::OrderOnExec>) {
             std::move(parent_op_base->rcvr).submitted();
         }
         //! Transition to another domain.
-        else {
-            static_assert(
-                std::same_as<typename ParentOp::completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
+        else if constexpr (std::same_as<policy_t, Impl::SyncPolicy::InlineFenceExec>) {
             auto exec_ref = parent_op->query(Impl::get_exec);
             using Exec = typename decltype(exec_ref)::execution_space;
             const Exec& exec = exec_ref.get();
