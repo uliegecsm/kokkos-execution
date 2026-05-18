@@ -133,12 +133,8 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Release}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, python_version: 3.14}
-          - kokkos_backends: [OpenMP]
-            compiler:
-              family: clang
-              version: 22
-            base_image     : ubuntu:24.04
-            platforms      : linux/amd64
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Release}
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
