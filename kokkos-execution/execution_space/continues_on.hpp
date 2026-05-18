@@ -73,8 +73,9 @@ template <>
 struct TransformSenderFor<stdexec::continues_on_t> {
     template <typename Env, stdexec::__is_instance_of<Scheduler> Schd, stdexec::sender Sndr>
     auto operator()(const Env&, stdexec::continues_on_t, Schd&& schd, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<ContinuesOnSender<Schd, Sndr>, Schd&&, Sndr&&>) {
-        return ContinuesOnSender<Schd, Sndr>{.schd = std::forward<Schd>(schd), .sndr = std::forward<Sndr>(sndr)};
+        noexcept(std::is_nothrow_constructible_v<ContinuesOnSender<Schd, Sndr>, Schd&&, Sndr&&>)
+            -> ContinuesOnSender<Schd, Sndr> {
+        return {.schd = std::forward<Schd>(schd), .sndr = std::forward<Sndr>(sndr)};
     }
 };
 

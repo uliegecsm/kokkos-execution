@@ -104,9 +104,9 @@ struct ScheduleFromSender<WithDelegatedSyncPolicy, Schd, Sndr> {
     using rcvr_t = ScheduleFromReceiver<WithDelegatedSyncPolicy, WithoutExecEnvPolicy, Schd, Rcvr>;
 
     template <stdexec::receiver Rcvr>
-    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(
+    auto connect(Rcvr rcvr) && noexcept(
         std::is_nothrow_constructible_v<rcvr_t<Rcvr>, Schd&&, Rcvr&&>
-        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) {
+        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) -> stdexec::connect_result_t<Sndr&&, rcvr_t<Rcvr>> {
         return stdexec::connect(
             std::forward<Sndr>(sndr), rcvr_t<Rcvr>{.schd = std::move(schd), .rcvr = std::move(rcvr)});
     }
