@@ -112,6 +112,7 @@ target_sources(
             kokkos-execution/graph/sender_concepts.hpp
             kokkos-execution/graph/sync_wait.hpp
             kokkos-execution/graph/then.hpp
+            kokkos-execution/graph/when_all.hpp
             kokkos-execution/impl/attributes.hpp
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signal.hpp

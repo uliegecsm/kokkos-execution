@@ -24,31 +24,43 @@ struct GraphComposition {
     //! Create a new graph and attach after the root node.
     struct Create { };
 
-    //! Use the @ref Attach policy if @p Queryable is queryable with @ref get_node_t.
-    template <typename Queryable>
-    using policy_t = std::conditional_t<stdexec::__queryable_with<Queryable, get_node_t>, Attach, Create>;
+    //! Use the @ref Attach policy if @p QueryableA or @p QueryableB is queryable with @ref get_node_t.
+    template <typename QueryableA, typename QueryableB>
+    using policy_t = std::conditional_t<
+        stdexec::__queryable_with<QueryableA, get_node_t> || stdexec::__queryable_with<QueryableB, get_node_t>,
+        Attach,
+        Create
+    >;
 
-    template <typename Exec, typename Queryable>
+    template <typename Exec, typename QueryableA, typename QueryableB>
     struct node_helper_t;
 
-    template <typename Exec, typename Queryable>
-    requires(std::same_as<policy_t<Queryable>, Create>)
-    struct node_helper_t<Exec, Queryable> {
+    template <typename Exec, typename QueryableA, typename QueryableB>
+    requires(std::same_as<policy_t<QueryableA, QueryableB>, Create>)
+    struct node_helper_t<Exec, QueryableA, QueryableB> {
         using type = typename Kokkos::Experimental::Graph<Exec>::root_t;
     };
 
-    template <typename Exec, typename Queryable>
-    requires(std::same_as<policy_t<Queryable>, Attach>)
-    struct node_helper_t<Exec, Queryable> {
-        using type = stdexec::__query_result_t<Queryable, get_node_t>;
+    template <typename Exec, typename QueryableA, typename QueryableB>
+    requires(
+        std::same_as<policy_t<QueryableA, QueryableB>, Attach> && stdexec::__queryable_with<QueryableA, get_node_t>)
+    struct node_helper_t<Exec, QueryableA, QueryableB> {
+        using type = stdexec::__query_result_t<QueryableA, get_node_t>;
+    };
+
+    template <typename Exec, typename QueryableA, typename QueryableB>
+    requires(
+        std::same_as<policy_t<QueryableA, QueryableB>, Attach> && stdexec::__queryable_with<QueryableB, get_node_t>)
+    struct node_helper_t<Exec, QueryableA, QueryableB> {
+        using type = stdexec::__query_result_t<QueryableB, get_node_t>;
     };
 
     /**
-     * If @ref policy_t for @p Queryable is the @ref Create policy, it is set to the type of the root node.
-     * Otherwise, it is set as the query result of @p Queryable for @ref get_node_t.
+     * If @ref policy_t is @ref Create, it is set to the type of the root node.
+     * Otherwise, it is set as the query result of @p QueryableA or @p QueryableB for @ref get_node_t.
      */
-    template <typename Exec, typename Queryable>
-    using node_t = typename node_helper_t<Exec, Queryable>::type;
+    template <typename Exec, typename QueryableA, typename QueryableB>
+    using node_t = typename node_helper_t<Exec, QueryableA, QueryableB>::type;
 };
 
 } // namespace Kokkos::Execution::GraphImpl

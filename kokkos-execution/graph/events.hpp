@@ -107,9 +107,13 @@ auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&.
  * @brief Record an event for a @p node added after @p predecessor.
  *
  * @todo Use https://github.com/kokkos/kokkos/pull/9170 to determine if the predecessor is a root node.
+ * @todo Once https://github.com/kokkos/kokkos/pull/9137 is merged, get rid of the @p device_handle argument.
  */
-template <NodeRef Predecessor, NodeRef NodeType>
-void graph_add_node_event(const Predecessor& predecessor, const NodeType& node) {
+template <NodeRef Predecessor, NodeRef NodeType, Kokkos::ExecutionSpace Exec>
+void graph_add_node_event(
+    const Predecessor& predecessor,
+    const NodeType& node,
+    const Kokkos::Impl::DeviceHandle<Exec>& device_handle) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
     auto* const node_ptr = get_node_ptr(node);
     auto* const pred_ptr = get_node_ptr(predecessor);
@@ -140,7 +144,7 @@ void graph_add_node_event(const Predecessor& predecessor, const NodeType& node) 
             .graph = graph_ptr,
             .predecessor = is_root ? nullptr : pred_ptr,
             .node = node_ptr,
-            .dev_id = Kokkos::Tools::Experimental::device_id(node_ptr->get_device_handle().m_exec)});
+            .dev_id = Kokkos::Tools::Experimental::device_id(device_handle.m_exec)});
 #endif
 }
 

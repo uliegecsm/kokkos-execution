@@ -26,8 +26,9 @@ set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
 
 get_target_property(GTest_gtest_INTERFACE_INCLUDE_DIRECTORIES GTest::gtest INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(Kokkos_kokkoscore_INTERFACE_INCLUDE_DIRECTORIES Kokkos::kokkoscore INTERFACE_INCLUDE_DIRECTORIES)
-set(DOXYGEN_INCLUDE_PATH ${Kokkos_kokkoscore_INTERFACE_INCLUDE_DIRECTORIES}
-                         ${GTest_gtest_INTERFACE_INCLUDE_DIRECTORIES} ${CMAKE_SOURCE_DIR}
+set(DOXYGEN_INCLUDE_PATH
+    ${Kokkos_kokkoscore_INTERFACE_INCLUDE_DIRECTORIES} ${GTest_gtest_INTERFACE_INCLUDE_DIRECTORIES}
+    ${CMAKE_SOURCE_DIR}/external/stdexec/include ${CMAKE_SOURCE_DIR}
 )
 
 doxygen_add_docs(docs ${HOMEPAGE_MD} ${CMAKE_SOURCE_DIR}/kokkos-execution ${CMAKE_SOURCE_DIR}/tests)

@@ -10,6 +10,7 @@
 #include "kokkos-execution/graph/parallel_for.hpp"
 #include "kokkos-execution/graph/sync_wait.hpp"
 #include "kokkos-execution/graph/then.hpp"
+#include "kokkos-execution/graph/when_all.hpp"
 #include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution {

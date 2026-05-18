@@ -1,5 +1,3 @@
-#include <concepts>
-
 #include "gtest/gtest.h"
 
 #include "kokkos-execution/stdexec.hpp"
