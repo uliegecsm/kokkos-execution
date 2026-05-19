@@ -48,16 +48,28 @@ template <Kokkos::ExecutionSpace Exec>
 struct State<GraphComposition::Create, Exec> {
     using graph_composition_policy_t = GraphComposition::Create;
 
+    using device_handle_t = Kokkos::Impl::DeviceHandle<Exec>;
+
     using graph_t = Kokkos::Experimental::Graph<Exec>;
+    using root_t = typename graph_t::root_t;
 
     graph_t graph;
+    //! @todo The root node is stored to avoid reference counting incurred by https://github.com/kokkos/kokkos/blob/1945b637c3fab027fe90208753e8b2ec236302d4/core/src/Kokkos_Graph.hpp#L100.
+    mutable root_t m_root{};
 
-    explicit State(const Kokkos::Impl::DeviceHandle<Exec>& device_handle)
+    explicit State(const device_handle_t& device_handle)
         : graph(Kokkos::Execution::GraphImpl::create_graph(device_handle)) {
     }
 
-    const auto& get_device_handle() const {
+    const device_handle_t& get_device_handle() const {
         return graph.get_device_handle();
+    }
+
+    const root_t& get_root_node() const {
+        if (Kokkos::Impl::GraphAccess::get_node_ptr(m_root) == nullptr) {
+            m_root = graph.root_node();
+        }
+        return m_root;
     }
 };
 
@@ -151,27 +163,26 @@ struct OpState
      * If the graph composition policy is @ref GraphComposition::Create, return the root node of @ref state graph.
      * Otherwise, return the result of querying @ref inner_opstate for @ref get_node_t.
      */
-    predecessor_t get_predecessor() const noexcept requires after_root
-    {
+    const predecessor_t& get_predecessor() const noexcept {
+        if constexpr (after_root) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        PLOG_INFO << "The predecessor is the root node of graph " << get_graph_impl_ptr(state.graph.root_node()) << '.';
+            PLOG_INFO << "The predecessor is the root node of graph " << get_graph_impl_ptr(state.get_root_node())
+                      << '.';
 #endif
-        return state.graph.root_node();
-    }
-
-    const predecessor_t& get_predecessor() const noexcept requires(!after_root)
-    {
-        if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
-            return inner_opstate.query(get_node);
+            return state.get_root_node();
         } else {
-            return this->completion_signal.rcvr.query(get_node);
+            if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
+                return inner_opstate.query(get_node);
+            } else {
+                return this->completion_signal.rcvr.query(get_node);
+            }
         }
     }
 
     void submit() noexcept {
         if constexpr (after_root) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-            PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
+            PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.get_root_node()) << " on "
                       << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
             submit_graph(state.graph, state.get_device_handle().m_exec);
