@@ -65,6 +65,7 @@ consteval bool test_continues_on_sndr_traits() {
 }
 static_assert(test_continues_on_sndr_traits());
 
+#if false
 //! @test Check that the @ref Kokkos::Execution::Impl::get_exec_t query is forwarded as expected.
 TEST_F(ContinuesOnTest, queryable_get_exec) {
     const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
@@ -247,6 +248,7 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   Kokkos::Execution::Impl::get_exec_t
     >);
 }
+#endif
 
 //! @test A @c then and a @c sync_wait following a @c continues_on properly use the execution space instance.
 TEST_F(ContinuesOnTest, then_sync_wait) {

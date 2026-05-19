@@ -40,11 +40,11 @@ struct ScheduleFromReceiver {
 
     template <typename Error>
     void set_error(Error&& err) && noexcept {
-        stdexec::set_error(std::move(parent_op_base->rcvr), std::forward<Error>(err));
+        stdexec::set_error(std::move(parent_op->rcvr), std::forward<Error>(err));
     }
 
     void set_stopped() && noexcept {
-        stdexec::set_stopped(std::move(parent_op_base->rcvr));
+        stdexec::set_stopped(std::move(parent_op->rcvr));
     }
 
     void submitted() && noexcept {
@@ -91,7 +91,7 @@ template <stdexec::receiver Rcvr>
 struct ScheduleFromOpStateBase {
     Rcvr rcvr;
 
-    using exec_env_policy_t = extend_exec_env_policy_t<stdexec::env_of_t<Rcvr>>;
+    using exec_env_policy_t = ExecutionSpaceImpl::exec_env_policy_t<stdexec::env_of_t<Rcvr>>;
 
     [[nodiscard]]
     constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
