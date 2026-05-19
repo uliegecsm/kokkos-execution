@@ -158,7 +158,7 @@ TEST_F(ParallelForTest, parallel_for_schedule) {
             MATCHER_FOR_GRAPH_CREATE(device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), size / 2 * (size - 1));
 }
@@ -216,7 +216,7 @@ TEST_F(ParallelForTest, parallel_for_schedule_tagged_operator) {
             MATCHER_FOR_GRAPH_CREATE(device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 1);
 }

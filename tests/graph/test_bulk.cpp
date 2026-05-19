@@ -226,7 +226,7 @@ TEST_F(BulkTest, bulk_schedule) {
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 15);
 }
