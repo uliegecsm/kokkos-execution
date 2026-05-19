@@ -172,6 +172,67 @@ using event_storage_t = std::optional<Event<Exec>>;
 template <Kokkos::ExecutionSpace Exec>
 using OptionalConstEventRef = OptionalRef<const Event<Exec>>;
 
+/**
+ * @brief Dependency between two execution space instances through the creation of an @ref Event.
+ *
+ * It may be specialized for each backend. By default, it does not store the created event for backends that
+ * do not model @ref has_non_blocking_dispatch.
+ *
+ * The @ref Dependency must be kept alive until the in-flight operations are completed.
+ *
+ * It is reusable to amortize the cost of creating an @ref Event.
+ */
+template <Kokkos::ExecutionSpace Exec>
+struct Dependency;
+
+template <Kokkos::ExecutionSpace Exec>
+requires(!has_non_blocking_dispatch<Exec>)
+struct Dependency<Exec> {
+    Dependency() = default;
+    Dependency(const Dependency&) = delete;
+    Dependency& operator=(const Dependency&) = delete;
+    Dependency(Dependency&&) noexcept = delete;
+    Dependency& operator=(Dependency&&) noexcept = delete;
+    ~Dependency() = default;
+
+    void record(const Exec& exec_from, const Exec& exec_to) {
+        if (exec_from != exec_to) {
+            Event<Exec> event;
+            Impl::record(event, exec_from);
+            Impl::wait(exec_to, event);
+        }
+    }
+
+    void wait() const {
+    }
+};
+
+template <Kokkos::ExecutionSpace Exec>
+requires(has_non_blocking_dispatch<Exec>)
+struct Dependency<Exec> {
+    Dependency() = default;
+    Dependency(const Dependency&) = delete;
+    Dependency& operator=(const Dependency&) = delete;
+    Dependency(Dependency&&) noexcept = delete;
+    Dependency& operator=(Dependency&&) noexcept = delete;
+    ~Dependency() = default;
+
+    void record(const Exec& exec_from, const Exec& exec_to) {
+        if (exec_from != exec_to) {
+            auto& event = event_storage.emplace();
+            Impl::record(event, exec_from);
+            Impl::wait(exec_to, event);
+        }
+    }
+
+    void wait() const {
+        KOKKOS_EXPECT(event_storage.has_value());
+        event_storage->wait();
+    }
+
+    event_storage_t<Exec> event_storage = std::nullopt;
+};
+
 } // namespace Kokkos::Execution::Impl
 
 #if defined(KOKKOS_ENABLE_CUDA)

@@ -4,6 +4,7 @@
 #include "kokkos-execution/execution_space/env.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
+#include "kokkos-execution/impl/empty.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -101,7 +102,14 @@ struct ContinuesOnOpState
     using completion_signal_policy_t =
         continues_on_opstate_completion_signal_policy_t<inner_opstate_t, execution_space, Rcvr>;
 
-    Impl::event_storage_t<execution_space> event_storage;
+
+    using dependency_t = std::conditional_t<
+        std::same_as<completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>,
+        Impl::Dependency<execution_space>,
+        Impl::Empty
+    >;
+
+    dependency_t dependency;
     inner_opstate_t inner_opstate;
 
     constexpr explicit ContinuesOnOpState(
@@ -111,7 +119,7 @@ struct ContinuesOnOpState
         noexcept(
             std::is_nothrow_constructible_v<base_t, Rcvr&&, Schd&&> && stdexec::__nothrow_connectable<Sndr&&, rcvr_t>)
         : base_t(std::move(rcvr), std::forward<Schd>(schd))
-        , event_storage()
+        , dependency()
         , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }
 
@@ -128,11 +136,7 @@ struct ContinuesOnOpState
 
         try {
             if constexpr (std::same_as<completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>) {
-                if (exec_from != exec_to) {
-                    auto& event = event_storage.emplace();
-                    Impl::record(event, exec_from);
-                    Impl::wait(exec_to, event);
-                }
+                dependency.record(exec_from, exec_to);
                 std::move(this->rcvr).submitted();
             } else if constexpr (std::same_as<completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>) {
                 exec_from.fence(

@@ -217,7 +217,6 @@ TEST_F(BulkTest, no_spurious_copy_on_connect) {
 }
 
 //! @test The customization of @c stdexec::bulk properly forwards forwarding queries.
-#if false
 TEST_F(BulkTest, forwarding_env) {
     constexpr size_t size = 10;
 
@@ -258,6 +257,5 @@ TEST_F(BulkTest, forwarding_env) {
     ASSERT_EQ(value, 42);
     ASSERT_EQ(count, 1);
 }
-#endif
 
 } // namespace Tests::ExecutionSpaceImpl
