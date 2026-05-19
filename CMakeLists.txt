@@ -139,6 +139,7 @@ target_sources(
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/impl/type_traits.hpp
             kokkos-execution/utils/ignore_warnings.hpp
+            kokkos-execution/utils/streamers.hpp
 )
 
 target_compile_features(kokkosexecution INTERFACE cxx_std_20)

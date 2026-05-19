@@ -44,12 +44,12 @@ class WhenAllTest
         DeallocateDataEvent,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent,
+        Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent,
         Kokkos::Execution::GraphImpl::GraphAddNodeEvent,
         Kokkos::Execution::GraphImpl::GraphCreateEvent,
         Kokkos::Execution::GraphImpl::GraphInstantiateEvent,
         Kokkos::Execution::GraphImpl::GraphSubmitEvent
     >;
-    using variant_t = typename recorder_listener_t::event_variant_t;
 
     WhenAllTest()
         : default_device_handle(TEST_EXECUTION_SPACE{}) {
@@ -201,6 +201,8 @@ TEST_F(WhenAllTest, one_branch) {
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
@@ -233,6 +235,10 @@ TEST_F(WhenAllTest, two_branches) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
@@ -267,6 +273,11 @@ TEST_F(WhenAllTest, three_branches) {
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(3))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
@@ -299,6 +310,8 @@ TEST_F(WhenAllTest, forwarding_env) {
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
