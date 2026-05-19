@@ -80,7 +80,15 @@ struct State<GraphComposition::Create, Exec> {
  */
 template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct OpStateBase {
-    using completion_signal_policy_t = Impl::SyncPolicy::InlineFenceExec;
+    static consteval auto select_completion_signal_policy() noexcept {
+        if constexpr (Impl::supports_submitted_order_on<Rcvr>) {
+            return Impl::SubmittedPolicy::OrderOnExec{};
+        } else {
+            return Impl::SyncPolicy::InlineFenceExec{};
+        }
+    }
+
+    using completion_signal_policy_t = decltype(select_completion_signal_policy());
     using completion_signal_t = Impl::CompletionSignal<completion_signal_policy_t, Exec, Rcvr>;
 
     completion_signal_t completion_signal;
