@@ -83,7 +83,11 @@ struct WhenAllOpState
                   std::move(sndrs_)))
         , node(
               stdexec::__apply(
-                  [](const auto&... child_op) { return Kokkos::Experimental::when_all(child_op.query(get_node)...); },
+                  [](const auto&... child_op) {
+                      auto agg = Kokkos::Experimental::when_all(child_op.query(get_node)...);
+                      graph_add_aggregate_node_event(agg, child_op.query(get_node)...);
+                      return agg;
+                  },
                   children_opstates)) {
     }
 

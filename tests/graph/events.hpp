@@ -7,6 +7,7 @@
 
 namespace Tests::GraphImpl {
 
+DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphAddAggregateNodeEvent)
 DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphAddNodeEvent)
 DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphCreateEvent)
 DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphInstantiateEvent)
@@ -32,8 +33,23 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
         ::testing::Field(&Kokkos::Execution::GraphImpl::GraphAddNodeEvent::predecessor, ::testing::Eq(_predecessor_)))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(_graph_create_event_variant_, ...)                                        \
+    AGraphAddAggregateNodeEvent(                                                                                       \
+        ::testing::Field(                                                                                              \
+            &Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent::graph,                                          \
+            ::testing::Eq(                                                                                             \
+                std::get<Kokkos::Execution::GraphImpl::GraphCreateEvent>(_graph_create_event_variant_).graph)),        \
+        ::testing::Field(                                                                                              \
+            &Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent::predecessors,                                   \
+            ::testing::ElementsAre(__VA_ARGS__)))
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define MATCHER_FOR_GRAPH_NODE_OF(_graph_add_node_event_)                                                              \
     std::get<Kokkos::Execution::GraphImpl::GraphAddNodeEvent>(_graph_add_node_event_).node
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define MATCHER_FOR_GRAPH_AGGREGATE_NODE_OF(_graph_add_aggregate_node_event_)                                          \
+    std::get<Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent>(_graph_add_aggregate_node_event_).node
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define MATCHER_FOR_GRAPH_INSTANTIATE(_graph_create_event_variant_)                                                    \

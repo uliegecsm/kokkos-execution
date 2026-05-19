@@ -8,6 +8,8 @@
 #    include "kokkos-utils/callbacks/Manager.hpp"
 #endif
 
+#include "kokkos-execution/utils/streamers.hpp"
+
 namespace Kokkos::Execution::GraphImpl {
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is created.
@@ -41,6 +43,21 @@ struct GraphAddNodeEvent {
     friend std::ostream& operator<<(std::ostream& out, const GraphAddNodeEvent& event) {
         return out << "GraphAddNodeEvent: {graph = " << event.graph << ", predecessor = " << event.predecessor
                    << ", node = " << event.node << ", dev_id = " << event.dev_id << '}';
+    }
+};
+
+//! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph aggregate node is added.
+struct GraphAddAggregateNodeEvent {
+    void* graph = nullptr;
+    std::vector<void*> predecessors{};
+    void* node = nullptr;
+
+    constexpr auto operator<=>(const GraphAddAggregateNodeEvent&) const = default;
+
+    friend std::ostream& operator<<(std::ostream& out, const GraphAddAggregateNodeEvent& event) {
+        using Kokkos::Execution::Utils::operator<<;
+        return out << "GraphAddAggregateNodeEvent: {graph = " << event.graph
+                   << ", predecessors = " << event.predecessors << ", node = " << event.node << '}';
     }
 };
 
@@ -123,7 +140,9 @@ void graph_add_node_event(
     constexpr bool is_root = []() {
         using aggregate_t = decltype(graph_ptr->create_aggregate_ptr());
 
-        if constexpr (requires { typename std::remove_cvref_t<decltype(*pred_ptr)>::kernel_type; }) {
+        if constexpr (std::same_as<std::remove_cvref_t<decltype(*pred_ptr)>, typename aggregate_t::element_type>) {
+            return false;
+        } else if constexpr (requires { typename std::remove_cvref_t<decltype(*pred_ptr)>::kernel_type; }) {
             using kernel_t = typename std::remove_cvref_t<decltype(*pred_ptr)>::kernel_type;
             if constexpr (Kokkos::Impl::is_graph_kernel_v<kernel_t>) {
                 return false;
@@ -132,8 +151,6 @@ void graph_add_node_event(
             } else if constexpr (Kokkos::Impl::is_graph_then_host_v<kernel_t>) {
                 return false;
             }
-        } else if constexpr (std::same_as<Predecessor, aggregate_t>) {
-            return false;
         }
         return true;
     }();
@@ -145,6 +162,18 @@ void graph_add_node_event(
             .predecessor = is_root ? nullptr : pred_ptr,
             .node = node_ptr,
             .dev_id = Kokkos::Tools::Experimental::device_id(device_handle.m_exec)});
+#endif
+}
+
+//! Record an event for an aggregate node added after @p predecessors.
+template <NodeRef NodeType, NodeRef... Predecessors>
+void graph_add_aggregate_node_event(const NodeType& aggregate, const Predecessors&... predecessors) {
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+    Kokkos::utils::callbacks::dispatch(
+        GraphAddAggregateNodeEvent{
+            .graph = get_graph_impl_ptr(aggregate),
+            .predecessors = {get_node_ptr(predecessors)...},
+            .node = get_node_ptr(aggregate)});
 #endif
 }
 
