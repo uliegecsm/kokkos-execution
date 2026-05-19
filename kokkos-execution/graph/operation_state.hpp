@@ -195,10 +195,7 @@ struct OpState
         stdexec::start(inner_opstate);
     }
 
-    [[nodiscard]]
-    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
-        return stdexec::get_env(this->completion_signal.rcvr);
-    }
+    KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
 };
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>

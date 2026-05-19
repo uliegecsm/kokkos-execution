@@ -10,4 +10,11 @@
         return ::stdexec::__fwd_env(::stdexec::get_env(_obj_));                                                        \
     }
 
+//! Retrieve the environment of @p _obj_. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define KOKKOS_EXECUTION_GET_ENV(_type_, _obj_)                                                                        \
+    [[nodiscard]]                                                                                                      \
+    constexpr auto get_env() const noexcept -> stdexec::env_of_t<_type_> {                                             \
+        return stdexec::get_env(_obj_);                                                                                \
+    }
+
 #endif // KOKKOS_EXECUTION_IMPL_ENV_HPP

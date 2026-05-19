@@ -87,10 +87,7 @@ struct OpStateBase {
         return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).get_policy().space()};
     }
 
-    [[nodiscard]]
-    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
-        return stdexec::get_env(this->completion_signal.rcvr);
-    }
+    KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
 };
 
 template <stdexec::sender Sndr, stdexec::receiver Rcvr, Closure... Clsrs>
