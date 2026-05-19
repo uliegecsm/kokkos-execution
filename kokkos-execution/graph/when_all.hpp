@@ -152,10 +152,7 @@ struct WhenAllOpState
         this->completion_signal.propagate(state.get_device_handle().m_exec);
     }
 
-    [[nodiscard]]
-    constexpr auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
-        return stdexec::get_env(this->completion_signal.rcvr);
-    }
+    KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
 };
 
 //! Sender for @c stdexec::when_all.
