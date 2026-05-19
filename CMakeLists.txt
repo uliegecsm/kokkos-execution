@@ -46,8 +46,16 @@ endif()
 string(JSON CPM_VERSION GET "${DEPENDENCIES_JSON}" "github" "cpm")
 include(/opt/cpm-${CPM_VERSION}/CPM.cmake)
 
+include(cmake/functions/patch.cmake)
+
+apply_patch(
+  ${CMAKE_SOURCE_DIR}/external/stdexec-pr-2081-basic-sender-trailing-return.patch ${CMAKE_SOURCE_DIR}/external/stdexec
+)
+apply_patch(
+  ${CMAKE_SOURCE_DIR}/external/stdexec-pr-2083-fork-join-trailing-return.patch ${CMAKE_SOURCE_DIR}/external/stdexec
+)
+
 if(SYCL IN_LIST Kokkos_DEVICES AND CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
-  include(cmake/functions/patch.cmake)
   apply_patch(${CMAKE_SOURCE_DIR}/external/stdexec-icpx-ice-when-all.patch ${CMAKE_SOURCE_DIR}/external/stdexec)
 endif()
 
