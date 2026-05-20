@@ -18,6 +18,7 @@
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/queryable.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 
@@ -38,19 +39,31 @@ struct WhenAllOpState
     using base_t = OpStateBase<Exec, Rcvr>;
     using execution_space = Exec;
 
-    using root_t = typename Kokkos::Experimental::Graph<execution_space>::root_t;
+    using state_t = State<GraphComposition::Create, execution_space>;
+    using root_t = typename state_t::graph_t::root_t;
 
     //! Receiver for a child of @c stdexec::when_all.
     struct WhenAllChildReceiver : public Impl::Receiver<WhenAllOpState, stdexec::env_of_t<Rcvr>> {
-        auto query(get_node_t) const & noexcept -> const root_t& {
+        [[nodiscard]]
+        constexpr auto query(get_node_t) const & noexcept -> const root_t& {
             return this->parent_op->root;
         }
     };
 
-    using state_t = State<GraphComposition::Create, execution_space>;
     using children_opstates_t = stdexec::__tuple<stdexec::connect_result_t<Sndrs, WhenAllChildReceiver>...>;
 
-    static constexpr bool as_one = (Impl::remains_on<stdexec::set_value_t, Sndrs, Domain> && ...);
+#if defined(KOKKOS_ENABLE_DEBUG)
+    //! If this assertion fails, it probably means that one of the branches finishes with an algorithm that is not customized yet.
+    static_assert(
+        stdexec::__mapply<
+            stdexec::__mall_of<stdexec::__q<Impl::queryable_for<get_node_t>::type>>,
+            children_opstates_t
+        >::value,
+        "Child senders of the 'when_all' must lead to 'get_node_t' queryable operation states.");
+#endif
+
+    //! Determine if all branches remain fully on the graph, if connected to @ref WhenAllChildReceiver.
+    static constexpr bool as_one = (remains_on_graph_for<execution_space, Sndrs, WhenAllChildReceiver> && ...);
 
     using node_t = decltype(stdexec::__apply(
         [](const auto&... ops) { return Kokkos::Experimental::when_all(ops.query(get_node)...); },
@@ -123,11 +136,22 @@ struct WhenAllOpState
      * In the future, a solution could be to create one graph per branch in such a setting, but it would
      * require introspecting the sender type of each branch, recursively.
      */
-    void complete(stdexec::set_value_t) & noexcept requires(!as_one)
+    void submit() & noexcept requires(!as_one)
     {
         if (count.fetch_sub(1) == 1) {
-            this->submit();
+            this->submit_graph();
         }
+    }
+
+    void submit() & noexcept requires(as_one)
+    {
+        this->submit_graph();
+    }
+
+    template <typename Tag, typename... Args>
+    requires(!std::same_as<Tag, stdexec::set_value_t>)
+    void complete(Tag, Args&&... args) & noexcept {
+        base_t::complete(Tag{}, std::forward<Args>(args)...);
     }
 
     void start() & noexcept requires(!as_one)
@@ -147,12 +171,16 @@ struct WhenAllOpState
         this->submit();
     }
 
-    void submit() & noexcept {
+    void submit_graph() & noexcept {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
                   << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
-        submit_graph(state.graph, state.get_device_handle().m_exec);
+        try {
+            Kokkos::Execution::GraphImpl::submit_graph(state.graph, state.get_device_handle().m_exec);
+        } catch (...) {
+            stdexec::set_error(this->completion_signal.rcvr, std::current_exception());
+        }
         this->completion_signal.propagate(state.get_device_handle().m_exec);
     }
 

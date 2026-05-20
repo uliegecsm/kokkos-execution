@@ -11,6 +11,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
+#include "kokkos-execution/impl/schedule_from.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/impl/submitted.hpp"
 
@@ -25,9 +26,6 @@ struct ScheduleFromReceiver : public Impl::Receiver<ParentOp, Env> {
         return extend_env_with_exec<exec_env_policy_t>(stdexec::get_env(*this->parent_op));
     }
 };
-
-template <typename InnerOp, typename Rcvr>
-concept schedule_from_signals_submitted = Impl::signals_submitted<InnerOp> && Impl::supports_submitted_order_on<Rcvr>;
 
 template <stdexec::receiver Rcvr>
 struct ScheduleFromOpStateBase {
@@ -54,11 +52,7 @@ struct ScheduleFromOpState
 
     using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 
-    using completion_signal_policy_t = std::conditional_t<
-        schedule_from_signals_submitted<inner_opstate_t, Rcvr>,
-        Impl::SubmittedPolicy::OrderOnExec,
-        Impl::SyncPolicy::InlineFenceExec
-    >;
+    using completion_signal_policy_t = Impl::ScheduleFrom::completion_signal_policy_t<inner_opstate_t, Rcvr>;
 
     inner_opstate_t inner_opstate;
 

@@ -408,11 +408,11 @@ TEST_F(ContinuesOnTest, transition_to_another_execution_space_instance_and_back_
 
 //! @test Check @c noexcept specification of sender transformation.
 consteval bool test_sndr_nothrow_transformable() {
-    using sndr_continues_on_t =
+    using continues_on_sndr_t =
         decltype(stdexec::just() | stdexec::continues_on(std::declval<typename ContinuesOnTest::scheduler_t>()));
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<sndr_continues_on_t>,
+                  stdexec::__demangle_t<continues_on_sndr_t>,
                   Tests::Utils::basic_sender_t<
                       stdexec::continues_on_t,
                       typename ContinuesOnTest::scheduler_t,
@@ -427,15 +427,15 @@ consteval bool test_sndr_nothrow_transformable() {
     static_assert(stdexec::__detail::__has_nothrow_transform_sender<
                   Kokkos::Execution::ExecutionSpaceImpl::Domain,
                   stdexec::set_value_t,
-                  sndr_continues_on_t&&,
+                  continues_on_sndr_t&&,
                   stdexec::env<>
     >);
 
-    using sndr_schedule_from_t = decltype(stdexec::schedule_from(
+    using schedule_from_sndr_t = decltype(stdexec::schedule_from(
         stdexec::schedule(std::declval<typename ContinuesOnTest::scheduler_t>())));
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<sndr_schedule_from_t>,
+                  stdexec::__demangle_t<schedule_from_sndr_t>,
                   Tests::Utils::basic_sender_t<
                       stdexec::schedule_from_t,
                       stdexec::__,
@@ -446,7 +446,7 @@ consteval bool test_sndr_nothrow_transformable() {
     static_assert(stdexec::__detail::__has_nothrow_transform_sender<
                   Kokkos::Execution::ExecutionSpaceImpl::Domain,
                   stdexec::set_value_t,
-                  sndr_schedule_from_t&&,
+                  schedule_from_sndr_t&&,
                   stdexec::env<>
     >);
 

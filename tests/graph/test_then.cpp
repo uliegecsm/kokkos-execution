@@ -289,11 +289,14 @@ TEST_F(ThenTest, forwarding_env) {
 
     std::atomic<size_t> count = 0;
 
+    int value;
+
     const context_t gctx{exec};
 
-    //! @todo Use @ref Tests::Utils::round_trip_allocate as in @ref Tests::ExecutionSpaceImpl::ThenTest_forwarding_env_Test.
     stdexec::sender auto sndr =
-        stdexec::schedule(gctx.get_scheduler())
+        stdexec::read_env(stdexec::get_allocator)
+        | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
+        | stdexec::continues_on(gctx.get_scheduler())
         | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data)
         | stdexec::write_env(stdexec::prop{stdexec::get_allocator, Tests::Utils::TrackingAllocator<int>{&count}});
 
@@ -312,6 +315,9 @@ TEST_F(ThenTest, forwarding_env) {
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
 
     ASSERT_EQ(data(), 1);
+
+    ASSERT_EQ(value, 42);
+    ASSERT_EQ(count, 1);
 }
 
 } // namespace Tests::GraphImpl
