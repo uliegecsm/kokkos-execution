@@ -194,8 +194,10 @@ struct OpState
                       << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
             submit_graph(state.graph, state.get_device_handle().m_exec);
+            this->completion_signal.propagate(state.get_device_handle().m_exec);
+        } else {
+            this->completion_signal.propagate(execution_space{});
         }
-        this->completion_signal.propagate(state.get_device_handle().m_exec);
     }
 
     const auto& query(get_node_t) const & noexcept {
