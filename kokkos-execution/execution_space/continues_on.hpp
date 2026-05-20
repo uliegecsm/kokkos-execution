@@ -40,9 +40,6 @@ template <stdexec::scheduler Schd, stdexec::sender Sndr>
 struct ContinuesOnSender {
     using sender_concept = stdexec::sender_tag;
 
-    Schd schd;
-    Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ContinuesOnSender)
 
     template <typename Rcvr>
@@ -59,7 +56,7 @@ struct ContinuesOnSender {
     using rcvr_t = ContinuesOnReceiver<exec_env_policy_t<Rcvr>, Schd, Rcvr>;
 
     template <stdexec::receiver Rcvr>
-    auto connect(Rcvr rcvr) && noexcept(
+    constexpr auto connect(Rcvr rcvr) && noexcept(
         std::is_nothrow_constructible_v<rcvr_t<Rcvr>, Schd&&, Rcvr&&>
         && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) -> stdexec::connect_result_t<Sndr, rcvr_t<Rcvr>> {
         return stdexec::connect(
@@ -67,6 +64,9 @@ struct ContinuesOnSender {
     }
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
+
+    Schd schd;
+    Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
 template <>

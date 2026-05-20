@@ -4,10 +4,10 @@ KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/ensure_started.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
-#include "kokkos-execution/execution_space.hpp"
-
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
+
+#include "kokkos-execution/execution_space.hpp"
 
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
