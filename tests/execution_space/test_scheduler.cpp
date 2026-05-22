@@ -2,6 +2,7 @@
 
 #include "kokkos-execution/execution_space.hpp"
 
+#include "tests/utils/category.hpp"
 #include "tests/utils/check_scheduler.hpp"
 #include "tests/utils/execution_space_context.hpp"
 
@@ -34,7 +35,7 @@ static_assert(Tests::Utils::check_scheduler<execution_space_scheduler_t>());
  *
  * See https://eel.is/c++draft/exec.sched#5.
  */
-TEST(Scheduler, round_trip_property) {
+TEST(TEST_CATEGORY(Scheduler), round_trip_property) {
     const execution_space_context_t ctx{TEST_EXECUTION_SPACE{}};
     const execution_space_scheduler_t sch = ctx.get_scheduler();
     ASSERT_EQ(stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(stdexec::schedule(sch))), sch);

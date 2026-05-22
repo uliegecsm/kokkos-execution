@@ -40,6 +40,7 @@ function(add_one_test)
     # Tell the translation unit which execution space to use.
     target_compile_definitions(
       ${aot_args_EXECUTABLE_NAME} PRIVATE TEST_EXECUTION_SPACE=Kokkos::${KOKKOS_DEVICE_TO_EXECUTION_SPACE_${DEVICE}}
+                                          TEST_EXECUTION_SPACE_FOR_CATEGORY=${DEVICE}
     )
 
     # Link the executable to 'test_common'.
