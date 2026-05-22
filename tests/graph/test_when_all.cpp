@@ -218,8 +218,8 @@ TEST_F(WhenAllTest, two_branches) {
 
     const context_t gctx{exec};
 
-    auto branch_a = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(data);
-    auto branch_b = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(data);
+    auto branch_a = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data);
+    auto branch_b = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data);
 
     auto sndr = stdexec::when_all(std::move(branch_a), std::move(branch_b));
 
@@ -254,9 +254,9 @@ TEST_F(WhenAllTest, three_branches) {
 
     const context_t gctx{exec};
 
-    auto branch_a = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(data);
-    auto branch_b = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(data);
-    auto branch_c = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(data);
+    auto branch_a = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data);
+    auto branch_b = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data);
+    auto branch_c = stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data);
 
     auto sndr = stdexec::when_all(std::move(branch_a), std::move(branch_b), std::move(branch_c));
 
