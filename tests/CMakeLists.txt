@@ -88,3 +88,7 @@ add_subdirectory(execution_space)
 add_subdirectory(graph)
 add_subdirectory(impl)
 add_subdirectory(utils)
+
+if("SYCL" IN_LIST Kokkos_DEVICES)
+  add_subdirectory(sycl)
+endif()

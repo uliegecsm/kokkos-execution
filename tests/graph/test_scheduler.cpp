@@ -103,4 +103,19 @@ consteval bool test_schedule_sender_attrs_queries() {
 }
 static_assert(test_schedule_sender_attrs_queries());
 
+//! @test Check the @c stdexec::get_forward_progress_guarantee query for @ref Kokkos::Execution::GraphImpl::Scheduler.
+TEST(TEST_CATEGORY(Scheduler), get_forward_progress_guarantee) {
+    const graph_context_t ctx{TEST_EXECUTION_SPACE{}};
+    const graph_scheduler_t sch = ctx.get_scheduler();
+    ASSERT_EQ(
+        stdexec::get_forward_progress_guarantee(sch),
+        Kokkos::Execution::Impl::forward_progress_guarantee_of_v<TEST_EXECUTION_SPACE>);
+
+#if defined(KOKKOS_ENABLE_SERIAL)
+    if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::Serial>) {
+        ASSERT_EQ(stdexec::get_forward_progress_guarantee(sch), stdexec::forward_progress_guarantee::parallel);
+    }
+#endif
+}
+
 } // namespace Tests::GraphImpl

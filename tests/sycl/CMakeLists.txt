@@ -1,0 +1,4 @@
+add_executable(tests_sycl_forward_progress_guarantees)
+target_sources(tests_sycl_forward_progress_guarantees PRIVATE test_forward_progress_guarantees.cpp)
+target_link_libraries(tests_sycl_forward_progress_guarantees PRIVATE GTest::gtest_main GTest::gmock Kokkos::kokkoscore)
+add_test(NAME tests_sycl_forward_progress_guarantees COMMAND $<TARGET_NAME:tests_sycl_forward_progress_guarantees>)
