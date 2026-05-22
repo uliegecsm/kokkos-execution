@@ -1,0 +1,10 @@
+#ifndef KOKKOS_EXECUTION_TESTS_UTILS_CATEGORY_HPP
+#define KOKKOS_EXECUTION_TESTS_UTILS_CATEGORY_HPP
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define TEST_CATEGORY_IMPL(_name_, _suffix_) GTEST_CONCAT_TOKEN_(_name_, GTEST_CONCAT_TOKEN_(_, _suffix_))
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define TEST_CATEGORY(_name_)                TEST_CATEGORY_IMPL(_name_, TEST_EXECUTION_SPACE_FOR_CATEGORY)
+
+#endif // KOKKOS_EXECUTION_TESTS_UTILS_CATEGORY_HPP

@@ -10,6 +10,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-execution/execution_space.hpp"
 
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/category.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
@@ -30,7 +31,7 @@ namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
-class RepeatEffectUntilTest
+class TEST_CATEGORY(RepeatEffectUntilTest)
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
@@ -44,7 +45,7 @@ class RepeatEffectUntilTest
 };
 
 //! @test Check that @ref Kokkos::Execution::ExecutionSpaceContext can be properly embedded in a @c experimental:execution::repeat_until.
-TEST_F(RepeatEffectUntilTest, works) {
+TEST_F(TEST_CATEGORY(RepeatEffectUntilTest), works) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
