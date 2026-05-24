@@ -119,11 +119,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - compiler:
-              family: gnu
-              version: 14
-            base_image: ubuntu:24.04
-            platforms: linux/amd64
+          - {compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
           - kokkos_backends: [Threads]
             compiler:
               family: gnu
