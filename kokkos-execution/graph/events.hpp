@@ -123,7 +123,6 @@ auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&.
 /**
  * @brief Record an event for a @p node added after @p predecessor.
  *
- * @todo Use https://github.com/kokkos/kokkos/pull/9170 to determine if the predecessor is a root node.
  * @todo Once https://github.com/kokkos/kokkos/pull/9137 is merged, get rid of the @p device_handle argument.
  */
 template <NodeRef Predecessor, NodeRef NodeType, Kokkos::ExecutionSpace Exec>
@@ -132,35 +131,13 @@ void graph_add_node_event(
     const NodeType& node,
     const Kokkos::Impl::DeviceHandle<Exec>& device_handle) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
-    auto* const node_ptr = get_node_ptr(node);
-    auto* const pred_ptr = get_node_ptr(predecessor);
-    auto* const graph_ptr = get_graph_impl_ptr(predecessor);
-
-    // NOLINTBEGIN(bugprone-branch-clone)
-    constexpr bool is_root = []() {
-        using aggregate_t = decltype(graph_ptr->create_aggregate_ptr());
-
-        if constexpr (std::same_as<std::remove_cvref_t<decltype(*pred_ptr)>, typename aggregate_t::element_type>) {
-            return false;
-        } else if constexpr (requires { typename std::remove_cvref_t<decltype(*pred_ptr)>::kernel_type; }) {
-            using kernel_t = typename std::remove_cvref_t<decltype(*pred_ptr)>::kernel_type;
-            if constexpr (Kokkos::Impl::is_graph_kernel_v<kernel_t>) {
-                return false;
-            } else if constexpr (Kokkos::Impl::is_graph_capture_v<kernel_t>) {
-                return false;
-            } else if constexpr (Kokkos::Impl::is_graph_then_host_v<kernel_t>) {
-                return false;
-            }
-        }
-        return true;
-    }();
-    // NOLINTEND(bugprone-branch-clone)
+    const bool is_predecessor_root = predecessor.get_node_kind() == Kokkos::Experimental::GraphNodeKind::Root;
 
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
-            .graph = graph_ptr,
-            .predecessor = is_root ? nullptr : pred_ptr,
-            .node = node_ptr,
+            .graph = get_graph_impl_ptr(predecessor),
+            .predecessor = is_predecessor_root ? nullptr : get_node_ptr(predecessor),
+            .node = get_node_ptr(node),
             .dev_id = Kokkos::Tools::Experimental::device_id(device_handle.m_exec)});
 #endif
 }
