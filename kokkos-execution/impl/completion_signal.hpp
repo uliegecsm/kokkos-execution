@@ -31,11 +31,7 @@ struct RequiresSync {
     bool operator()(const Exec& exec, const Rcvr& rcvr) const noexcept
         requires(stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, get_exec_t>)
     {
-        if constexpr (
-            std::same_as<
-                std::remove_cvref_t<stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, get_exec_t>>,
-                ExecutionSpaceRef<Exec>
-            >) {
+        if constexpr (std::same_as<exec_of_t<stdexec::env_of_t<Rcvr>>, Exec>) {
             const auto& src = exec;
             const auto& dst = get_exec(stdexec::get_env(rcvr)).get();
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)

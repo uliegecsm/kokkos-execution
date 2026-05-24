@@ -42,12 +42,17 @@ struct Event<Kokkos::Cuda> {
             KOKKOS_IMPL_CUDA_SAFE_CALL(cudaEventSynchronize(m_event));
         }
     }
+
+    [[nodiscard]]
+    constexpr cudaEvent_t cuda_event() const noexcept {
+        return m_event;
+    }
 };
 
 template <>
 void impl_wait(const Kokkos::Cuda& exec, const Event<Kokkos::Cuda>& event) {
-    KOKKOS_EXPECTS(bool(event.m_event));
-    KOKKOS_IMPL_CUDA_SAFE_CALL(cudaStreamWaitEvent(exec.cuda_stream(), event.m_event));
+    KOKKOS_EXPECTS(bool(event.cuda_event()));
+    KOKKOS_IMPL_CUDA_SAFE_CALL(cudaStreamWaitEvent(exec.cuda_stream(), event.cuda_event()));
 }
 
 } // namespace Kokkos::Execution::Impl

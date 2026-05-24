@@ -118,12 +118,16 @@ target_sources(
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signal.hpp
             kokkos-execution/impl/completion_signatures.hpp
+            kokkos-execution/impl/Cuda/dependency.hpp
             kokkos-execution/impl/Cuda/event.hpp
+            kokkos-execution/impl/dependency.hpp
             kokkos-execution/impl/dispatch_label.hpp
             kokkos-execution/impl/domain.hpp
+            kokkos-execution/impl/empty.hpp
             kokkos-execution/impl/env.hpp
             kokkos-execution/impl/get_exec.hpp
             kokkos-execution/impl/event.hpp
+            kokkos-execution/impl/HIP/dependency.hpp
             kokkos-execution/impl/HIP/event.hpp
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
@@ -133,6 +137,7 @@ target_sources(
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/sender_introspection.hpp
+            kokkos-execution/impl/SYCL/dependency.hpp
             kokkos-execution/impl/SYCL/event.hpp
             kokkos-execution/impl/schedulers.hpp
             kokkos-execution/impl/state.hpp

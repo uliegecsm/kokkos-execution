@@ -22,7 +22,8 @@ struct __sexpr_impl<Kokkos::Execution::ExecutionSpaceImpl::when_all_t> : stdexec
     using state_env_t = stdexec::env_of_t<decltype(std::declval<const State&>().__rcvr_)>;
 
     template <typename State>
-    using state_exec_env_policy_t = Kokkos::Execution::ExecutionSpaceImpl::exec_env_policy_t<state_env_t<State>>;
+    using state_exec_env_policy_t =
+        Kokkos::Execution::ExecutionSpaceImpl::extend_env_with_exec_policy_t<state_env_t<State>>;
 
     template <typename State>
     using base_env_t = decltype(base_t::__get_env(stdexec::__ignore{}, std::declval<const State&>()));
@@ -32,9 +33,7 @@ struct __sexpr_impl<Kokkos::Execution::ExecutionSpaceImpl::when_all_t> : stdexec
 
     template <typename State>
     struct get_env_impl<Kokkos::Execution::ExecutionSpaceImpl::WithExecEnvPolicy, State> {
-        using execution_space = typename std::remove_cvref_t<
-            stdexec::__query_result_t<state_env_t<State>, Kokkos::Execution::Impl::get_exec_t>
-        >::execution_space;
+        using execution_space = Kokkos::Execution::Impl::exec_of_t<state_env_t<State>>;
 
         using type = decltype(Kokkos::Execution::ExecutionSpaceImpl::join_env_with_exec(
             std::declval<base_env_t<State>>(),

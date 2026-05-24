@@ -39,12 +39,17 @@ struct Event<Kokkos::SYCL> {
             m_event = std::nullopt;
         }
     }
+
+    [[nodiscard]]
+    constexpr const sycl::event& sycl_event() const noexcept {
+        KOKKOS_EXPECTS(m_event.has_value());
+        return *m_event;
+    }
 };
 
 template <>
 void impl_wait(const Kokkos::SYCL& exec, const Event<Kokkos::SYCL>& event) {
-    KOKKOS_EXPECTS(event.m_event.has_value());
-    exec.sycl_queue().submit([&](sycl::handler& cgh) { cgh.depends_on(*event.m_event); });
+    exec.sycl_queue().submit([&](sycl::handler& cgh) { cgh.depends_on(event.sycl_event()); });
 }
 
 } // namespace Kokkos::Execution::Impl

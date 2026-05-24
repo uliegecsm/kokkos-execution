@@ -62,6 +62,10 @@ struct OpStateBase {
         , clsrs(std::move(clsr_), std::move(clsrs_)...) {
     }
 
+    void complete(stdexec::set_value_t) noexcept {
+        this->submit();
+    }
+
     template <typename Error>
     void complete(stdexec::set_error_t, Error&& error) noexcept {
         stdexec::set_error(std::move(completion_signal.rcvr), std::forward<Error>(error));

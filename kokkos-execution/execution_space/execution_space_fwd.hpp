@@ -16,9 +16,6 @@ struct Domain;
 template <Kokkos::ExecutionSpace Exec>
 struct Scheduler;
 
-template <typename...>
-struct ScheduleFromReceiver;
-
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 
 #endif // KOKKOS_EXECUTION_EXECUTION_SPACE_EXECUTION_SPACE_FWD_HPP

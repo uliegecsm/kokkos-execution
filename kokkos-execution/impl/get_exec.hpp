@@ -3,6 +3,8 @@
 
 #include "Kokkos_Core.hpp"
 
+#include "kokkos-execution/impl/sender_introspection.hpp"
+
 namespace Kokkos::Execution::Impl {
 
 /**
@@ -15,6 +17,24 @@ struct get_exec_t : public stdexec::__query<get_exec_t> {
 };
 
 inline constexpr get_exec_t get_exec{};
+
+template <typename... Args>
+struct ExecOf;
+
+//! Type of the execution space extracted from @p Sndr completion scheduler.
+template <stdexec::sender Sndr, typename... Env>
+struct ExecOf<Sndr, Env...> {
+    using type = typename completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env...>::execution_space;
+};
+
+//! Type of the execution space extracted from a @ref get_exec_t query on @p T.
+template <stdexec::__queryable_with<get_exec_t> T>
+struct ExecOf<T> {
+    using type = typename std::remove_cvref_t<stdexec::__query_result_t<T, get_exec_t>>::execution_space;
+};
+
+template <typename... Args>
+using exec_of_t = typename ExecOf<Args...>::type;
 
 /**
  * @brief Wrap a @c Kokkos execution space to make it cheap to copy/move in new environments.

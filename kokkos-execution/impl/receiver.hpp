@@ -16,7 +16,7 @@ struct Receiver {
     ParentOp* parent_op;
 
     void set_value() && noexcept {
-        parent_op->submit();
+        parent_op->complete(stdexec::set_value);
     }
 
     template <typename Error>

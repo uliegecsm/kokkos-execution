@@ -10,126 +10,121 @@
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/get_exec.hpp"
+#include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/submitted.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-struct WithDelegatedSyncPolicy { };
-struct WithoutDelegatedSyncPolicy { };
+template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
+struct ScheduleFromReceiver : public Impl::Receiver<ParentOp, Env> {
+    using exec_env_policy_t = typename ParentOp::exec_env_policy_t;
 
-//! Receiver for @c schedule_from.
-template <stdexec::scheduler Schd, stdexec::receiver Rcvr>
-struct ScheduleFromReceiver<WithDelegatedSyncPolicy, WithoutExecEnvPolicy, Schd, Rcvr> {
-    using receiver_concept = Impl::SubmittedReceiverTag;
-
-    Schd schd;
-    Rcvr rcvr;
-
-    void set_value() && noexcept {
-        stdexec::set_value(std::move(rcvr));
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> extend_env_with_exec_t<exec_env_policy_t, Env> {
+        return extend_env_with_exec<exec_env_policy_t>(stdexec::get_env(*this->parent_op));
     }
-
-    void submitted() && noexcept {
-        /// If the downstream receiver environment is queryable for @ref Kokkos::Execution::Impl::get_exec
-        /// and it shares the same execution space instance, skip the fence.
-        const bool requires_synchronization = [&]() {
-            if constexpr (stdexec::__queryable_with<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>) {
-                if constexpr (
-                    std::same_as<
-                        typename std::remove_cvref_t<
-                            stdexec::__query_result_t<stdexec::env_of_t<Rcvr>, Impl::get_exec_t>
-                        >::execution_space,
-                        typename Schd::execution_space
-                    >) {
-                    return Impl::get_exec(stdexec::get_env(rcvr)).get() != schd.state->exec;
-                }
-            }
-            return true;
-        }();
-        if (requires_synchronization) {
-            schd.state->exec.fence(
-                std::format("{}: schedule_from", Kokkos::Impl::TypeInfo<typename Schd::execution_space>::name()));
-        }
-        stdexec::set_value(std::move(rcvr));
-    }
-
-    template <typename Error>
-    void set_error(Error&& err) && noexcept {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
-    }
-
-    void set_stopped() && noexcept {
-        stdexec::set_stopped(std::move(rcvr));
-    }
-
-    KOKKOS_EXECUTION_FORWARDING_GET_ENV(Rcvr, rcvr)
 };
 
-template <typename ExecEnvPolicy, typename Rcvr>
-struct ScheduleFromReceiver<WithoutDelegatedSyncPolicy, ExecEnvPolicy, Rcvr> {
-    using receiver_concept = stdexec::receiver_tag;
+template <typename InnerOp, typename Rcvr>
+concept schedule_from_signals_submitted = Impl::signals_submitted<InnerOp> && Impl::supports_submitted_order_on<Rcvr>;
 
+template <stdexec::receiver Rcvr>
+struct ScheduleFromOpStateBase {
     Rcvr rcvr;
 
-    void set_value() && noexcept {
-        stdexec::set_value(std::move(rcvr));
+    KOKKOS_EXECUTION_GET_ENV(Rcvr, this->rcvr)
+};
+
+template <stdexec::sender Sndr, stdexec::receiver Rcvr>
+struct ScheduleFromOpState
+    : public Impl::Immovable
+    , public ScheduleFromOpStateBase<Rcvr> {
+    using operation_state_concept = Impl::SubmittedOperationStateTag;
+
+    using base_t = ScheduleFromOpStateBase<Rcvr>;
+
+    using exec_env_policy_t = std::conditional_t<
+        execution_space_completing_sender<Sndr, stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>>>,
+        WithoutExecEnvPolicy,
+        extend_env_with_exec_policy_t<stdexec::env_of_t<Rcvr>>
+    >;
+
+    using rcvr_t = ScheduleFromReceiver<ScheduleFromOpState, stdexec::env_of_t<Rcvr>>;
+
+    using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
+
+    using completion_signal_policy_t = std::conditional_t<
+        schedule_from_signals_submitted<inner_opstate_t, Rcvr>,
+        Impl::SubmittedPolicy::OrderOnExec,
+        Impl::SyncPolicy::InlineFenceExec
+    >;
+
+    inner_opstate_t inner_opstate;
+
+    constexpr explicit ScheduleFromOpState(
+        Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+        Rcvr rcvr)
+        noexcept(std::is_nothrow_constructible_v<base_t, Rcvr&&> && stdexec::__nothrow_connectable<Sndr&&, rcvr_t>)
+        : base_t(std::move(rcvr))
+        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
+    }
+
+    void complete(stdexec::set_value_t) noexcept {
+        stdexec::set_value(std::move(this->rcvr));
     }
 
     template <typename Error>
-    void set_error(Error&& err) && noexcept {
-        stdexec::set_error(std::move(rcvr), std::forward<Error>(err));
+    void complete(stdexec::set_error_t, Error&& error) noexcept {
+        stdexec::set_error(std::move(this->rcvr), std::forward<Error>(error));
     }
 
-    void set_stopped() && noexcept {
-        stdexec::set_stopped(std::move(rcvr));
+    void complete(stdexec::set_stopped_t) noexcept {
+        stdexec::set_stopped(std::move(this->rcvr));
+    }
+
+    //! Stay in the @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
+    void submit() noexcept requires std::same_as<completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>
+    {
+        std::move(this->rcvr).submitted();
+    }
+
+    //! Transition to another domain.
+    void submit() noexcept requires std::same_as<completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>
+    {
+        try {
+            this->query(Impl::get_exec)
+                .get()
+                .fence(std::string(Impl::dispatch_label<Impl::exec_of_t<decltype(*this)>, ": schedule_from">()));
+            stdexec::set_value(std::move(this->rcvr));
+        } catch (...) {
+            stdexec::set_error(std::move(this->rcvr), std::current_exception());
+        }
     }
 
     [[nodiscard]]
-    constexpr auto get_env() const noexcept -> extend_env_t<ExecEnvPolicy, stdexec::env_of_t<Rcvr>> {
-        return extend_env<ExecEnvPolicy>(stdexec::get_env(this->rcvr));
-    }
-};
-
-template <typename...>
-struct ScheduleFromSender;
-
-//! Sender for @c schedule_from.
-template <stdexec::scheduler Schd, stdexec::sender Sndr>
-struct ScheduleFromSender<WithDelegatedSyncPolicy, Schd, Sndr> {
-    using sender_concept = stdexec::sender_tag;
-
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender)
-
-    template <typename Rcvr>
-    using rcvr_t = ScheduleFromReceiver<WithDelegatedSyncPolicy, WithoutExecEnvPolicy, Schd, Rcvr>;
-
-    template <stdexec::receiver Rcvr>
-    auto connect(Rcvr rcvr) && noexcept(
-        std::is_nothrow_constructible_v<rcvr_t<Rcvr>, Schd&&, Rcvr&&>
-        && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) -> stdexec::connect_result_t<Sndr&&, rcvr_t<Rcvr>> {
-        return stdexec::connect(
-            std::forward<Sndr>(sndr), rcvr_t<Rcvr>{.schd = std::move(schd), .rcvr = std::move(rcvr)});
+    constexpr auto query(Impl::get_exec_t) const noexcept -> decltype(auto)
+        requires stdexec::__queryable_with<inner_opstate_t, Impl::get_exec_t>
+    {
+        return Impl::get_exec(inner_opstate);
     }
 
-    KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
-
-    Schd schd;
-    Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    void start() & noexcept {
+        stdexec::start(inner_opstate);
+    }
 };
 
 template <stdexec::sender Sndr>
-struct ScheduleFromSender<WithoutDelegatedSyncPolicy, Sndr> {
+struct ScheduleFromSender {
     using sender_concept = stdexec::sender_tag;
 
     KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender)
 
-    template <typename Rcvr>
-    using rcvr_t = ScheduleFromReceiver<WithoutDelegatedSyncPolicy, exec_env_policy_t<stdexec::env_of_t<Rcvr>>, Rcvr>;
-
     template <stdexec::receiver Rcvr>
-    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(
-        std::is_nothrow_constructible_v<rcvr_t<Rcvr>, Rcvr&&> && stdexec::__nothrow_connectable<Sndr&&, rcvr_t<Rcvr>>) {
-        return stdexec::connect(std::forward<Sndr>(sndr), rcvr_t<Rcvr>{std::move(rcvr)});
+    constexpr auto
+        connect(Rcvr rcvr) && noexcept(std::is_nothrow_constructible_v<ScheduleFromOpState<Sndr, Rcvr>, Sndr&&, Rcvr&&>)
+            -> ScheduleFromOpState<Sndr, Rcvr> {
+        return ScheduleFromOpState<Sndr, Rcvr>{std::forward<Sndr>(sndr), std::move(rcvr)};
     }
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
@@ -139,27 +134,10 @@ struct ScheduleFromSender<WithoutDelegatedSyncPolicy, Sndr> {
 
 template <>
 struct TransformSenderFor<stdexec::schedule_from_t> {
-    template <typename Sndr, typename Env>
-    using schd_t = Impl::completion_scheduler_of_t<stdexec::set_value_t, Sndr, Env>;
-
-    template <typename Env, execution_space_completing_sender<Env> Sndr>
-    auto operator()(const Env& env, stdexec::schedule_from_t, stdexec::__ignore, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 ScheduleFromSender<WithDelegatedSyncPolicy, schd_t<Sndr, Env>, Sndr>,
-                 schd_t<Sndr, Env>&&,
-                 Sndr&&
-        >) {
-
-        return ScheduleFromSender<WithDelegatedSyncPolicy, schd_t<Sndr, Env>, Sndr>{
-            .schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env),
-            .sndr = std::forward<Sndr>(sndr)};
-    }
-
     template <typename Env, typename Sndr>
-    requires(!stdexec::__has_completion_scheduler_for<stdexec::set_value_t, Sndr, Env>)
     auto operator()(const Env&, stdexec::schedule_from_t, stdexec::__ignore, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<ScheduleFromSender<WithoutDelegatedSyncPolicy, Sndr>, Sndr&&>) {
-        return ScheduleFromSender<WithoutDelegatedSyncPolicy, Sndr>{.sndr = std::forward<Sndr>(sndr)};
+        noexcept(std::is_nothrow_constructible_v<ScheduleFromSender<Sndr>, Sndr&&>) -> ScheduleFromSender<Sndr> {
+        return {.sndr = std::forward<Sndr>(sndr)};
     }
 };
 

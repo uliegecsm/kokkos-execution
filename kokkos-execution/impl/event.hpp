@@ -149,7 +149,7 @@ void wait(const Event<Exec>& event) {
     event.wait();
 }
 
-template <Kokkos::ExecutionSpace ExecFrom, Kokkos::ExecutionSpace ExecTo>
+template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace ExecFrom>
 void impl_wait(const ExecTo&, const Event<ExecFrom>& event) {
     event.wait();
 }
@@ -159,7 +159,7 @@ void impl_wait(const ExecTo&, const Event<ExecFrom>& event) {
  *
  * @note Backends should specialize @ref impl_wait.
  */
-template <Kokkos::ExecutionSpace ExecFrom, Kokkos::ExecutionSpace ExecTo>
+template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace ExecFrom>
 void wait(const ExecTo& exec, const Event<ExecFrom>& event) {
     wait_event(exec, event);
     impl_wait(exec, event);
