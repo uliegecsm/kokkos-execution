@@ -67,12 +67,12 @@ TEST_F(SplitTest, within) {
 
     static_assert(!stdexec::dependent_sender<decltype(fork)>);
 
-    auto branch_a = fork | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
-                  | THEN_INCREMENT_ATOMIC(data);
-    auto branch_b = fork | stdexec::continues_on(pool.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+    auto branch_a = fork | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+                  | THEN_INCREMENT_ATOMIC(System, data);
+    auto branch_b = fork | stdexec::continues_on(pool.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
                   | stdexec::continues_on(esc.get_scheduler());
-    auto branch_c = std::move(fork) | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
-                  | THEN_INCREMENT_ATOMIC(data);
+    auto branch_c = std::move(fork) | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+                  | THEN_INCREMENT_ATOMIC(System, data);
 
     static_assert(!stdexec::dependent_sender<decltype(branch_a)>);
     static_assert(stdexec::dependent_sender<decltype(branch_b)>);

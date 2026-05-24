@@ -54,8 +54,8 @@ TEST_F(TransferWhenAllTest, Y) {
 
     auto w_a = stdexec::transfer_when_all(
         esc_A.get_scheduler(),
-        stdexec::schedule(esc_A.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
-        stdexec::schedule(esc_B.get_scheduler()) | THEN_INCREMENT_ATOMIC(data));
+        stdexec::schedule(esc_A.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data),
+        stdexec::schedule(esc_B.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data));
 
     static_assert(std::same_as<
                   decltype(stdexec::get_completion_domain<stdexec::set_value_t>(stdexec::get_env(w_a))),

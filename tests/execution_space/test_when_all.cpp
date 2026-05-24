@@ -220,8 +220,8 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_self) {
     experimental::execution::single_thread_context stc{};
 
     auto w_a = stdexec::when_all(
-        stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
-        stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+        stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data),
+        stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
             | stdexec::continues_on(esc.get_scheduler()));
 
     static_assert(
@@ -264,8 +264,8 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
     const context_t esc_A{exec_A}, esc_B{exec_B};
 
     auto sndr = stdexec::when_all(
-                    stdexec::schedule(esc_A.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
-                    stdexec::schedule(esc_B.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
+                    stdexec::schedule(esc_A.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data),
+                    stdexec::schedule(esc_B.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data))
               | stdexec::continues_on(esc_A.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
@@ -327,8 +327,8 @@ TEST_F(WhenAllTest, two_branches_host_device_followed_by_device) {
     const context_h_t esc_h{exec_h};
 
     auto sndr = stdexec::when_all(
-                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
-                    stdexec::schedule(esc_h.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data),
+                    stdexec::schedule(esc_h.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data))
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
@@ -385,9 +385,9 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
     experimental::execution::single_thread_context stc{};
 
     auto sndr = stdexec::when_all(
-                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
                         | stdexec::continues_on(stc.get_scheduler()),
-                    stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
+                    stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data))
               | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data)
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
@@ -427,10 +427,10 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
     experimental::execution::single_thread_context stc{};
 
     auto sndr = stdexec::when_all(
-                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data),
-                    stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data))
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data),
+                    stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data))
                         | Tests::Utils::check_rcvr_env_not_queryable_with<Kokkos::Execution::Impl::get_exec_t>()
-                        | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(data)
+                        | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
                         | stdexec::continues_on(esc.get_scheduler()))
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
