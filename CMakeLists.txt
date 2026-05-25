@@ -15,11 +15,13 @@ option(KokkosExecution_ENABLE_DEBUG_LOGGING "Enable debug logging" OFF)
 option(KokkosExecution_ENABLE_DOCS "Enable documentation" OFF)
 option(KokkosExecution_ENABLE_EXAMPLES "Enable examples" ON)
 option(KokkosExecution_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking, but increases compile time" OFF)
-option(KokkosExecution_ENABLE_TESTS "Enable testing" ON)
+option(KokkosExecution_ENABLE_EXAMPLES "Enable examples" ON)
+option(KokkosExecution_ENABLE_TESTS "Enable tests" ON)
 
 include(CMakeDependentOption)
 cmake_dependent_option(
-  KokkosExecution_ENABLE_EVENT_DISPATCH "Enable event dispatch à la Kokkos Tools" ON KokkosExecution_ENABLE_TESTS OFF
+  KokkosExecution_ENABLE_EVENT_DISPATCH "Enable event dispatch à la Kokkos Tools" ON
+  "(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)" OFF
 )
 
 foreach(KE_OPTION IN ITEMS CLANG_TIDY DEBUG_LOGGING DOCS TESTS EVENT_DISPATCH)
@@ -73,7 +75,7 @@ cpmaddpackage(
 # Compiler warnings.
 include(cmake/modules/warnings.cmake)
 
-if(KokkosExecution_ENABLE_DEBUG_LOGGING OR KokkosExecution_ENABLE_TESTS)
+if(KokkosExecution_ENABLE_DEBUG_LOGGING OR KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
   # Add Plog logging library.
   include(cmake/modules/BuildPlog.cmake)
 endif()
@@ -232,6 +234,17 @@ if(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS OR KokkosExec
   string(JSON GTest_REQUIRED_VERSION GET "${DEPENDENCIES_JSON}" github googletest)
 
   find_package(GTest ${GTest_REQUIRED_VERSION} CONFIG REQUIRED)
+endif()
+
+# Helpers.
+if(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
+  include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
+  include(${CMAKE_SOURCE_DIR}/cmake/modules/kokkos_exec_mapping.cmake)
+endif()
+
+# Examples.
+if(KokkosExecution_ENABLE_EXAMPLES)
+  add_subdirectory(examples)
 endif()
 
 # Testing.
