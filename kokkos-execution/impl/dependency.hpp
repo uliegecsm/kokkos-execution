@@ -4,8 +4,16 @@
 #include "Kokkos_Core.hpp"
 
 #include "kokkos-execution/impl/dispatch_label.hpp"
+#include "kokkos-execution/impl/event.hpp"
 
 namespace Kokkos::Execution::Impl {
+
+template <Kokkos::ExecutionSpace Exec>
+struct HasExecWaitEvent : std::false_type { };
+
+//! Determine if the @c Kokkos backend can enqueue a wait for an event into an execution space instance.
+template <typename Exec>
+concept has_exec_wait_event = HasExecWaitEvent<Exec>::value;
 
 /**
  * @brief This is the default implementation.
@@ -27,6 +35,7 @@ struct Dependency {
 };
 
 template <Kokkos::ExecutionSpace Exec>
+requires(!has_exec_wait_event<Exec>)
 struct Dependency<Exec, Exec> {
     Dependency(const Exec& exec_to, const Exec& exec_from) {
         if (exec_from != exec_to) {
@@ -35,15 +44,18 @@ struct Dependency<Exec, Exec> {
     }
 };
 
-template <Kokkos::ExecutionSpace>
-struct DependencyWithEvent;
-
 template <Kokkos::ExecutionSpace Exec>
-struct HasExecWaitEvent : std::false_type { };
+requires has_exec_wait_event<Exec>
+struct Dependency<Exec, Exec> {
+    Event<Exec> event{};
 
-//! Determine if the @c Kokkos backend can enqueue a wait for an event in an execution space instance.
-template <typename Exec>
-concept has_exec_wait_event = HasExecWaitEvent<Exec>::value;
+    Dependency(const Exec& exec_to, const Exec& exec_from) {
+        if (exec_from != exec_to) {
+            record(event, exec_from);
+            wait(exec_to, event);
+        }
+    }
+};
 
 } // namespace Kokkos::Execution::Impl
 

@@ -53,6 +53,22 @@ consteval bool test_models_event() {
 }
 static_assert(test_models_event<TEST_EXECUTION_SPACE>());
 
+//! @test Check @ref Kokkos::Execution::Impl::has_exec_wait_event.
+template <Kokkos::ExecutionSpace Exec>
+consteval bool test_has_exec_wait_event() {
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP) || defined(KOKKOS_ENABLE_SYCL)
+    if constexpr (std::same_as<Exec, Kokkos::DefaultExecutionSpace>) {
+        static_assert(Kokkos::Execution::Impl::has_exec_wait_event<Exec>);
+    } else
+#endif
+    {
+        static_assert(!Kokkos::Execution::Impl::has_exec_wait_event<Exec>);
+    }
+
+    return true;
+}
+static_assert(test_has_exec_wait_event<TEST_EXECUTION_SPACE>());
+
 //! @test Check the stream operator of @ref Kokkos::Execution::Impl::RecordEvent.
 TEST(RecordEvent, description) {
     const Kokkos::Execution::Impl::RecordEvent event{.dev_id = 42, .event_id = 1337};
