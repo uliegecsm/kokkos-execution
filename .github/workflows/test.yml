@@ -135,14 +135,19 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: true
+      - name: Compute a key that uniquely identifies the current job, given the matrix.
+        run: |
+          UNIQUE_JOB_KEY=${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cmake_build_type || 'Release' }}-${{ matrix.cxxstd || 20 }}-${{ join(matrix.kokkos_backends, '-') }}-${{ runner.arch }}
+          echo "This job is identified by '${UNIQUE_JOB_KEY}'."
+          echo "UNIQUE_JOB_KEY=${UNIQUE_JOB_KEY}" >> $GITHUB_ENV
       - if: runner.environment == 'github-hosted'
         uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/.ccache
-          key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cxxstd || 20 }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-${{ github.sha }}
+          key: ccache-${{ env.UNIQUE_JOB_KEY }}-${{ github.ref }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cxxstd || 20 }}-${{ join(matrix.kokkos_backends, '-') }}-${{ github.ref }}-
-            ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cxxstd || 20 }}-${{ join(matrix.kokkos_backends, '-') }}-
+            ccache-${{ env.UNIQUE_JOB_KEY }}-${{ github.ref }}-
+            ccache-${{ env.UNIQUE_JOB_KEY }}-
       - if: runner.environment == 'github-hosted'
         run : |
           ccache --set-config=max_size=100M
@@ -160,6 +165,18 @@ jobs:
           cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
       - run: |
           ctest --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
+      - name: CTest output artifact exists.
+        if: always()
+        run: |
+          test -f build-with-${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}/Testing/Temporary/LastTest.log
+      - name: CTest output artifact upload.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.UNIQUE_JOB_KEY }}-${{ job.check_run_id }}
+          retention-days: 1
+          path: |
+            build-with-${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}/Testing/Temporary/LastTest.log
       - run: |
           bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
 
