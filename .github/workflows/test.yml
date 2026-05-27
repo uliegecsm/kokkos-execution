@@ -126,6 +126,12 @@ jobs:
               version: 2025.3
             runs-on: "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix: -volta70
+          - kokkos_backends: [OpenMP]
+            compiler:
+              family: clang
+              version: 22
+            runs-on: "['ubuntu-24.04-arm']"
+            tag_suffix: -arm64
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.

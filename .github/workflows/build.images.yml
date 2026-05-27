@@ -178,14 +178,14 @@ jobs:
             base_image: nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
             platforms: linux/amd64
             kokkos_archs: [VOLTA70]
-          # After this line come the images we build, but don't test.
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
               version: 22
             base_image     : ubuntu:24.04
             platforms      : linux/arm64
-            runs-on        : "['self-hosted', 'linux', 'docker', 'arm64']"
+            runs-on        : "['ubuntu-24.04-arm']"
+          # After this line come the images we build, but don't test.
           - kokkos_backends: [HPX, Cuda]
             compiler:
               family: clang
