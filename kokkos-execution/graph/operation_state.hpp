@@ -10,6 +10,8 @@
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Graph.hpp"
 
+#include "kokkos-execution/graph/graph_fwd.hpp"
+
 #include "kokkos-execution/graph/events.hpp"
 #include "kokkos-execution/graph/get_graph.hpp"
 #include "kokkos-execution/graph/get_node.hpp"
@@ -31,6 +33,32 @@ concept Closure = requires {
     typename Clsr::node_props_t;
 };
 
+//! General case of a graph operation state.
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires (
+    requires { typename OpState::inner_opstate_t; } &&
+    requires(const OpState& opstate) {
+        { opstate.query(Kokkos::Execution::GraphImpl::get_node) };
+        { opstate.query(Kokkos::Execution::GraphImpl::get_graph) };
+    } &&
+    requires { typename OpState::execution_space; } &&
+    std::same_as<typename OpState::execution_space, Exec>
+)
+struct GraphOperationStateFor<OpState, Exec> : public std::true_type { };
+
+//! Specialization for @ref Kokkos::Execution::GraphImpl::Scheduler::OpState.
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires(stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::Scheduler<Exec>::template OpState>)
+struct GraphOperationStateFor<OpState, Exec> : public std::true_type { };
+
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires(graph_operation_state_for<OpState, Exec> && !requires { typename OpState::inner_opstate_t; })
+struct RemainsOnGraphFor<OpState, Exec> : public std::true_type { };
+
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires(graph_operation_state_for<OpState, Exec> && requires { typename OpState::inner_opstate_t; })
+struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_opstate_t, Exec> { };
+
 template <typename GraphCompositionPolicy, Kokkos::ExecutionSpace Exec>
 struct State;
 
@@ -38,6 +66,8 @@ struct State;
 template <Kokkos::ExecutionSpace Exec>
 struct State<GraphComposition::Attach, Exec> {
     using graph_composition_policy_t = GraphComposition::Attach;
+
+    using graph_t = Kokkos::Experimental::Graph<Exec>;
 
     explicit State(const Kokkos::Impl::DeviceHandle<Exec>&) {
     }
@@ -191,27 +221,55 @@ struct OpState
         this->submit();
     }
 
+    template <typename Error>
+    void complete(stdexec::set_error_t, Error&& error) noexcept {
+        stdexec::set_error(std::move(this->completion_signal.rcvr), std::forward<Error>(error));
+    }
+
+    void complete(stdexec::set_stopped_t) noexcept {
+        stdexec::set_stopped(std::move(this->completion_signal.rcvr));
+    }
+
     void submit() noexcept {
         if constexpr (after_root) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
             PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.get_root_node()) << " on "
                       << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
-            submit_graph(state.graph, state.get_device_handle().m_exec);
+            try {
+                submit_graph(state.graph, state.get_device_handle().m_exec);
+            } catch (...) {
+                this->complete(stdexec::set_error, std::current_exception());
+            }
         }
-        this->completion_signal.propagate(state.get_device_handle().m_exec);
+        this->completion_signal.propagate(Impl::get_exec(*this).get());
     }
 
-    const auto& query(get_node_t) const & noexcept {
+    [[nodiscard]]
+    constexpr auto query(get_node_t) const & noexcept -> const node_t& {
         return node;
     }
 
-    const auto& query(get_graph_t) const & noexcept {
+    [[nodiscard]]
+    constexpr auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
         if constexpr (after_root) {
             return state.graph;
         } else {
             return inner_opstate.query(get_graph);
         }
+    }
+
+    [[nodiscard]]
+    constexpr auto
+        query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> requires after_root
+    {
+        return Impl::ExecutionSpaceRef{state.get_device_handle().m_exec};
+    }
+
+    [[nodiscard]]
+    constexpr auto query(Impl::get_exec_t) const noexcept -> decltype(auto) requires(!after_root)
+    {
+        return Impl::get_exec(inner_opstate);
     }
 
     void start() & noexcept {
@@ -243,5 +301,13 @@ using opstate_t = typename make_opstate_t<Sndr, Rcvr, Clsrs...>::type;
 #    define KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(_type_, _node_, _predecessor_)
 #endif
 } // namespace Kokkos::Execution::GraphImpl
+
+// NOLINTBEGIN(bugprone-reserved-identifier)
+namespace stdexec::__detail {
+template <stdexec::sender Sndr, stdexec::receiver Rcvr, typename FirstClosure, typename... RestOfClosures>
+extern __mtype<Kokkos::Execution::GraphImpl::OpState<__demangle_t<Sndr>, Rcvr, FirstClosure, RestOfClosures...>>
+    __demangle_v<Kokkos::Execution::GraphImpl::OpState<Sndr, Rcvr, FirstClosure, RestOfClosures...>>;
+} // namespace stdexec::__detail
+// NOLINTEND(bugprone-reserved-identifier)
 
 #endif // KOKKOS_EXECUTION_GRAPH_OPERATION_STATE_HPP

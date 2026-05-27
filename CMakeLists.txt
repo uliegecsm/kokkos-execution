@@ -103,6 +103,7 @@ target_sources(
             kokkos-execution/execution_space/then.hpp
             kokkos-execution/execution_space/when_all.hpp
             kokkos-execution/graph/bulk.hpp
+            kokkos-execution/graph/continues_on.hpp
             kokkos-execution/graph/domain.hpp
             kokkos-execution/graph/events.hpp
             kokkos-execution/graph/get_graph.hpp
@@ -110,6 +111,7 @@ target_sources(
             kokkos-execution/graph/graph_fwd.hpp
             kokkos-execution/graph/operation_state.hpp
             kokkos-execution/graph/parallel_for.hpp
+            kokkos-execution/graph/schedule_from.hpp
             kokkos-execution/graph/sender_concepts.hpp
             kokkos-execution/graph/sync_wait.hpp
             kokkos-execution/graph/then.hpp
@@ -118,6 +120,7 @@ target_sources(
             kokkos-execution/impl/bulk.hpp
             kokkos-execution/impl/completion_signal.hpp
             kokkos-execution/impl/completion_signatures.hpp
+            kokkos-execution/impl/continues_on.hpp
             kokkos-execution/impl/Cuda/dependency.hpp
             kokkos-execution/impl/Cuda/event.hpp
             kokkos-execution/impl/dependency.hpp
@@ -134,11 +137,13 @@ target_sources(
             kokkos-execution/impl/make_opstate.hpp
             kokkos-execution/impl/optional_ref.hpp
             kokkos-execution/impl/optional_storage.hpp
+            kokkos-execution/impl/queryable.hpp
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp
             kokkos-execution/impl/sender_introspection.hpp
             kokkos-execution/impl/SYCL/dependency.hpp
             kokkos-execution/impl/SYCL/event.hpp
+            kokkos-execution/impl/schedule_from.hpp
             kokkos-execution/impl/schedulers.hpp
             kokkos-execution/impl/state.hpp
             kokkos-execution/impl/submitted.hpp

@@ -183,6 +183,8 @@ TEST_F(ParallelForTest, parallel_for_starts_on) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on));
 
+    ASSERT_THAT(recorded_events, testing::SizeIs(4));
+
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(

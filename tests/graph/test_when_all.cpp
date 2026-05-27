@@ -1,3 +1,9 @@
+#include "kokkos-execution/utils/ignore_warnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/single_thread_context.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 #include "kokkos-utils/callbacks/ConjunctionMatcher.hpp"
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
@@ -7,9 +13,11 @@
 
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/category.hpp"
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/no_op.hpp"
+#include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/graph_context.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
@@ -32,7 +40,7 @@ namespace Tests::GraphImpl {
 
 using namespace Kokkos::utils::callbacks;
 
-class WhenAllTest
+class TEST_CATEGORY(WhenAllTest)
     : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
@@ -51,7 +59,7 @@ class WhenAllTest
         Kokkos::Execution::GraphImpl::GraphSubmitEvent
     >;
 
-    WhenAllTest()
+    TEST_CATEGORY(WhenAllTest)()
         : default_device_handle(TEST_EXECUTION_SPACE{}) {
     }
    protected:
@@ -61,10 +69,10 @@ class WhenAllTest
 //! @test Check traits of sender returned by @c stdexec::when_all when customized for @ref Kokkos::Execution::GraphImpl::Domain.
 consteval bool test_sndr_traits() {
     //! Schedule sender.
-    using schd_sndr_t = typename WhenAllTest::schedule_sender_t;
+    using schd_sndr_t = typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t;
 
     //! @c stdexec::then sender.
-    using functor_t = Tests::Utils::Functors::Increment<WhenAllTest::view_s_t, true>;
+    using functor_t = Tests::Utils::Functors::Increment<TEST_CATEGORY(WhenAllTest)::view_s_t, true>;
     using then_sndr_t = decltype(stdexec::then(std::declval<schd_sndr_t>(), std::declval<functor_t>()));
 
     //! @c stdexec::when_all sender.
@@ -86,7 +94,7 @@ static_assert(test_sndr_traits());
 //! @test Check @c noexcept specification of sender transformation.
 consteval bool test_sndr_nothrow_transformable() {
     using when_all_sndr_t = decltype(stdexec::when_all(
-        stdexec::schedule(std::declval<typename WhenAllTest::scheduler_t>())
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
         | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(std::same_as<
@@ -97,7 +105,7 @@ consteval bool test_sndr_nothrow_transformable() {
                       Tests::Utils::basic_sender_t<
                           stdexec::then_t,
                           Tests::Utils::Functors::NoOp<false, false, false>,
-                          typename WhenAllTest::schedule_sender_t
+                          typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t
                       >
                   >
     >);
@@ -110,7 +118,7 @@ consteval bool test_sndr_nothrow_transformable() {
     >);
 
     using when_all_maythrow_on_move_sndr_t = decltype(stdexec::when_all(
-        stdexec::schedule(std::declval<typename WhenAllTest::scheduler_t>())
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
         | stdexec::then(Tests::Utils::Functors::NoOp<false, false, true>{})));
 
     static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
@@ -130,7 +138,7 @@ consteval bool test_sndr_nothrow_connectable() {
     static_assert(!std::is_nothrow_constructible_v<Kokkos::Experimental::Graph<TEST_EXECUTION_SPACE>>);
 
     using when_all_sndr_t = decltype(stdexec::when_all(
-        stdexec::schedule(std::declval<typename WhenAllTest::scheduler_t>())
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
         | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(!stdexec::__nothrow_connectable<when_all_sndr_t, Tests::Utils::SinkReceiver>);
@@ -183,7 +191,7 @@ static_assert(test_sndr_cannot_mix_execution_space_type<TEST_EXECUTION_SPACE, Ko
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
  *       when used with a single-branch @c stdexec::when_all.
  */
-TEST_F(WhenAllTest, one_branch) {
+TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t gctx{exec};
@@ -213,7 +221,7 @@ TEST_F(WhenAllTest, one_branch) {
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
  *       when used with a two-branches @c stdexec::when_all.
  */
-TEST_F(WhenAllTest, two_branches) {
+TEST_F(TEST_CATEGORY(WhenAllTest), two_branches) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t gctx{exec};
@@ -249,7 +257,7 @@ TEST_F(WhenAllTest, two_branches) {
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
  *       when used with a three-branches @c stdexec::when_all.
  */
-TEST_F(WhenAllTest, three_branches) {
+TEST_F(TEST_CATEGORY(WhenAllTest), three_branches) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t gctx{exec};
@@ -284,18 +292,71 @@ TEST_F(WhenAllTest, three_branches) {
     ASSERT_EQ(data(), 3);
 }
 
+/**
+ * @test Similar to @ref Tests::GraphImpl::WhenAllTest_three_branches_Test, but each branch starts with
+ *       some work on @c experimental::execution::single_thread_context.
+ *
+ * This test ensures that that if the @c stdexec::when_all creates a single graph with the termination
+ * of each branch, the graph is submitted only when all branches have complete their work on their respective
+ * @c experimental::execution::single_thread_context.
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_starting_on_single_thread_context) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    experimental::execution::single_thread_context stc_a{}, stc_b{}, stc_c{};
+
+    const context_t gctx{exec};
+
+    auto branch_a = stdexec::schedule(stc_a.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+                  | stdexec::continues_on(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data);
+    auto branch_b = stdexec::schedule(stc_b.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+                  | stdexec::continues_on(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data);
+    auto branch_c = stdexec::schedule(stc_c.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+                  | stdexec::continues_on(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data);
+
+    auto sndr = stdexec::when_all(std::move(branch_a), std::move(branch_b), std::move(branch_c));
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
+    KOKKOS_EXECUTION_TEST_UTILS_GRAPH_FENCE(exec);
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(default_device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(3))),
+            MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
+
+    ASSERT_EQ(data(), 6);
+}
+
 //! @test The customization of @c stdexec::when_all properly forwards forwarding queries.
-TEST_F(WhenAllTest, forwarding_env) {
+TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     std::atomic<size_t> count = 0;
 
+    int value;
+
     const context_t gctx{exec};
 
-    //! @todo Use @ref Tests::Utils::round_trip_allocate as in @ref Tests::ExecutionSpaceImpl::ThenTest_forwarding_env_Test.
     stdexec::sender auto sndr =
         stdexec::when_all(
-            stdexec::schedule(gctx.get_scheduler())
+            stdexec::read_env(stdexec::get_allocator)
+            | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
+            | stdexec::continues_on(gctx.get_scheduler())
             | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data))
         | stdexec::write_env(stdexec::prop{stdexec::get_allocator, Tests::Utils::TrackingAllocator<int>{&count}});
 
@@ -316,6 +377,9 @@ TEST_F(WhenAllTest, forwarding_env) {
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
     ASSERT_EQ(data(), 1);
+
+    ASSERT_EQ(value, 42);
+    ASSERT_EQ(count, 1);
 }
 
 } // namespace Tests::GraphImpl
