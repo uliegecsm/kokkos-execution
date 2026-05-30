@@ -159,6 +159,11 @@ target_compile_definitions(kokkosexecution INTERFACE KOKKOS_IMPL_PUBLIC_INCLUDE)
 
 target_link_libraries(kokkosexecution INTERFACE Kokkos::kokkoscore STDEXEC::stdexec)
 
+# Fix for the same issue as in https://github.com/kokkos/kokkos/issues/8977.
+if(HPX IN_LIST Kokkos_DEVICES)
+  target_link_options(kokkosexecution INTERFACE -latomic)
+endif()
+
 if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   target_compile_definitions(kokkosexecution INTERFACE KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
   target_link_libraries(kokkosexecution INTERFACE $<BUILD_INTERFACE:plog::plog>)
