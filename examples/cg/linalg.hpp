@@ -11,7 +11,7 @@ template <typename OrdinalType, Kokkos::MemorySpace Mem>
 struct CrsGraph {
     using ordinal_t = OrdinalType;
 
-    using row_map_t = Kokkos::View<const ordinal_t*, Mem>;
+    using row_map_t = Kokkos::View<const size_t*, Mem>;
     using entries_t = Kokkos::View<ordinal_t*, Mem>;
 
     row_map_t row_map;
@@ -120,8 +120,10 @@ struct Dot {
 
 struct dot_t {
     template <typename ResultViewType, typename XViewType, typename YViewType>
-    constexpr auto operator()(ResultViewType result, XViewType view_x, YViewType view_y)
-        const { // NOLINT(performance-unnecessary-value-param)
+    constexpr auto operator()(
+        ResultViewType result, // NOLINT(performance-unnecessary-value-param)
+        XViewType view_x,
+        YViewType view_y) const {
         const size_t shape = view_x.size();
         return stdexec::then(KOKKOS_LAMBDA() { result() = 0; })
              | stdexec::bulk(stdexec::par, shape, Dot{result, std::move(view_x), std::move(view_y)});
@@ -135,24 +137,56 @@ struct dot_t {
 
 inline constexpr dot_t dot{};
 
-template <typename MatrixType, typename RhsViewType, typename SolViewType>
-stdexec::sender auto
-    cg(stdexec::scheduler auto schd,
-       MatrixType mat,
-       RhsViewType rhs,   // NOLINT(performance-unnecessary-value-param)
-       SolViewType sol) { // NOLINT(performance-unnecessary-value-param)
-    using scalar_t = typename RhsViewType::non_const_value_type;
-
-    const typename RhsViewType::non_const_type res(
-        Kokkos::view_alloc(schd.state->exec, Kokkos::WithoutInitializing, "res"), rhs.size());
-    const Kokkos::View<scalar_t, Kokkos::SharedHostPinnedSpace> res_dot_old(
-        Kokkos::view_alloc(schd.state->exec, Kokkos::WithoutInitializing, "res dot old"));
-
-    return stdexec::schedule(schd) 
-         | deep_copy(res, rhs)
-         | spmv(scalar_t{-1}, mat, sol, scalar_t{1}, res) // NOLINT(performance-unnecessary-value-param)
-         | dot(res_dot_old, res, res);
+template <typename T>
+requires(!Kokkos::is_view_v<std::remove_cvref_t<T>>)
+KOKKOS_FUNCTION constexpr decltype(auto) get_value(T&& val) {
+    return std::forward<T>(val);
 }
+
+template <typename T>
+requires(Kokkos::is_view_v<std::remove_cvref_t<T>> && std::remove_cvref_t<T>::rank() == 0)
+KOKKOS_FUNCTION constexpr decltype(auto) get_value(T&& val) {
+    return std::forward<T>(val)();
+}
+
+template <typename AMaybeViewType, typename XViewType, typename BMaybeViewType, typename YViewType>
+struct Axpby {
+    template <std::integral T>
+    KOKKOS_FUNCTION void operator()(const T irow) const {
+        view_y(irow) = get_value(coeff_a) * view_x(irow) + get_value(coeff_b) * view_y(irow);
+    }
+
+    AMaybeViewType coeff_a;
+    XViewType view_x;
+    BMaybeViewType coeff_b;
+    YViewType view_y;
+};
+
+struct axpby_t {
+    template <typename AMaybeViewType, typename XViewType, typename BMaybeViewType, typename YViewType>
+    constexpr auto
+        operator()(AMaybeViewType coeff_a, XViewType view_x, BMaybeViewType coeff_b, YViewType view_y) const {
+        const size_t shape = view_x.size();
+        return stdexec::bulk(
+            stdexec::par, shape, Axpby{std::move(coeff_a), std::move(view_x), std::move(coeff_b), std::move(view_y)});
+    }
+
+    template <
+        stdexec::sender Sndr,
+        typename AMaybeViewType,
+        typename XViewType,
+        typename BMaybeViewType,
+        typename YViewType
+    >
+    constexpr auto
+        operator()(Sndr&& sndr, AMaybeViewType coeff_a, XViewType view_x, BMaybeViewType coeff_b, YViewType view_y)
+            const {
+        return std::forward<Sndr>(sndr)
+             | this->operator()(std::move(coeff_a), std::move(view_x), std::move(coeff_b), std::move(view_y));
+    }
+};
+
+inline constexpr axpby_t axpby{};
 
 } // namespace Examples::CG
 

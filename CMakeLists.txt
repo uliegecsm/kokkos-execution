@@ -242,11 +242,6 @@ if(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
   include(${CMAKE_SOURCE_DIR}/cmake/modules/kokkos_exec_mapping.cmake)
 endif()
 
-# Examples.
-if(KokkosExecution_ENABLE_EXAMPLES)
-  add_subdirectory(examples)
-endif()
-
 # Testing.
 if(KokkosExecution_ENABLE_TESTS)
   enable_testing()
