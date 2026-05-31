@@ -33,7 +33,7 @@ function(add_one_example)
     # Always allow logging and kokkos-utils.
     target_link_libraries(${aoe_args_EXECUTABLE_NAME} PRIVATE plog::plog Kokkos::kokkosutils)
 
-    if(DEFINED aot_args_ADDITIONAL_LINK_LIBRARIES)
+    if(DEFINED aoe_args_ADDITIONAL_LINK_LIBRARIES)
       target_link_libraries(${aoe_args_EXECUTABLE_NAME} PRIVATE ${aoe_args_ADDITIONAL_LINK_LIBRARIES})
     endif()
 

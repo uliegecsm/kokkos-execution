@@ -178,7 +178,17 @@ if(KokkosExecution_ENABLE_DEBUG_LOGGING)
 endif()
 
 if(KokkosExecution_ENABLE_EVENT_DISPATCH OR KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
-  find_package(KokkosUtils CONFIG REQUIRED)
+  # Find kokkos-utils.
+  string(
+    JSON
+    KOKKOS_UTILS_VERSION
+    GET
+    "${DEPENDENCIES_JSON}"
+    "github"
+    "kokkos-utils"
+    "version"
+  )
+  find_package(KokkosUtils ${KOKKOS_UTILS_VERSION} CONFIG REQUIRED)
 endif()
 
 if(KokkosExecution_ENABLE_EVENT_DISPATCH)
@@ -232,15 +242,16 @@ if(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
   include(${CMAKE_SOURCE_DIR}/cmake/modules/kokkos_exec_mapping.cmake)
 endif()
 
-# Examples.
-if(KokkosExecution_ENABLE_EXAMPLES)
-  add_subdirectory(examples)
-endif()
-
 # Testing.
 if(KokkosExecution_ENABLE_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+# Examples.
+if(KokkosExecution_ENABLE_EXAMPLES)
+  enable_testing()
+  add_subdirectory(examples)
 endif()
 
 # Documentation.
