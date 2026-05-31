@@ -18,16 +18,21 @@ namespace Examples::CG {
  *                -1  1     2 / size
  * @endverbatim
  */
-template <typename ScalarType, Kokkos::MemorySpace Mem>
+template <typename ScalarType, typename OrdinalType, Kokkos::MemorySpace Mem>
 struct FEMLaplacian1D {
     using scalar_t = ScalarType;
-    using ordinal_t = typename Mem::size_type;
 
-    using matrix_t = CrsMatrix<scalar_t, ordinal_t, Mem>;
+    using ordinal_t = OrdinalType;
+
     using vector_t = Kokkos::View<scalar_t*, Mem>;
+    using matrix_t = CrsMatrix<scalar_t, ordinal_t, Mem>;
 
     template <Kokkos::ExecutionSpace Exec>
     static FEMLaplacian1D create(const Exec& exec, const size_t size) {
+        if (size < 3) {
+            throw std::invalid_argument("FEMLaplacian1D::create: size must be at least 3.");
+        }
+
         const auto nnz = 3 * size - 2;
 
         using row_map_t = typename matrix_t::graph_t::row_map_t::non_const_type;
@@ -43,7 +48,7 @@ struct FEMLaplacian1D {
         vector_t guess_(Kokkos::view_alloc(Kokkos::WithoutInitializing, exec, "guess"), size);
 
         Kokkos::parallel_for(
-            "FEMLaplacian1D", Kokkos::RangePolicy(exec, 0, size), KOKKOS_LAMBDA(const ordinal_t irow) {
+            "FEMLaplacian1D", Kokkos::RangePolicy(exec, 0, size), KOKKOS_LAMBDA(const auto irow) {
                 if (irow == 0) {
                     row_map(0) = 0;
                     row_map(1) = 2;
@@ -54,8 +59,8 @@ struct FEMLaplacian1D {
                     values(0) = 1;
                     values(1) = 0;
 
-                    rhs_(0) = 0.;
-                } else if (irow < size - 1) {
+                    rhs_(0) = 0;
+                } else if (irow < static_cast<decltype(irow)>(size - 1)) {
                     const auto offset = 3 * (irow - 1) + 2;
 
                     row_map(irow + 1) = offset + 3;
@@ -68,7 +73,7 @@ struct FEMLaplacian1D {
                     values(offset + 1) = 2;
                     values(offset + 2) = -1;
 
-                    rhs_(irow) = 0.;
+                    rhs_(irow) = 0;
                 } else {
                     const auto offset = 3 * (irow - 1) + 2;
 
@@ -92,6 +97,21 @@ struct FEMLaplacian1D {
             .rhs = std::move(rhs_),
             .guess = std::move(guess_)
         };
+    }
+
+    template <Kokkos::ExecutionSpace Exec, typename MagnitudeType>
+    static auto check(const Exec& exec, const vector_t& sol, const MagnitudeType tol) {
+        scalar_t squared_error = 0;
+        Kokkos::parallel_reduce(
+            "FEMLaplacian1D::check",
+            Kokkos::RangePolicy(exec, 0, sol.size()),
+            KOKKOS_LAMBDA(const auto irow, scalar_t& lcl) {
+                const auto exact_sol = static_cast<scalar_t>(2 * irow) / sol.size();
+                const auto diff = sol(irow) - exact_sol;
+                lcl += diff * diff;
+            },
+            squared_error);
+        return Kokkos::sqrt(Kokkos::abs(squared_error)) < tol;
     }
 
     matrix_t matrix;
