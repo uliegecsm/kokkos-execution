@@ -1,3 +1,9 @@
+#include "kokkos-execution/utils/ignore_warnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/single_thread_context.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 #include "Kokkos_Core.hpp"
 
 #include "kokkos-execution/execution_space.hpp"
@@ -20,7 +26,10 @@ class FEMLaplacian1DProblem {
         const Kokkos::Execution::ExecutionSpaceContext esc{exec};
         const auto schd = esc.get_scheduler();
 
-        auto chain = cg(schd, std::move(mat), std::move(rhs), sol);
+        experimental::execution::single_thread_context stc{};
+        const auto host_schd = stc.get_scheduler();
+
+        auto chain = cg(schd, host_schd, std::move(mat), std::move(rhs), sol, 1e-14);
 
         stdexec::sync_wait(std::move(chain));
     }
