@@ -67,6 +67,9 @@ Dependency<Exec, Exec> {
 #if defined(KOKKOS_ENABLE_HIP)
 #    include "kokkos-execution/impl/HIP/dependency.hpp"
 #endif
+#if defined(KOKKOS_ENABLE_HPX)
+#    include "kokkos-execution/impl/HPX/dependency.hpp"
+#endif
 #if defined(KOKKOS_ENABLE_SYCL)
 #    include "kokkos-execution/impl/SYCL/dependency.hpp"
 #endif

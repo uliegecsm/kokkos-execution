@@ -142,27 +142,32 @@ void record(Event<Exec>& event, const Exec& exec) {
     event.record(exec);
 }
 
-//! Wait for @p event to complete.
-template <Kokkos::ExecutionSpace Exec>
-void wait(const Event<Exec>& event) {
-    wait_event(event);
-    event.wait();
+template <Kokkos::ExecutionSpace... Exec>
+void impl_wait(const Event<Exec>&... events) {
+    (events.wait(), ...);
 }
 
-template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace ExecFrom>
-void impl_wait(const ExecTo&, const Event<ExecFrom>& event) {
-    event.wait();
+//! Wait for @p events to complete.
+template <Kokkos::ExecutionSpace... Exec>
+void wait(const Event<Exec>&... events) {
+    (wait_event(events), ...);
+    impl_wait(events...);
+}
+
+template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace... ExecFrom>
+void impl_wait(const ExecTo&, const Event<ExecFrom>&... events) {
+    (events.wait(), ...);
 }
 
 /**
- * @brief The operations enqueued from the calling thread into @p exec cannot start before the event @p event completes.
+ * @brief The operations enqueued from the calling thread into @p exec cannot start before the event @p events completes.
  *
  * @note Backends should specialize @ref impl_wait.
  */
-template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace ExecFrom>
-void wait(const ExecTo& exec, const Event<ExecFrom>& event) {
-    wait_event(exec, event);
-    impl_wait(exec, event);
+template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace... ExecFrom>
+void wait(const ExecTo& exec, const Event<ExecFrom>&... events) {
+    (wait_event(exec, events), ...);
+    impl_wait(exec, events...);
 }
 
 template <Kokkos::ExecutionSpace Exec>
