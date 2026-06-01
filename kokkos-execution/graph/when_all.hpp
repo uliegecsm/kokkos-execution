@@ -180,6 +180,7 @@ struct WhenAllOpState
             Kokkos::Execution::GraphImpl::submit_graph(state.graph, state.get_device_handle().m_exec);
         } catch (...) {
             stdexec::set_error(this->completion_signal.rcvr, std::current_exception());
+            return;
         }
         this->completion_signal.propagate(state.get_device_handle().m_exec);
     }

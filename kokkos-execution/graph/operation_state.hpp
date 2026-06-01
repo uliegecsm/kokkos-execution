@@ -240,6 +240,7 @@ struct OpState
                 submit_graph(state.graph, state.get_device_handle().m_exec);
             } catch (...) {
                 this->complete(stdexec::set_error, std::current_exception());
+                return;
             }
         }
         this->completion_signal.propagate(Impl::get_exec(*this).get());
