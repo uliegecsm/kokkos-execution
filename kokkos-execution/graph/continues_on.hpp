@@ -91,16 +91,17 @@ struct ContinuesOnOpState
     void submit() noexcept {
         const auto& exec_from = Impl::get_exec(this->inner_opstate).get();
         const auto& exec_to = Impl::get_exec(*this).get();
-        this->dependency.emplace(exec_to, exec_from);
         try {
-            if constexpr (std::same_as<completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>) {
-                std::move(this->rcvr).submitted();
-            } else {
-                static_assert(std::same_as<completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
-                stdexec::set_value(std::move(this->rcvr));
-            }
+            this->dependency.emplace(exec_to, exec_from);
         } catch (...) {
             stdexec::set_error(std::move(this->rcvr), std::current_exception());
+            return;
+        }
+        if constexpr (std::same_as<completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>) {
+            std::move(this->rcvr).submitted();
+        } else {
+            static_assert(std::same_as<completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
+            stdexec::set_value(std::move(this->rcvr));
         }
     }
 

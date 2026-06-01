@@ -83,10 +83,11 @@ struct ScheduleFromOpState
             this->query(Impl::get_exec)
                 .get()
                 .fence(std::string(Impl::dispatch_label<Impl::exec_of_t<decltype(*this)>, ": schedule_from">()));
-            stdexec::set_value(std::move(this->rcvr));
         } catch (...) {
             stdexec::set_error(std::move(this->rcvr), std::current_exception());
+            return;
         }
+        stdexec::set_value(std::move(this->rcvr));
     }
 };
 
