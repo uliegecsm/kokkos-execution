@@ -104,29 +104,17 @@ TEST_F(SplitTest, within) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     /// Each branch may be executed by a distinct host thread. So ordering of the event is not guaranteed.
-    if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
-        ASSERT_THAT(recorded_events, ::testing::SizeIs(8));
-        ASSERT_THAT(
-            recorded_events, ::testing::Contains(MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then"))).Times(4));
-        ASSERT_THAT(recorded_events, ::testing::Contains(MATCHER_FOR_RECORD_EVENT(exec)).Times(2));
-        std::ranges::for_each(
-            recorded_events | std::views::filter([](const auto& event) -> bool {
-                return std::holds_alternative<Kokkos::Execution::Impl::RecordEvent>(event);
-            }),
-            [&](const auto& event) {
-                ASSERT_THAT(recorded_events, ::testing::Contains(MATCHER_FOR_WAIT_EVENT(event)).Times(1));
-            });
-    } else {
-        ASSERT_THAT(
-            recorded_events,
-            testing::UnorderedElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
-    }
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(8));
+    ASSERT_THAT(
+        recorded_events, ::testing::Contains(MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then"))).Times(4));
+    ASSERT_THAT(recorded_events, ::testing::Contains(MATCHER_FOR_RECORD_EVENT(exec)).Times(2));
+    std::ranges::for_each(
+        recorded_events | std::views::filter([](const auto& event) -> bool {
+            return std::holds_alternative<Kokkos::Execution::Impl::RecordEvent>(event);
+        }),
+        [&](const auto& event) {
+            ASSERT_THAT(recorded_events, ::testing::Contains(MATCHER_FOR_WAIT_EVENT(event)).Times(1));
+        });
 
     ASSERT_EQ(data(), 5);
 }
