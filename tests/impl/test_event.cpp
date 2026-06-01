@@ -205,9 +205,12 @@ TEST_F(EventTest, wait_exec_event_for_same_type) {
         Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event_A;
         Kokkos::Execution::Impl::record(event_A, exec_A);
         Kokkos::Execution::Impl::wait(exec_B, event_A);
+
+        //! Ensure the event has been waited for within the scope that created it.
+        exec_B.fence();
     });
 
-    ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(3));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec_A));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(0)));
 }
