@@ -46,9 +46,11 @@ struct Dependency<Exec, Exec> {
 
 template <Kokkos::ExecutionSpace Exec>
 requires has_exec_wait_event<Exec>
-struct Dependency<Exec, Exec> {
+struct [[nodiscard]]
+Dependency<Exec, Exec> {
     Event<Exec> event{};
 
+    //! The @ref Dependency object owning the event must outlive the wait it anchors.
     Dependency(const Exec& exec_to, const Exec& exec_from) {
         if (exec_from != exec_to) {
             record(event, exec_from);
