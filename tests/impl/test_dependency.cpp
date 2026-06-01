@@ -45,7 +45,7 @@ TEST_F(DependencyTest, same_type) {
     const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
 
     const auto recorded_events = recorder_listener_t::record(
-        [&exec_A, &exec_B]() { Kokkos::Execution::Impl::Dependency{exec_B, exec_A}; });
+        [&exec_A, &exec_B]() { const Kokkos::Execution::Impl::Dependency dependency{exec_B, exec_A}; });
 
     if constexpr (Kokkos::Execution::Impl::has_exec_wait_event<TEST_EXECUTION_SPACE>) {
         ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
@@ -71,7 +71,7 @@ TEST_F(DependencyTest, different_type) {
     const Kokkos::DefaultHostExecutionSpace exec_h;
 
     const auto recorded_events = recorder_listener_t::record(
-        [this, &exec_h]() { Kokkos::Execution::Impl::Dependency{exec_h, this->exec}; });
+        [this, &exec_h]() { const Kokkos::Execution::Impl::Dependency dependency{exec_h, this->exec}; });
 
     ASSERT_THAT(
         recorded_events,
