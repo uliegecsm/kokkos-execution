@@ -132,6 +132,7 @@ target_sources(
             kokkos-execution/impl/event.hpp
             kokkos-execution/impl/HIP/dependency.hpp
             kokkos-execution/impl/HIP/event.hpp
+            kokkos-execution/impl/HPX/dependency.hpp
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
             kokkos-execution/impl/make_opstate.hpp

@@ -76,19 +76,33 @@ struct Event<Kokkos::Experimental::HPX> {
     }
 };
 
-//! Enqueue a call to @ref Event::wait into the underlying sender chain.
-template <>
-void impl_wait(const Kokkos::Experimental::HPX& exec, const Event<Kokkos::Experimental::HPX>& event) {
+template <Kokkos::ExecutionSpace... Exec>
+requires(std::same_as<Exec, Kokkos::Experimental::HPX> && ...)
+void impl_wait(const Event<Kokkos::Experimental::HPX>& event, const Event<Exec>&... events) {
+    KOKKOS_EXPECTS(event.m_sender.has_value() && (events.m_sender.has_value() && ...));
+
+    hpx::this_thread::experimental::sync_wait(
+        hpx::execution::experimental::when_all(std::move(*event.m_sender), std::move(*events.m_sender)...));
+
+    //! Mark the events as consumed.
+    event.m_sender = std::nullopt;
+    ((events.m_sender = std::nullopt), ...);
+}
+
+template <Kokkos::ExecutionSpace... ExecFrom>
+requires(std::same_as<ExecFrom, Kokkos::Experimental::HPX> && ...)
+void impl_wait(const Kokkos::Experimental::HPX& exec, const Event<ExecFrom>&... events) {
+    KOKKOS_EXPECTS((events.m_sender.has_value() && ...));
+
     auto& instance_data = exec.impl_get_instance_data();
 
     const std::scoped_lock<hpx::spinlock> lock(instance_data.m_sender_mutex);
 
     auto& sndr = instance_data.m_sender;
-    sndr = hpx::execution::experimental::unique_any_sender<>{
-        hpx::execution::experimental::when_all(std::move(sndr), std::move(*event.m_sender))};
+    sndr = hpx::execution::experimental::when_all(std::move(sndr), std::move(*events.m_sender)...);
 
-    //! Mark the event as consumed.
-    event.m_sender = std::nullopt;
+    //! Mark the events as consumed.
+    ((events.m_sender = std::nullopt), ...);
 }
 
 } // namespace Kokkos::Execution::Impl

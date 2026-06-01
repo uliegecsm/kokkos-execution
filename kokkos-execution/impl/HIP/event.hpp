@@ -49,10 +49,14 @@ struct Event<Kokkos::HIP> {
     }
 };
 
-template <>
-void impl_wait(const Kokkos::HIP& exec, const Event<Kokkos::HIP>& event) {
-    KOKKOS_EXPECTS(bool(event.hip_event()));
-    KOKKOS_IMPL_HIP_SAFE_CALL(hipStreamWaitEvent(exec.hip_stream(), event.hip_event()));
+template <Kokkos::ExecutionSpace... ExecFrom>
+requires(std::same_as<ExecFrom, Kokkos::HIP> && ...)
+void impl_wait(const Kokkos::HIP& exec, const Event<ExecFrom>&... events) {
+    auto do_impl_wait = [&exec](const auto& event) {
+        KOKKOS_EXPECTS(bool(event.hip_event()));
+        KOKKOS_IMPL_HIP_SAFE_CALL(hipStreamWaitEvent(exec.hip_stream(), event.hip_event()));
+    };
+    (do_impl_wait(events), ...);
 }
 
 } // namespace Kokkos::Execution::Impl

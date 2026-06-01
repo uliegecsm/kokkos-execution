@@ -47,9 +47,10 @@ struct Event<Kokkos::SYCL> {
     }
 };
 
-template <>
-void impl_wait(const Kokkos::SYCL& exec, const Event<Kokkos::SYCL>& event) {
-    exec.sycl_queue().submit([&](sycl::handler& cgh) { cgh.depends_on(event.sycl_event()); });
+template <Kokkos::ExecutionSpace... ExecFrom>
+requires(std::same_as<ExecFrom, Kokkos::SYCL> && ...)
+void impl_wait(const Kokkos::SYCL& exec, const Event<ExecFrom>&... events) {
+    exec.sycl_queue().submit([&](sycl::handler& cgh) { (cgh.depends_on(events.sycl_event()), ...); });
 }
 
 } // namespace Kokkos::Execution::Impl

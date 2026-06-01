@@ -479,6 +479,26 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
                 MATCHER_FOR_GRAPH_SUBMIT(exec_h, recorded_events.at(2)),
                 MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(4)),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    } else if constexpr (
+        Kokkos::Execution::Impl::has_exec_wait_event<TEST_EXECUTION_SPACE>
+        && std::same_as<Kokkos::DefaultHostExecutionSpace, TEST_EXECUTION_SPACE>) {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_GRAPH_CREATE(device_handle),
+                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_CREATE(device_handle_h),
+                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_h, nullptr),
+                MATCHER_FOR_GRAPH_CREATE(device_handle),
+                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(4), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec_h, recorded_events.at(7)),
+                MATCHER_FOR_GRAPH_SUBMIT(exec_h, recorded_events.at(2)),
+                MATCHER_FOR_RECORD_EVENT(exec_h),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec, recorded_events.at(10)),
+                MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(4)),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     } else {
         ASSERT_THAT(
             recorded_events,

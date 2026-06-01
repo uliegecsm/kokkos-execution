@@ -167,6 +167,20 @@ TEST_F(OnTest, many_execution_space_instances_of_different_type) {
                 MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+    } else if constexpr (
+        Kokkos::Execution::Impl::has_exec_wait_event<TEST_EXECUTION_SPACE>
+        && std::same_as<host_execution_space, TEST_EXECUTION_SPACE>) {
+        ASSERT_THAT(
+            recorded_events,
+            testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec_h, recorded_events.at(1)),
+                MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec_h),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec, recorded_events.at(4)),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     } else {
         ASSERT_THAT(
             recorded_events,

@@ -59,13 +59,19 @@ consteval bool test_has_exec_wait_event() {
 #if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP) || defined(KOKKOS_ENABLE_SYCL)
     if constexpr (std::same_as<Exec, Kokkos::DefaultExecutionSpace>) {
         static_assert(Kokkos::Execution::Impl::has_exec_wait_event<Exec>);
+        return true;
+    } else
+#endif
+#if defined(KOKKOS_ENABLE_HPX)
+        if constexpr (std::same_as<Exec, Kokkos::Experimental::HPX>) {
+        static_assert(Kokkos::Execution::Impl::has_exec_wait_event<Exec>);
+        return true;
     } else
 #endif
     {
         static_assert(!Kokkos::Execution::Impl::has_exec_wait_event<Exec>);
+        return true;
     }
-
-    return true;
 }
 static_assert(test_has_exec_wait_event<TEST_EXECUTION_SPACE>());
 
@@ -115,27 +121,6 @@ TEST_F(EventTest, record_but_dont_wait) {
     ASSERT_THAT(recorded_events, testing::SizeIs(2));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_BEGIN_FENCE(exec, "some-label"));
-}
-
-//! @test Record an event and wait for it many times. It marks all wait events.
-TEST_F(EventTest, record_and_wait_many_times) {
-    const auto recorded_events = recorder_listener_t::record([this]() {
-        Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event;
-        Kokkos::Execution::Impl::record(event, exec);
-        Kokkos::Execution::Impl::wait(event);
-        Kokkos::Execution::Impl::wait(event);
-        Kokkos::Execution::Impl::wait(event);
-        Kokkos::Execution::Impl::wait(event);
-        Kokkos::Execution::Impl::wait(event);
-    });
-
-    ASSERT_THAT(recorded_events, ::testing::SizeIs(6));
-    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
-    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
-    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
-    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
-    ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
-    ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
 }
 
 //! @test Record an event and wait for it. Repeat the record/wait steps but reusing the same instance.
@@ -213,6 +198,27 @@ TEST_F(EventTest, wait_exec_event_for_same_type) {
     ASSERT_THAT(recorded_events, ::testing::SizeIs(3));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec_A));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(0)));
+}
+
+//! @test Check @ref Kokkos::Execution::Impl::wait when the underlying execution space type is the same and there are many events to wait for.
+TEST_F(EventTest, wait_exec_events_for_same_type) {
+    const auto [exec_A, exec_B] = Kokkos::Experimental::partition_space(exec, 1, 1);
+
+    const auto recorded_events = recorder_listener_t::record([&exec_A, &exec_B]() {
+        Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event_A_0, event_A_1, event_A_2;
+        Kokkos::Execution::Impl::record(event_A_0, exec_A);
+        Kokkos::Execution::Impl::record(event_A_1, exec_A);
+        Kokkos::Execution::Impl::record(event_A_2, exec_A);
+        Kokkos::Execution::Impl::wait(exec_B, event_A_0, event_A_1, event_A_2);
+    });
+
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(6));
+    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec_A));
+    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_RECORD_EVENT(exec_A));
+    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec_A));
+    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(1)));
+    ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(2)));
 }
 
 //! @test Check @ref Kokkos::Execution::Impl::wait when the underlying execution space type is different.
