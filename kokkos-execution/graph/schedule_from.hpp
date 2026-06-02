@@ -105,7 +105,7 @@ struct ScheduleFromSender {
 
     using execution_space = Exec;
 
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender, Sndr)
 
     template <typename Self, typename Rcvr>
     using connect_result_t = ScheduleFromOpState<execution_space, stdexec::__copy_cvref_t<Self, Sndr>, Rcvr>;

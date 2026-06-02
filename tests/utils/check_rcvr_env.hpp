@@ -15,7 +15,7 @@ struct CheckRcvrEnvSender {
 
     Sndr sndr;
 
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(CheckRcvrEnvSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(CheckRcvrEnvSender, Sndr)
 
     template <stdexec::__decays_to<CheckRcvrEnvSender> Self, stdexec::receiver Rcvr>
     [[nodiscard]]

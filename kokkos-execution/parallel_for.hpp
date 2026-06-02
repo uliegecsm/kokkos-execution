@@ -73,7 +73,7 @@ struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Labe
         : base_t{parallel_for_t{}, std::move(data), std::forward<Sndr>(sndr)} {
     }
 
-    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, stdexec::set_error_t(std::exception_ptr))
+    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
     template <stdexec::receiver Rcvr>
     constexpr auto connect(Rcvr) && = delete;

@@ -73,7 +73,7 @@ template <Kind kind, stdexec::sender Sndr>
 struct RegionSender {
     using sender_concept = stdexec::sender_tag;
 
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(RegionSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(RegionSender, Sndr)
 
     template <typename Rcvr>
     using schd_t = Impl::completion_scheduler_of_t<stdexec::set_value_t, Sndr, stdexec::env_of_t<Rcvr>>;

@@ -53,7 +53,7 @@ struct ThenSender {
 
     using closure_t = ThenClosure<Exec, Functor>;
 
-    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ThenSender, stdexec::set_error_t(std::exception_ptr))
+    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ThenSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
     KOKKOS_EXECUTION_GRAPH_OPERATION_STATE_CONNECT
 

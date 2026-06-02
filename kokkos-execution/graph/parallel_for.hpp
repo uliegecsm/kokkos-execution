@@ -44,7 +44,7 @@ struct ParallelForSender {
 
     using closure_t = ParallelForClosure<Label, Functor, ExecPolicy>;
 
-    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, stdexec::set_error_t(std::exception_ptr))
+    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
     KOKKOS_EXECUTION_GRAPH_OPERATION_STATE_CONNECT
 

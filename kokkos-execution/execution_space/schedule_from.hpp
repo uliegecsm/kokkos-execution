@@ -113,7 +113,7 @@ template <stdexec::sender Sndr>
 struct ScheduleFromSender {
     using sender_concept = stdexec::sender_tag;
 
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ScheduleFromSender, Sndr)
 
     template <stdexec::receiver Rcvr>
     constexpr auto
