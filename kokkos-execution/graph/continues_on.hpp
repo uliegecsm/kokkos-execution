@@ -131,7 +131,7 @@ template <stdexec::scheduler Schd, stdexec::sender Sndr>
 struct ContinuesOnSender {
     using sender_concept = stdexec::sender_tag;
 
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ContinuesOnSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(ContinuesOnSender, Sndr)
 
     template <typename Self, typename Rcvr>
     using connect_result_t =

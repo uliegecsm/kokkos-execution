@@ -41,7 +41,7 @@ struct CheckRcvrEnvQueryableWithSender {
 
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(CheckRcvrEnvQueryableWithSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(CheckRcvrEnvQueryableWithSender, Sndr)
 
     template <stdexec::__decays_to<CheckRcvrEnvQueryableWithSender> Self, stdexec::receiver Rcvr>
     [[nodiscard]]

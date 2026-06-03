@@ -3,43 +3,47 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#include "exec/completion_signatures.hpp"
-
 namespace Kokkos::Execution::Impl {
 
 /**
- * @brief Completion signatures of @c _sndr_type_.
- *
- * The @c stdexec::set_value_t() completion signature is added only if the child can complete successfully.
+ * @brief Concatenate @p Sndr completion signatures with @p ExtraSigs
+ *        if @p Sndr sends on the value channel; otherwise return @p Sndr
+ *        completion signatures unchanged.
  *
  * References:
  *  - https://github.com/NVIDIA/stdexec/commit/a0d95e90fc188f4f73328c4274551434edba3165
  *  - @cite P3557R3.
- */ // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define KOKKOS_EXECUTION_COMPL_SIGS_ADD(_sndr_type_, ...)                                                              \
-    template <::stdexec::__decays_to<_sndr_type_> Self, typename... Env>                                               \
+ */
+template <stdexec::sender Sndr, stdexec::__valid_completion_signatures ExtraSigs, typename... Env>
+consteval auto completion_signatures_add() {
+    using completions_t = stdexec::__completion_signatures_of_t<Sndr, Env...>;
+
+    if constexpr (stdexec::__sends<stdexec::set_value_t, Sndr, Env...>) {
+        return stdexec::__concat_completion_signatures(completions_t{}, ExtraSigs{});
+    } else {
+        return completions_t{};
+    }
+}
+
+template <stdexec::sender Sndr, stdexec::__valid_completion_signatures ExtraSigs, typename... Env>
+using completion_signatures_add_t = decltype(completion_signatures_add<Sndr, ExtraSigs, Env...>());
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define KOKKOS_EXECUTION_COMPL_SIGS_ADD(_decayed_self_type_, _sndr_type_, ...)                                         \
+    template <stdexec::__decays_to<_decayed_self_type_> Self, typename... Env>                                         \
     static consteval auto get_completion_signatures() {                                                                \
-        using child_completions_t =                                                                                    \
-            ::stdexec::__completion_signatures_of_t<::stdexec::__copy_cvref_t<Self, Sndr>, Env...>;                    \
-        constexpr auto success_completion_count =                                                                      \
-            ::stdexec::__msize_t<::stdexec::__detail::__count_of<::stdexec::set_value_t, child_completions_t>>::value; \
-        if constexpr (success_completion_count > 0) {                                                                  \
-            return experimental::execution::transform_completion_signatures(                                           \
-                child_completions_t{},                                                                                 \
-                experimental::execution::keep_completion<stdexec::set_value_t>(),                                      \
-                experimental::execution::ignore_completion(),                                                          \
-                experimental::execution::ignore_completion(),                                                          \
-                stdexec::completion_signatures<__VA_ARGS__>());                                                        \
-        } else {                                                                                                       \
-            return child_completions_t{};                                                                              \
-        }                                                                                                              \
+        return Kokkos::Execution::Impl::completion_signatures_add<                                                     \
+            stdexec::__copy_cvref_t<Self, _sndr_type_>,                                                                \
+            stdexec::completion_signatures<__VA_ARGS__>,                                                               \
+            Env...                                                                                                     \
+        >();                                                                                                           \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define KOKKOS_EXECUTION_COMPL_SIGS_KEEP(_sndr_type_)                                                                  \
-    template <::stdexec::__decays_to<_sndr_type_> Self, typename... Env>                                               \
+#define KOKKOS_EXECUTION_COMPL_SIGS_KEEP(_decayed_self_type_, _sndr_type_)                                             \
+    template <stdexec::__decays_to<_decayed_self_type_> Self, typename... Env>                                         \
     static consteval auto get_completion_signatures() {                                                                \
-        return ::stdexec::__completion_signatures_of_t<::stdexec::__copy_cvref_t<Self, Sndr>, Env...>{};               \
+        return stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, _sndr_type_>, Env...>{};            \
     }
 
 } // namespace Kokkos::Execution::Impl

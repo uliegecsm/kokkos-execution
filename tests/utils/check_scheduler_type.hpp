@@ -42,7 +42,7 @@ struct CheckSchedulerTypeSender {
 
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
-    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(CheckSchedulerTypeSender)
+    KOKKOS_EXECUTION_COMPL_SIGS_KEEP(CheckSchedulerTypeSender, Sndr)
 
     template <stdexec::__decays_to<CheckSchedulerTypeSender> Self, stdexec::receiver Rcvr>
     [[nodiscard]]
