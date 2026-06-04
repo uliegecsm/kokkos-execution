@@ -31,7 +31,7 @@ struct ContextTest
     using value_t = int;
     using view_s_t = Kokkos::View<value_t, Kokkos::SharedSpace>;
 
-    static constexpr bool on_device = Tests::Utils::on_device<TEST_EXECUTION_SPACE>();
+    static constexpr bool on_device = Tests::Utils::on_device<Exec>();
 
    public:
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)

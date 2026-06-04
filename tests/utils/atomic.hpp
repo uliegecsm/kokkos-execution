@@ -58,20 +58,20 @@ struct CudaMemoryOrder<MemoryOrderRelaxed> {
 
 namespace Tests::Utils {
 
-//! Atomically add @p val to @c *ptr using given memory scope and order.
+//! Same effect as @c Kokkos::atomic_fetch_add, given memory scope and order.
 template <typename Scope, typename Order, typename T>
-KOKKOS_FUNCTION void atomic_add(T* ptr, const T val) {
+KOKKOS_FUNCTION auto atomic_fetch_add(T* ptr, const T val) {
 #if defined(KOKKOS_ENABLE_CUDA)
-    cuda::atomic_ref<T, desul::Impl::CudaMemoryScope<Scope>::value>(*ptr)
+    return cuda::atomic_ref<T, desul::Impl::CudaMemoryScope<Scope>::value>(*ptr)
         .fetch_add(val, desul::Impl::CudaMemoryOrder<Order>::value);
 #elif defined(KOKKOS_ENABLE_HIP)
-    __hip_atomic_fetch_add(
+    return __hip_atomic_fetch_add(
         ptr, val, desul::Impl::HIPMemoryOrder<Order>::value, desul::Impl::HIPMemoryScope<Scope>::value);
 #elif defined(KOKKOS_ENABLE_SYCL)
-    desul::Impl::sycl_atomic_ref<T, Order, Scope>{*ptr}.fetch_add(val);
+    return desul::Impl::sycl_atomic_ref<T, Order, Scope>{*ptr}.fetch_add(val);
 #else
     static_assert(std::same_as<Order, desul::MemoryOrderRelaxed>);
-    std::atomic_ref<T>(*ptr).fetch_add(val, std::memory_order_relaxed);
+    return std::atomic_ref<T>(*ptr).fetch_add(val, std::memory_order_relaxed);
 #endif
 }
 

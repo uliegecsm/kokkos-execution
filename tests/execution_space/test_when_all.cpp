@@ -527,4 +527,78 @@ TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
     }
 }
 
+/**
+ * @test Stress-test the @c stdexec::when_all customization by creating many branches, each starting in
+ *       a dedicated @c experimental::execution::single_thread_context, using its own @ref Kokkos::Execution::ExecutionSpaceContext.
+ */
+TEST_F(WhenAllTest, many_concurrent_branches) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    constexpr size_t num_branches = 6;
+
+    unsigned int counter_start = 0, counter_after_stc = 0;
+    std::array<unsigned int, num_branches> order_start{}, order_after_stc{};
+
+    const auto [exec_A, exec_B, exec_C, exec_D, exec_E, exec_F] =
+        Kokkos::Experimental::partition_space(exec, 1, 1, 1, 1, 1, 1);
+
+    using view_um_h_t = Kokkos::View<unsigned int, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+    using increment_and_memorize_t = Tests::Utils::Functors::FetchIncrement<view_um_h_t, false>;
+
+#define DEFINE_ONE_BRANCH(_letter_, _id_)                                                                              \
+    const context_t esc_##_letter_{exec_##_letter_};                                                                   \
+    experimental::execution::single_thread_context stc_##_letter_{};                                                   \
+    auto br_##_letter_ = stdexec::just()                                                                               \
+                       | stdexec::then(                                                                                \
+                             increment_and_memorize_t{                                                                 \
+                                 .counter = view_um_h_t{std::addressof(counter_start)},                                \
+                                 .value = view_um_h_t{std::addressof(order_start.at(_id_))}})                          \
+                       | stdexec::continues_on(stc_##_letter_.get_scheduler())                                         \
+                       | stdexec::then(                                                                                \
+                             increment_and_memorize_t{                                                                 \
+                                 .counter = view_um_h_t{std::addressof(counter_after_stc)},                            \
+                                 .value = view_um_h_t{std::addressof(order_after_stc.at(_id_))}})                      \
+                       | stdexec::continues_on(esc_##_letter_.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data);
+
+    DEFINE_ONE_BRANCH(A, 0)
+    DEFINE_ONE_BRANCH(B, 1)
+    DEFINE_ONE_BRANCH(C, 2)
+    DEFINE_ONE_BRANCH(D, 3)
+    DEFINE_ONE_BRANCH(E, 4)
+    DEFINE_ONE_BRANCH(F, 5)
+
+    auto sndr = stdexec::when_all(
+        std::move(br_A), std::move(br_B), std::move(br_C), std::move(br_D), std::move(br_E), std::move(br_F));
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
+    stdexec::sync_wait(std::move(sndr));
+
+    ASSERT_EQ(counter_start, num_branches);
+    ASSERT_EQ(counter_after_stc, num_branches);
+
+    ASSERT_EQ(data(), num_branches);
+
+    //! Branches are started in order.
+    ASSERT_THAT(order_start, testing::ElementsAre(0, 1, 2, 3, 4, 5));
+
+    /// However, since the branch uses @c experimental::execution::single_thread_context,
+    /// the order in which the branches terminate is not deterministic.
+    // NOLINTBEGIN(modernize-use-std-print)
+#define SHOW_ONE_BRANCH_ORDER_AFTER_STC(_letter_, _id_)                                                                \
+    SCOPED_TRACE(testing::Message() << "Branch " #_letter_ " order after 'stc' is " << order_after_stc.at(_id_));
+
+    SHOW_ONE_BRANCH_ORDER_AFTER_STC(A, 0)
+    SHOW_ONE_BRANCH_ORDER_AFTER_STC(B, 1)
+    SHOW_ONE_BRANCH_ORDER_AFTER_STC(C, 2)
+    SHOW_ONE_BRANCH_ORDER_AFTER_STC(D, 3)
+    SHOW_ONE_BRANCH_ORDER_AFTER_STC(E, 4)
+    SHOW_ONE_BRANCH_ORDER_AFTER_STC(F, 5)
+    // NOLINTEND(modernize-use-std-print)
+
+    ASSERT_THAT(order_after_stc, testing::UnorderedElementsAre(0, 1, 2, 3, 4, 5));
+}
+
 } // namespace Tests::ExecutionSpaceImpl
