@@ -32,7 +32,26 @@ struct Increment {
     KOKKOS_FUNCTION
     void operator()() const noexcept(!MayThrow) requires(Atomic == true)
     {
-        Tests::Utils::atomic_add<MemoryScope, desul::MemoryOrderRelaxed>(data.data(), 1);
+        Tests::Utils::atomic_fetch_add<MemoryScope, desul::MemoryOrderRelaxed, typename ViewType::non_const_value_type>(
+            data.data(), 1);
+    }
+};
+
+template <
+    Kokkos::utils::concepts::ViewOfRank<0> ViewType,
+    bool MayThrow = true,
+    typename MemoryScope = desul::MemoryScopeDevice
+>
+struct FetchIncrement {
+    typename ViewType::non_const_type counter, value;
+
+    KOKKOS_FUNCTION
+    void operator()() const noexcept(!MayThrow) {
+        value() = Tests::Utils::atomic_fetch_add<
+            MemoryScope,
+            desul::MemoryOrderRelaxed,
+            typename ViewType::non_const_value_type
+        >(counter.data(), 1);
     }
 };
 
@@ -40,7 +59,7 @@ struct Increment {
 #define THEN_INCREMENT(_data_)                                                                                         \
     stdexec::then(Tests::Utils::Functors::Increment<std::remove_cvref_t<decltype(_data_)>, true, false>{.data = _data_})
 
-//! Same as @ref THEN_INCREMENT, using @ref Tests::Utils::atomic_add. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+//! Same as @ref THEN_INCREMENT, using @ref Tests::Utils::atomic_fetch_add. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THEN_INCREMENT_ATOMIC(_scope_, _data_)                                                                         \
     stdexec::then(                                                                                                     \
         Tests::Utils::Functors::Increment<                                                                             \

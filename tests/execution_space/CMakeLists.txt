@@ -16,7 +16,7 @@ add_one_test(NAME split ADDITIONAL_LINK_LIBRARIES GTest::gmock)
 add_one_test(NAME sync_wait)
 add_one_test(NAME then)
 add_one_test(NAME transfer_when_all)
-add_one_test(NAME when_all)
+add_one_test(NAME when_all ADDITIONAL_LINK_LIBRARIES GTest::gmock)
 add_one_test(NAME when_all.failure)
 
 foreach(DEVICE IN LISTS Kokkos_DEVICES)
