@@ -168,7 +168,7 @@ struct OpState
     using state_t = State<graph_composition_policy_t, execution_space>;
     using predecessor_t = GraphComposition::node_t<execution_space, inner_opstate_t, Rcvr>;
 
-    static constexpr bool after_root = std::same_as<graph_composition_policy_t, GraphComposition::Create>;
+    static constexpr bool is_graph_create = std::same_as<graph_composition_policy_t, GraphComposition::Create>;
 
     using node_t = decltype(add_nodes(
         std::declval<predecessor_t>(),
@@ -202,7 +202,7 @@ struct OpState
      * Otherwise, return the result of querying @ref inner_opstate for @ref get_node_t.
      */
     const predecessor_t& get_predecessor() const noexcept {
-        if constexpr (after_root) {
+        if constexpr (is_graph_create) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
             PLOG_INFO << "The predecessor is the root node of graph " << get_graph_impl_ptr(state.get_root_node())
                       << '.';
@@ -231,7 +231,7 @@ struct OpState
     }
 
     void submit() noexcept {
-        if constexpr (after_root) {
+        if constexpr (is_graph_create) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
             PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.get_root_node()) << " on "
                       << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
@@ -253,7 +253,7 @@ struct OpState
 
     [[nodiscard]]
     constexpr auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
-        if constexpr (after_root) {
+        if constexpr (is_graph_create) {
             return state.graph;
         } else {
             return inner_opstate.query(get_graph);
@@ -262,13 +262,13 @@ struct OpState
 
     [[nodiscard]]
     constexpr auto
-        query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> requires after_root
+        query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> requires is_graph_create
     {
         return Impl::ExecutionSpaceRef{state.get_device_handle().m_exec};
     }
 
     [[nodiscard]]
-    constexpr auto query(Impl::get_exec_t) const noexcept -> decltype(auto) requires(!after_root)
+    constexpr auto query(Impl::get_exec_t) const noexcept -> decltype(auto) requires(!is_graph_create)
     {
         return Impl::get_exec(inner_opstate);
     }
