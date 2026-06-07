@@ -14,6 +14,9 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/category.hpp"
+#include "tests/utils/functors/increment.hpp"
+#include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/graph_context.hpp"
 #include "tests/utils/sync_wait.hpp"
@@ -34,7 +37,7 @@ namespace Tests::GraphImpl {
 
 using namespace Kokkos::utils::callbacks;
 
-class RemainsOnGraphForTest
+class TEST_CATEGORY(RemainsOnGraphForTest)
     : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
@@ -46,6 +49,7 @@ class RemainsOnGraphForTest
         DeallocateDataEvent,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent,
+        Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent,
         Kokkos::Execution::GraphImpl::GraphAddNodeEvent,
         Kokkos::Execution::GraphImpl::GraphCreateEvent,
         Kokkos::Execution::GraphImpl::GraphInstantiateEvent,
@@ -53,13 +57,15 @@ class RemainsOnGraphForTest
     >;
 
     using sync_wait_rcvr_t = Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>;
+
+    using noop_t = Tests::Utils::Functors::NoOp<true, false, false>;
 };
 
 //! @test Check @ref Kokkos::Execution::GraphImpl::remains_on_graph_for for a non-dependent sender on @ref Kokkos::Execution::GraphImpl::Domain.
-TEST_F(RemainsOnGraphForTest, non_dependent_sender) {
+TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender) {
     const context_t gctx{exec};
 
-    stdexec::sender auto sndr = stdexec::schedule(gctx.get_scheduler()) | stdexec::then([]() { });
+    stdexec::sender auto sndr = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(noop_t{});
 
     using sndr_t = decltype(sndr);
 
@@ -90,15 +96,17 @@ TEST_F(RemainsOnGraphForTest, non_dependent_sender) {
 }
 
 //! @test Check @ref Kokkos::Execution::GraphImpl::remains_on_graph_for for a dependent sender partly on @ref Kokkos::Execution::GraphImpl::Domain.
-TEST_F(RemainsOnGraphForTest, dependent_sender_partly_on_graph_domain) {
+TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), dependent_sender_partly_on_graph_domain) {
     experimental::execution::single_thread_context stc{};
     const context_t gctx{exec};
 
-    stdexec::sender auto sndr = stdexec::schedule(stc.get_scheduler()) | stdexec::then([]() { })
-                              | stdexec::continues_on(gctx.get_scheduler()) | stdexec::then([]() { });
+    stdexec::sender auto sndr = stdexec::schedule(stc.get_scheduler()) | stdexec::then(noop_t{})
+                              | stdexec::continues_on(gctx.get_scheduler()) | stdexec::then(noop_t{});
 
     using sndr_t = decltype(sndr);
+    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
 
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
     static_assert(stdexec::dependent_sender<sndr_t>);
 
     static_assert(!Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
@@ -122,14 +130,16 @@ TEST_F(RemainsOnGraphForTest, dependent_sender_partly_on_graph_domain) {
  *
  * @bug It should not create two graphs.
  */
-TEST_F(RemainsOnGraphForTest, non_dependent_sender_with_continues_on) {
+TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_with_continues_on) {
     const context_t gctx{exec};
 
-    stdexec::sender auto sndr = stdexec::schedule(gctx.get_scheduler()) | stdexec::then([]() { })
-                              | stdexec::continues_on(gctx.get_scheduler()) | stdexec::then([]() { });
+    stdexec::sender auto sndr = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(noop_t{})
+                              | stdexec::continues_on(gctx.get_scheduler()) | stdexec::then(noop_t{});
 
     using sndr_t = decltype(sndr);
+    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
 
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
     static_assert(Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
@@ -145,6 +155,90 @@ TEST_F(RemainsOnGraphForTest, non_dependent_sender_with_continues_on) {
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(2)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+}
+
+//! @test Check @ref Kokkos::Execution::GraphImpl::remains_on_graph_for for non-dependent sender branches on @ref Kokkos::Execution::GraphImpl::Domain in a @c stdexec::when_all.
+TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all) {
+    const context_t gctx{exec};
+
+    stdexec::sender auto sndr = stdexec::when_all(
+        stdexec::schedule(gctx.get_scheduler()) | stdexec::then(noop_t{}),
+        stdexec::schedule(gctx.get_scheduler()) | stdexec::then(noop_t{}));
+
+    using sndr_t = decltype(sndr);
+    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
+
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
+    static_assert(Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(sndr)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(Kokkos::Experimental::get_device_handle(TEST_EXECUTION_SPACE{})),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2))),
+            MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
+}
+
+/**
+ * @test Check @ref Kokkos::Execution::GraphImpl::remains_on_graph_for for non-dependent sender branches terminating on @ref Kokkos::Execution::GraphImpl::Domain in a @c stdexec::when_all.
+ *
+ * Similar to @ref Tests::GraphImpl::RemainsOnGraphForTest_non_dependent_sender_in_when_all_Test but in this case,
+ * the branches only terminate on the @ref Kokkos::Execution::GraphImpl::Domain.
+ *
+ * Therefore, the resulting operation state models @ref Kokkos::Execution::GraphImpl::graph_operation_state_for
+ * but does not model @ref Kokkos::Execution::GraphImpl::remains_on_graph_for.
+ */
+TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all_mixed_branches) {
+    const view_s_t data(Kokkos::view_alloc("data - shared space"));
+
+    experimental::execution::single_thread_context stc{};
+    const context_t gctx{exec};
+
+    stdexec::sender auto sndr = stdexec::when_all(
+        stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data),
+        stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+            | stdexec::continues_on(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data),
+        stdexec::schedule(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+            | stdexec::continues_on(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data));
+
+    using sndr_t = decltype(sndr);
+    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
+
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
+    static_assert(!Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(sndr)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(Kokkos::Experimental::get_device_handle(TEST_EXECUTION_SPACE{})),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(3))),
+            MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
+
+    ASSERT_EQ(data(), 5);
 }
 
 } // namespace Tests::GraphImpl

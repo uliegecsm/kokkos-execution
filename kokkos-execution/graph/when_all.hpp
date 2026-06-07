@@ -179,13 +179,35 @@ struct WhenAllOpState
         try {
             Kokkos::Execution::GraphImpl::submit_graph(state.graph, state.get_device_handle().m_exec);
         } catch (...) {
-            stdexec::set_error(this->completion_signal.rcvr, std::current_exception());
+            stdexec::set_error(std::move(this->completion_signal.rcvr), std::current_exception());
             return;
         }
         this->completion_signal.propagate(state.get_device_handle().m_exec);
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
+};
+
+//! Specialization for @ref Kokkos::Execution::GraphImpl::WhenAllOpState. @todo To be removed and done properly.
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires(
+    stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::WhenAllOpState>
+    && std::same_as<typename OpState::execution_space, Exec>)
+struct GraphOperationStateFor<OpState, Exec> : public std::true_type { };
+
+//! Specialization for @ref Kokkos::Execution::GraphImpl::WhenAllOpState.
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires(
+    graph_operation_state_for<OpState, Exec>
+    && stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::WhenAllOpState>)
+struct RemainsOnGraphFor<OpState, Exec> {
+    template <stdexec::operation_state ChildOpState>
+    using RemainsOnGraphForChild = RemainsOnGraphFor<ChildOpState, Exec>;
+
+    static constexpr bool value = stdexec::__mapply<
+        stdexec::__mall_of<stdexec::__q<RemainsOnGraphForChild>>,
+        typename OpState::children_opstates_t
+    >::value;
 };
 
 //! Sender for @c stdexec::when_all.
