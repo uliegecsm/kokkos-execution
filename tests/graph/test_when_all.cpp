@@ -16,6 +16,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/category.hpp"
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/functors/increment.hpp"
+#include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/graph_context.hpp"
@@ -296,7 +297,7 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches) {
  * @test Similar to @ref Tests::GraphImpl::WhenAllTest_three_branches_Test, but each branch starts with
  *       some work on @c experimental::execution::single_thread_context.
  *
- * This test ensures that that if the @c stdexec::when_all creates a single graph with the termination
+ * This test ensures that if the @c stdexec::when_all creates a single graph with the termination
  * of each branch, the graph is submitted only when all branches have complete their work on their respective
  * @c experimental::execution::single_thread_context.
  */
@@ -340,6 +341,61 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_starting_on_single_thread_cont
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
     ASSERT_EQ(data(), 6);
+}
+
+/**
+ * @test Similar to @ref Tests::GraphImpl::WhenAllTest_three_branches_starting_on_single_thread_context_Test,
+ *       but some branches start with some work on @c experimental::execution::single_thread_context,
+ *       whereas others directly start on @ref Kokkos::Execution::GraphImpl::Domain.
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_some_starting_on_single_thread_context) {
+    const Kokkos::View<value_t[3], Kokkos::SharedSpace> data_per_branch(Kokkos::view_alloc("data - shared space"));
+
+    experimental::execution::single_thread_context stc_a{}, stc_b{};
+
+    const context_t gctx{exec};
+
+    using functor_h_t = Tests::Utils::Functors::LoadCheckAdd<value_t, false>;
+    using functor_d_t = Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>;
+
+    auto branch_a = stdexec::schedule(stc_a.get_scheduler())
+                  | stdexec::then(functor_h_t{.prev = 0, .value = 2, .data = &data_per_branch(0)})
+                  | stdexec::continues_on(gctx.get_scheduler())
+                  | stdexec::then(functor_d_t{.prev = 2, .value = 3, .data = &data_per_branch(0)});
+    auto branch_b = stdexec::schedule(stc_b.get_scheduler())
+                  | stdexec::then(functor_h_t{.prev = 0, .value = 3, .data = &data_per_branch(1)})
+                  | stdexec::continues_on(gctx.get_scheduler())
+                  | stdexec::then(functor_d_t{.prev = 3, .value = 4, .data = &data_per_branch(1)});
+    auto branch_c = stdexec::schedule(gctx.get_scheduler())
+                  | stdexec::then(functor_d_t{.prev = 0, .value = 4, .data = &data_per_branch(2)});
+
+    auto sndr = stdexec::when_all(std::move(branch_a), std::move(branch_b), std::move(branch_c));
+
+    ASSERT_THAT(Tests::Utils::span_from(data_per_branch), testing::Each(testing::Eq(0)))
+        << "Eager execution is not " "allowed.";
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
+    KOKKOS_EXECUTION_TEST_UTILS_GRAPH_FENCE(exec);
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(default_device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(3))),
+            MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
+
+    ASSERT_THAT(Tests::Utils::span_from(data_per_branch), testing::ElementsAre(5, 7, 4));
 }
 
 //! @test The customization of @c stdexec::when_all properly forwards forwarding queries.

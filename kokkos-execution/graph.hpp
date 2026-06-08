@@ -31,7 +31,13 @@ struct Scheduler {
     struct OpState {
         using operation_state_concept = stdexec::operation_state_tag;
 
+        Impl::State<execution_space>* state;
         Rcvr rcvr;
+
+        [[nodiscard]]
+        constexpr auto query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> {
+            return Impl::ExecutionSpaceRef{state->exec};
+        }
 
         //! @todo Check signature. And check whether we should move the receiver.
         void start() & noexcept {
@@ -66,13 +72,13 @@ struct Scheduler {
         template <stdexec::receiver_of<completion_signatures> Rcvr>
         [[nodiscard]]
         OpState<Rcvr> connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
-            return {std::move(rcvr)};
+            return {.state = env.state, .rcvr = std::move(rcvr)};
         }
 
         template <stdexec::receiver_of<completion_signatures> Rcvr>
         [[nodiscard]]
         OpState<Rcvr> connect(Rcvr rcvr) const & noexcept(std::is_nothrow_move_constructible_v<Rcvr>) {
-            return {std::move(rcvr)};
+            return {.state = env.state, .rcvr = std::move(rcvr)};
         }
 
         [[nodiscard]]

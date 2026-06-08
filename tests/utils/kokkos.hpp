@@ -35,6 +35,13 @@ void show_exec_space_id(const Exec& exec, std::string_view label = "", std::ostr
         << '.' << std::endl;
 }
 
+//! Get a @c std::span from a rank-one @c Kokkos::View.
+template <typename ViewType>
+requires(ViewType::rank() == 1)
+auto span_from(const ViewType& view) noexcept {
+    return std::span{view.data(), view.size()};
+}
+
 } // namespace Tests::Utils
 
 #endif // KOKKOS_EXECUTION_TESTS_UTILS_KOKKOS_HPP
