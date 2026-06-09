@@ -179,10 +179,10 @@ struct WhenAllOpState
         this->submit();
     }
 
-    void submit() & noexcept requires std::same_as<graph_composition_policy_t, GraphComposition::Create>
+    void submit_graph() & noexcept requires std::same_as<graph_composition_policy_t, GraphComposition::Create>
     {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.get_root_node()) << " on "
+        PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
                   << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
         try {
@@ -194,7 +194,7 @@ struct WhenAllOpState
         this->completion_signal.propagate(state.get_device_handle().m_exec);
     }
 
-    void submit() & noexcept requires std::same_as<graph_composition_policy_t, GraphComposition::Attach>
+    void submit_graph() & noexcept requires std::same_as<graph_composition_policy_t, GraphComposition::Attach>
     {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "'when_all' will not submit the graph.";

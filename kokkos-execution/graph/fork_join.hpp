@@ -72,6 +72,11 @@ struct CacheSender {
 
 //! Specialization for @ref Kokkos::Execution::GraphImpl::CacheSender::CacheOpState.
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires(stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::CacheSender<Exec>::template CacheOpState>)
+struct GraphOperationStateFor<OpState, Exec> : public std::true_type { };
+
+//! Specialization for @ref Kokkos::Execution::GraphImpl::CacheSender::CacheOpState.
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 requires(
     graph_operation_state_for<OpState, Exec>
     && stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::CacheSender<Exec>::template CacheOpState>)
@@ -105,6 +110,12 @@ struct ForkJoinOpState
     using fork_completions_t = stdexec::completion_signatures_of_t<Sndr, env_t>;
     using when_all_sndr_t = get_when_all_sndr_t<Exec, PackedClosures>;
     using cache_sndr_t = CacheSender<Exec>;
+
+    template <typename Tag, typename... Args>
+    requires(!std::same_as<Tag, stdexec::set_value_t>)
+    void complete(Tag, Args&&... args) & noexcept {
+        base_t::complete(Tag{}, std::forward<Args>(args)...);
+    }
 
     /**
      * The fork join node will be passed to the branches through the @c stdexec::when_all receiver environment.
@@ -223,6 +234,10 @@ struct ForkJoinOpState
             submit_graph(state.graph, state.get_device_handle().m_exec);
         }
         stdexec::start(join_opstate);
+    }
+
+    void complete(stdexec::set_value_t) noexcept {
+        stdexec::set_value(std::move(this->completion_signal.rcvr));
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
