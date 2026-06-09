@@ -51,10 +51,14 @@ template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 requires(stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::Scheduler<Exec>::template OpState>)
 struct GraphOperationStateFor<OpState, Exec> : public std::true_type { };
 
+//! Specialization for @ref Kokkos::Execution::GraphImpl::Scheduler::OpState.
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
-requires(graph_operation_state_for<OpState, Exec> && !requires { typename OpState::inner_opstate_t; })
+requires(
+    graph_operation_state_for<OpState, Exec>
+    && stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::Scheduler<Exec>::template OpState>)
 struct RemainsOnGraphFor<OpState, Exec> : public std::true_type { };
 
+//! Specialization when there is an @c inner_opstate_t alias.
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 requires(graph_operation_state_for<OpState, Exec> && requires { typename OpState::inner_opstate_t; })
 struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_opstate_t, Exec> { };
