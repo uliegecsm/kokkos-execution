@@ -98,8 +98,10 @@ RUN <<EOF
 
     apt-helpers install-packages --update --packages wget lsb-release gpg software-properties-common
 
-    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/llvm.asc
-    echo "deb https://apt.llvm.org/noble/ llvm-toolchain-noble-${COMPILER_VERSION} main" > /etc/apt/sources.list.d/llvm.list
+    UBUNTU_CODENAME=$(grep -oP '(?<=^VERSION_CODENAME=).+' /etc/os-release)
+    LLVM_KEY=/etc/apt/keyrings/llvm.asc
+    wget -qO "${LLVM_KEY}" https://apt.llvm.org/llvm-snapshot.gpg.key
+    echo "deb [signed-by=${LLVM_KEY}] https://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${COMPILER_VERSION} main" > /etc/apt/sources.list.d/llvm.list
 
     apt-helpers install-packages --clean    \
         --update --packages                 \
