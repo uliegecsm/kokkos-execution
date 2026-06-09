@@ -62,7 +62,8 @@ struct WhenAllOpState
 #endif
 
     //! Determine if all branches remain fully on the graph, if connected to @ref WhenAllChildReceiver.
-    static constexpr bool as_one = (remains_on_graph_for<execution_space, Sndrs, WhenAllChildReceiver> && ...);
+    static constexpr bool as_one =
+        (connect_result_remains_on_graph_for<execution_space, Sndrs, WhenAllChildReceiver> && ...);
 
     using node_t = decltype(stdexec::__apply(
         [](const auto&... ops) { return Kokkos::Experimental::when_all(ops.query(get_node)...); },
@@ -224,6 +225,14 @@ struct RemainsOnGraphFor<OpState, Exec> {
         stdexec::__mall_of<stdexec::__q<RemainsOnGraphForChild>>,
         typename OpState::children_opstates_t
     >::value;
+
+    static constexpr void diagnose() noexcept {
+        stdexec::__apply(
+            []<typename... ChildOpState>(const ChildOpState&...) {
+                (RemainsOnGraphFor<ChildOpState, Exec>::diagnose(), ...);
+            },
+            std::declval<typename OpState::children_opstates_t>());
+    }
 };
 
 //! Sender for @c stdexec::when_all.

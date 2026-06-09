@@ -128,7 +128,10 @@ TEST_F(ForkJoinTest, three_branches) {
     const context_t gctx{exec};
 
     auto sndr = stdexec::schedule(gctx.get_scheduler())
-              | exec::fork_join(THEN_INCREMENT_ATOMIC(data), THEN_INCREMENT_ATOMIC(data), THEN_INCREMENT_ATOMIC(data));
+              | exec::fork_join(
+                    THEN_INCREMENT_ATOMIC(Device, data),
+                    THEN_INCREMENT_ATOMIC(Device, data),
+                    THEN_INCREMENT_ATOMIC(Device, data));
 
     using sndr_t = decltype(sndr);
 
@@ -170,7 +173,7 @@ TEST_F(ForkJoinTest, diamond) {
 
     auto sndr = stdexec::schedule(gctx.get_scheduler())
               | stdexec::then(functor_t{.prev = 0, .value = 4, .data = data.data()})
-              | exec::fork_join(THEN_INCREMENT_ATOMIC(data), THEN_INCREMENT_ATOMIC(data))
+              | exec::fork_join(THEN_INCREMENT_ATOMIC(Device, data), THEN_INCREMENT_ATOMIC(Device, data))
               | stdexec::then(functor_t{.prev = 6, .value = 3, .data = data.data()});
 
     using sndr_t = decltype(sndr);

@@ -70,6 +70,16 @@ struct CacheSender {
     Scheduler<Exec>::Sender::Attributes env;
 };
 
+//! Specialization for @ref Kokkos::Execution::GraphImpl::CacheSender::CacheOpState.
+template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
+requires(
+    graph_operation_state_for<OpState, Exec>
+    && stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::CacheSender<Exec>::template CacheOpState>)
+struct RemainsOnGraphFor<OpState, Exec> : public std::true_type {
+    static constexpr void diagnose() noexcept {
+    }
+};
+
 //! Transform the closures to a proper @c stdexec::when_all.
 struct make_when_all_fn {
     template <typename CacheSndr, typename... Closures>
@@ -119,7 +129,7 @@ struct ForkJoinOpState
      * For now, it is not accepted.
      */
     // static_assert(Impl::remains_on<stdexec::set_value_t, when_all_sndr_t, Domain>);
-    static_assert(when_all_sndr_t::as_one);
+    // static_assert(when_all_sndr_t::as_one);
 
     //! @name The @ref fork_opstate is the operation state of the sender before the fork point.
     ///@{
@@ -165,6 +175,7 @@ struct ForkJoinOpState
 
     using join_opstate_t = stdexec::connect_result_t<when_all_sndr_t, ForkJoinReceiver>;
 
+    static_assert(diagnose_remains_on_graph_for<join_opstate_t, Exec>());
 
     Scheduler<Exec> schd;
     fork_opstate_t fork_opstate;
