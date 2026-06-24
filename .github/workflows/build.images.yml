@@ -34,7 +34,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - id: build-builder-changed-files
         uses: tj-actions/changed-files@v47
@@ -88,7 +88,7 @@ jobs:
     container:
       image: docker:latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: docker/login-action@v4
         with:
@@ -195,7 +195,7 @@ jobs:
             platforms      : linux/amd64
             kokkos_archs   : [ZEN3, AMPERE86]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - shell: sh
         run  : |
