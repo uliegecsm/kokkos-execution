@@ -46,7 +46,7 @@ jobs:
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cmake_build_type }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - uses: actions/cache@v5
@@ -138,7 +138,7 @@ jobs:
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     env: ${{ matrix.env || fromJSON('{}') }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Compute a key that uniquely identifies the current job, given the matrix.
@@ -192,7 +192,7 @@ jobs:
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:gnu-14-OpenMP
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - run: |
