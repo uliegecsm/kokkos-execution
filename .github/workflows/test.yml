@@ -49,7 +49,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.ccache
           key: ccache-${{ runner.os }}-${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ github.ref }}-${{ github.sha }}
@@ -147,7 +147,7 @@ jobs:
           echo "This job is identified by '${UNIQUE_JOB_KEY}'."
           echo "UNIQUE_JOB_KEY=${UNIQUE_JOB_KEY}" >> $GITHUB_ENV
       - if: runner.environment == 'github-hosted'
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.ccache
           key: ccache-${{ env.UNIQUE_JOB_KEY }}-${{ github.ref }}-${{ github.sha }}
