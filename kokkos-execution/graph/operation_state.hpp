@@ -56,12 +56,19 @@ template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 requires(
     graph_operation_state_for<OpState, Exec>
     && stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::Scheduler<Exec>::template OpState>)
-struct RemainsOnGraphFor<OpState, Exec> : public std::true_type { };
+struct RemainsOnGraphFor<OpState, Exec> : public std::true_type {
+    static constexpr void diagnose() noexcept {
+    }
+};
 
 //! Specialization when there is an @c inner_opstate_t alias.
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 requires(graph_operation_state_for<OpState, Exec> && requires { typename OpState::inner_opstate_t; })
-struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_opstate_t, Exec> { };
+struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_opstate_t, Exec> {
+    static constexpr void diagnose() noexcept {
+        RemainsOnGraphFor<typename OpState::inner_opstate_t, Exec>::diagnose();
+    }
+};
 
 template <typename GraphCompositionPolicy, Kokkos::ExecutionSpace Exec>
 struct State;
@@ -129,6 +136,10 @@ struct OpStateBase {
 
     constexpr explicit OpStateBase(Rcvr rcvr) noexcept(std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&>)
         : completion_signal(std::move(rcvr)) {
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        PLOG_INFO << "Completion signal policy is " << Kokkos::Impl::TypeInfo<completion_signal_policy_t>::name()
+                  << " from receiver " << Kokkos::Impl::TypeInfo<Rcvr>::name();
+#endif
     }
 
     template <typename Error>
@@ -212,12 +223,10 @@ struct OpState
                       << '.';
 #endif
             return state.get_root_node();
+        } else if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
+            return inner_opstate.query(get_node);
         } else {
-            if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
-                return inner_opstate.query(get_node);
-            } else {
-                return this->completion_signal.rcvr.query(get_node);
-            }
+            return this->completion_signal.rcvr.query(get_node);
         }
     }
 

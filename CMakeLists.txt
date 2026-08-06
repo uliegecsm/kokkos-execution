@@ -106,6 +106,7 @@ target_sources(
             kokkos-execution/graph/continues_on.hpp
             kokkos-execution/graph/domain.hpp
             kokkos-execution/graph/events.hpp
+            kokkos-execution/graph/fork_join.hpp
             kokkos-execution/graph/get_graph.hpp
             kokkos-execution/graph/get_node.hpp
             kokkos-execution/graph/graph_fwd.hpp

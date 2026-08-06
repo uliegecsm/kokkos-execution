@@ -34,19 +34,18 @@ template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr, stdexec::sender..
 struct WhenAllOpState
     : public Impl::Immovable
     , public OpStateBase<Exec, Rcvr> {
-    using operation_state_concept = stdexec::operation_state_tag;
+    using operation_state_concept = Impl::SubmittedOperationStateTag;
 
     using base_t = OpStateBase<Exec, Rcvr>;
     using execution_space = Exec;
-
-    using state_t = State<GraphComposition::Create, execution_space>;
-    using root_t = typename state_t::graph_t::root_t;
+    using graph_composition_policy_t = GraphComposition::policy_t<Rcvr>;
+    using state_t = State<graph_composition_policy_t, execution_space>;
+    using predecessor_t = GraphComposition::node_t<Exec, Rcvr>;
 
     //! Receiver for a child of @c stdexec::when_all.
     struct WhenAllChildReceiver : public Impl::Receiver<WhenAllOpState, stdexec::env_of_t<Rcvr>> {
-        [[nodiscard]]
-        constexpr auto query(get_node_t) const & noexcept -> const root_t& {
-            return this->parent_op->root;
+        auto query(get_node_t) const & noexcept -> const predecessor_t& {
+            return this->parent_op->get_predecessor();
         }
     };
 
@@ -63,15 +62,14 @@ struct WhenAllOpState
 #endif
 
     //! Determine if all branches remain fully on the graph, if connected to @ref WhenAllChildReceiver.
-    static constexpr bool as_one = (remains_on_graph_for<execution_space, Sndrs, WhenAllChildReceiver> && ...);
+    static constexpr bool as_one =
+        (connect_result_remains_on_graph_for<execution_space, Sndrs, WhenAllChildReceiver> && ...);
 
     using node_t = decltype(stdexec::__apply(
         [](const auto&... ops) { return Kokkos::Experimental::when_all(ops.query(get_node)...); },
         std::declval<const children_opstates_t&>()));
 
     state_t state;
-    //! @todo The root node is stored to avoid reference counting incurred by https://github.com/kokkos/kokkos/blob/1945b637c3fab027fe90208753e8b2ec236302d4/core/src/Kokkos_Graph.hpp#L100.
-    root_t root;
     children_opstates_t children_opstates;
     node_t node;
     std::atomic<size_t> count = sizeof...(Sndrs);
@@ -86,7 +84,6 @@ struct WhenAllOpState
          *       to submit the graph onto.
          */
         , state{Kokkos::Experimental::get_device_handle(execution_space{})}
-        , root(state.graph.root_node())
         , children_opstates(
               stdexec::__apply(
                   [this]<typename... Children>(Children&&... children) -> children_opstates_t {
@@ -102,6 +99,17 @@ struct WhenAllOpState
                       return agg;
                   },
                   children_opstates)) {
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        PLOG_WARNING << "Hello from when all. The aggregate node is " << get_node_ptr(node);
+#endif
+    }
+
+    const predecessor_t& get_predecessor() const noexcept {
+        if constexpr (std::same_as<graph_composition_policy_t, GraphComposition::Create>) {
+            return state.get_root_node();
+        } else {
+            return this->completion_signal.rcvr.query(get_node);
+        }
     }
 
     const auto& query(get_node_t) const & noexcept {
@@ -171,7 +179,8 @@ struct WhenAllOpState
         this->submit();
     }
 
-    void submit_graph() & noexcept {
+    void submit_graph() & noexcept requires std::same_as<graph_composition_policy_t, GraphComposition::Create>
+    {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
                   << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
@@ -183,6 +192,14 @@ struct WhenAllOpState
             return;
         }
         this->completion_signal.propagate(state.get_device_handle().m_exec);
+    }
+
+    void submit_graph() & noexcept requires std::same_as<graph_composition_policy_t, GraphComposition::Attach>
+    {
+#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        PLOG_INFO << "'when_all' will not submit the graph.";
+#endif
+        this->completion_signal.propagate(execution_space{});
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
@@ -208,6 +225,14 @@ struct RemainsOnGraphFor<OpState, Exec> {
         stdexec::__mall_of<stdexec::__q<RemainsOnGraphForChild>>,
         typename OpState::children_opstates_t
     >::value;
+
+    static constexpr void diagnose() noexcept {
+        stdexec::__apply(
+            []<typename... ChildOpState>(const ChildOpState&...) {
+                (RemainsOnGraphFor<ChildOpState, Exec>::diagnose(), ...);
+            },
+            std::declval<typename OpState::children_opstates_t>());
+    }
 };
 
 //! Sender for @c stdexec::when_all.
