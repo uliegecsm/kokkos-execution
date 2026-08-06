@@ -13,6 +13,7 @@
 #include "kokkos-execution/graph/sync_wait.hpp"
 #include "kokkos-execution/graph/then.hpp"
 #include "kokkos-execution/graph/when_all.hpp"
+#include "kokkos-execution/impl/forward_progress_guarantee.hpp"
 #include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution {
@@ -88,6 +89,12 @@ struct Scheduler {
 
         Attributes env;
     };
+
+    [[nodiscard]]
+    constexpr auto
+        query(stdexec::get_forward_progress_guarantee_t) const noexcept -> stdexec::forward_progress_guarantee {
+        return Impl::forward_progress_guarantee_of_v<Exec>;
+    }
 
     [[nodiscard]]
     constexpr auto schedule() const noexcept -> Sender {
