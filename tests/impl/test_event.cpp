@@ -108,21 +108,6 @@ TEST_F(EventTest, record_and_wait) {
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
 }
 
-//! @test Record an event but don't wait for it.
-TEST_F(EventTest, record_but_dont_wait) {
-    const auto recorded_events = recorder_listener_t::record([this]() {
-        Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event;
-        Kokkos::parallel_for(Kokkos::RangePolicy(exec, 0, 1), Tests::Utils::Functors::NoOp{});
-        Kokkos::Execution::Impl::record(event, exec);
-
-        exec.fence("some-label");
-    });
-
-    ASSERT_THAT(recorded_events, testing::SizeIs(2));
-    ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
-    ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_BEGIN_FENCE(exec, "some-label"));
-}
-
 //! @test Record an event and wait for it. Repeat the record/wait steps but reusing the same instance.
 TEST_F(EventTest, record_and_wait_and_record_and_wait) {
     const auto recorded_events = recorder_listener_t::record([this]() {
@@ -150,10 +135,11 @@ TEST_F(EventTest, uniqueness) {
         Kokkos::parallel_for(Kokkos::RangePolicy(exec, 0, 1), Tests::Utils::Functors::NoOp{});
         Kokkos::Execution::Impl::record(event_after, exec);
 
-        exec.fence("some-label");
+        Kokkos::Execution::Impl::wait(event_before);
+        Kokkos::Execution::Impl::wait(event_after);
     });
 
-    ASSERT_THAT(recorded_events, ::testing::SizeIs(3));
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(4));
 
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec));
 
@@ -163,7 +149,8 @@ TEST_F(EventTest, uniqueness) {
         std::get<Kokkos::Execution::Impl::RecordEvent>(recorded_events.at(0)).event_id,
         std::get<Kokkos::Execution::Impl::RecordEvent>(recorded_events.at(1)).event_id);
 
-    ASSERT_THAT(recorded_events.back(), MATCHER_FOR_BEGIN_FENCE(exec, "some-label"));
+    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_WAIT_EVENT(recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
 }
 
 //! @test Check that event record/wait works for the default instance.
@@ -191,13 +178,14 @@ TEST_F(EventTest, wait_exec_event_for_same_type) {
         Kokkos::Execution::Impl::record(event_A, exec_A);
         Kokkos::Execution::Impl::wait(exec_B, event_A);
 
-        //! Ensure the event has been waited for within the scope that created it.
-        exec_B.fence();
+        //! Ensure the event has been waited for.
+        exec_B.fence("some-label");
     });
 
     ASSERT_THAT(recorded_events, ::testing::SizeIs(3));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec_A));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_BEGIN_FENCE(exec_B, "some-label"));
 }
 
 //! @test Check @ref Kokkos::Execution::Impl::wait when the underlying execution space type is the same and there are many events to wait for.
@@ -210,15 +198,19 @@ TEST_F(EventTest, wait_exec_events_for_same_type) {
         Kokkos::Execution::Impl::record(event_A_1, exec_A);
         Kokkos::Execution::Impl::record(event_A_2, exec_A);
         Kokkos::Execution::Impl::wait(exec_B, event_A_0, event_A_1, event_A_2);
+
+        //! Ensure the events have been waited for.
+        exec_B.fence("some-label");
     });
 
-    ASSERT_THAT(recorded_events, ::testing::SizeIs(6));
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(7));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(exec_A));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_RECORD_EVENT(exec_A));
     ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_RECORD_EVENT(exec_A));
     ASSERT_THAT(recorded_events.at(3), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(0)));
     ASSERT_THAT(recorded_events.at(4), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(1)));
     ASSERT_THAT(recorded_events.at(5), MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(2)));
+    ASSERT_THAT(recorded_events.at(6), MATCHER_FOR_BEGIN_FENCE(exec_B, "some-label"));
 }
 
 //! @test Check @ref Kokkos::Execution::Impl::wait when the underlying execution space type is different.
@@ -233,11 +225,15 @@ TEST_F(EventTest, wait_exec_event_different_type) {
         Kokkos::Execution::Impl::Event<TEST_EXECUTION_SPACE> event_d;
         Kokkos::Execution::Impl::record(event_d, this->exec);
         Kokkos::Execution::Impl::wait(exec_h, event_d);
+
+        //! Ensure the event has been waited for.
+        exec_h.fence("some-label");
     });
 
-    ASSERT_THAT(recorded_events, ::testing::SizeIs(2));
+    ASSERT_THAT(recorded_events, ::testing::SizeIs(3));
     ASSERT_THAT(recorded_events.at(0), MATCHER_FOR_RECORD_EVENT(this->exec));
     ASSERT_THAT(recorded_events.at(1), MATCHER_FOR_WAIT_EXEC_EVENT(exec_h, recorded_events.at(0)));
+    ASSERT_THAT(recorded_events.at(2), MATCHER_FOR_BEGIN_FENCE(exec_h, "some-label"));
 }
 
 /**
