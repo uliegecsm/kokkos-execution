@@ -1,0 +1,34 @@
+diff --git a/core/src/HPX/Kokkos_HPX.cpp b/core/src/HPX/Kokkos_HPX.cpp
+index bf2754bd7..c14845fbc 100644
+--- a/core/src/HPX/Kokkos_HPX.cpp
++++ b/core/src/HPX/Kokkos_HPX.cpp
+@@ -190,8 +190,6 @@ void HPX::impl_finalize() {
+       "Kokkos::Experimental::HPX: fence "
+       "to drain internal sender on finalize");
+ 
+-  m_default_instance_data = nullptr;
+-
+   if (m_hpx_initialized) {
+     hpx::runtime *rt = hpx::get_runtime_ptr();
+     if (rt != nullptr) {
+@@ -204,6 +202,8 @@ void HPX::impl_finalize() {
+     }
+     m_hpx_initialized = false;
+   }
++
++  m_default_instance_data = nullptr;
+ }
+ 
+ int HPX::impl_thread_pool_size() noexcept {
+diff --git a/core/src/HPX/Kokkos_HPX.hpp b/core/src/HPX/Kokkos_HPX.hpp
+index 0931cf0dd..bb4b0fb83 100644
+--- a/core/src/HPX/Kokkos_HPX.hpp
++++ b/core/src/HPX/Kokkos_HPX.hpp
+@@ -147,6 +147,7 @@ class HPX {
+           name,
+           Kokkos::Tools::Experimental::Impl::DirectFenceIDHandle{m_instance_id},
+           [&]() {
++            if (hpx::get_runtime_ptr() == nullptr) return;
+             auto &s = m_sender;
+             hpx::this_thread::experimental::sync_wait(std::move(s));
+             s = hpx::execution::experimental::unique_any_sender<>(
