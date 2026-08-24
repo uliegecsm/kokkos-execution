@@ -190,7 +190,7 @@ jobs:
     needs: [build-images, format]
     runs-on: [self-hosted, linux, docker, amd64]
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:gnu-14-OpenMP
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:gnu-14-OpenMP-Release
     steps:
       - uses: actions/checkout@v7
         with:

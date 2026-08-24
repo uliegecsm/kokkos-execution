@@ -85,9 +85,20 @@ RUN <<EOF
     g++ -dumpfullversion -dumpversion
 EOF
 
+COPY <<EOF /opt/toolchain.cmake
+set(CMAKE_C_COMPILER /usr/bin/gcc)
+set(CMAKE_CXX_COMPILER /usr/bin/g++)
+EOF
+
 FROM requirements-cmake AS requirements-compiler-rocm
 
 ENV PATH=/opt/rocm/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
+
+COPY <<EOF /opt/toolchain.cmake
+set(CMAKE_C_COMPILER /usr/bin/amdclang)
+set(CMAKE_CXX_COMPILER /usr/bin/amdclang++)
+EOF
 
 FROM requirements-cmake AS requirements-compiler-clang
 
@@ -117,6 +128,11 @@ RUN <<EOF
         clang++=clang++-${COMPILER_VERSION}                  \
         clang-tidy=clang-tidy-${COMPILER_VERSION}            \
         clang-format=clang-format-${COMPILER_VERSION}
+EOF
+
+COPY <<EOF /opt/toolchain.cmake
+set(CMAKE_C_COMPILER /usr/bin/clang)
+set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 EOF
 
 FROM requirements-cmake AS requirements-compiler-intel
@@ -166,6 +182,11 @@ RUN --mount=type=tmpfs,target=/tmp/build <<EOF
     cp -r build/lib/* /opt/intel/oneapi/compiler/${COMPILER_VERSION}/lib/
 EOF
 
+COPY <<EOF /opt/toolchain.cmake
+set(CMAKE_C_COMPILER icx)
+set(CMAKE_CXX_COMPILER icpx)
+EOF
+
 # Compile Doxygen.
 FROM requirements-compiler-${COMPILER_FAMILY} AS doxygen-compile
 
@@ -184,7 +205,10 @@ RUN <<EOF
 
     cd doxygen-Release_$(echo ${DOXYGEN_VERSION} | tr . _)
 
-    cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/opt/doxygen-${DOXYGEN_VERSION}
+    cmake -S . -B build \
+        --toolchain /opt/toolchain.cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/opt/doxygen-${DOXYGEN_VERSION}
 
     cmake --build build -j4 --target install
 EOF
@@ -206,6 +230,7 @@ RUN <<EOF
     cd googletest-${GOOGLETEST_VERSION}
 
     cmake -S . -B build \
+        --toolchain /opt/toolchain.cmake \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/opt/google-test-${GOOGLETEST_VERSION}
 
