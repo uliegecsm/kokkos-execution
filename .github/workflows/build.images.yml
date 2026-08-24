@@ -175,7 +175,7 @@ jobs:
           - kokkos_backends: [OpenMP, SYCL]
             compiler:
               family: intel
-              version: 2025.3
+              version: '2026.0'
             base_image: nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
             platforms: linux/amd64
             kokkos_archs: [VOLTA70]

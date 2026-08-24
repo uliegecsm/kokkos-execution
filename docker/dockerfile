@@ -149,16 +149,18 @@ RUN <<EOF
     echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
         | tee /etc/apt/sources.list.d/oneAPI.list
 
-    apt-helpers install-packages --update --clean --packages intel-oneapi-compiler-dpcpp-cpp-${COMPILER_VERSION}
+    apt-helpers install-packages --update --packages intel-oneapi-compiler-dpcpp-cpp-${COMPILER_VERSION}
 EOF
 
-ENV PATH=/opt/intel/oneapi/compiler/${COMPILER_VERSION}/bin/:$PATH
-ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/${COMPILER_VERSION}/lib:$LD_LIBRARY_PATH
+ENV PATH=/opt/intel/oneapi/compiler/latest/bin/:$PATH
+ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/umf/latest/lib:$LD_LIBRARY_PATH
 
-ARG UNIFIED_RUNTIME_VERSION=6.3.0
+ARG UNIFIED_RUNTIME_VERSION=7.0.0
 
 RUN --mount=type=tmpfs,target=/tmp/build <<EOF
     set -ex
+
+    apt-helpers install-packages --clean --packages libhwloc-dev hwloc
 
     cd /tmp/build
 
@@ -175,12 +177,13 @@ RUN --mount=type=tmpfs,target=/tmp/build <<EOF
       -DUR_ENABLE_TRACING=ON \
       -DUR_BUILD_ADAPTER_CUDA=ON \
       -DUR_BUILD_ADAPTER_OPENCL=OFF \
-      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/opt/ur-${UNIFIED_RUNTIME_VERSION}
 
-    cmake --build build -j4
-
-    cp -r build/lib/* /opt/intel/oneapi/compiler/${COMPILER_VERSION}/lib/
+    cmake --build build -j4 --target=install
 EOF
+
+ENV UR_ADAPTERS_SEARCH_PATH=/opt/ur-${UNIFIED_RUNTIME_VERSION}/lib
 
 COPY <<EOF /opt/toolchain.cmake
 set(CMAKE_C_COMPILER icx)
