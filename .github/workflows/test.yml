@@ -116,7 +116,7 @@ jobs:
           - kokkos_backends: [OpenMP, HIP]
             compiler:
               family: rocm
-              version: 7.0.2
+              version: '10.0.0'
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'amd_gfx1201', 'gpu:0']"
             docker_run_args: --device /dev/kfd --device /dev/dri
             tag_suffix     : -zen5-amd_gfx1201
