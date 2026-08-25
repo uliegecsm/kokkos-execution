@@ -123,7 +123,7 @@ jobs:
           - kokkos_backends: [OpenMP, SYCL]
             compiler:
               family: intel
-              version: 2025.3
+              version: '2025.2'
             runs-on: "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix: -volta70
           - kokkos_backends: [OpenMP]
