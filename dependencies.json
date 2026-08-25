@@ -1,9 +1,9 @@
 {
-    "cmake": "4.2.1",
+    "cmake": "4.4.2",
     "github": {
-        "cpm": "0.42.0",
+        "cpm": "0.43.1",
         "doxygen": "1.18.0",
-        "googletest": "1.17.0",
+        "googletest": "1.18.0",
         "hpx": "1.11.0",
         "kokkos": {
             "sha": "1a270d792150b24bf28d085d4007e5d3851759bf",
