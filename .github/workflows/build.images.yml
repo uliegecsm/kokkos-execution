@@ -175,7 +175,7 @@ jobs:
           - kokkos_backends: [OpenMP, SYCL]
             compiler:
               family: intel
-              version: '2025.3'
+              version: '2026.0'
             base_image: nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
             platforms: linux/amd64
             kokkos_archs: [VOLTA70]
@@ -241,7 +241,7 @@ jobs:
         with:
             context: .
             platforms: ${{ matrix.platforms }}
-            push: ${{ github.ref == 'refs/heads/main' }}
+            push: true # ${{ github.ref == 'refs/heads/main' }}
             file: docker/dockerfile.backend
             tags: ${{ steps.compute-tag.outputs.tag }}
             cache-from: type=registry,ref=${{ steps.compute-tag.outputs.tag }}
