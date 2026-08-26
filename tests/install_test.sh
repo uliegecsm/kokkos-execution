@@ -78,6 +78,10 @@ cmake -S . -B build --warn-uninitialized
 
 cmake --build build -j4 --verbose
 
-./build/install_test
+if [ "${COMPILER_FAMILY}" = "intel" ];then
+    LD_PRELOAD=${UR_ADAPTERS_SEARCH_PATH}/libur_loader.so ./build/install_test
+else
+    ./build/install_test
+fi
 
 echo "> Install and test success."
