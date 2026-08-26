@@ -50,14 +50,14 @@ struct WhenAllOpState
         }
     };
 
-    using children_opstates_t = stdexec::__tuple<stdexec::connect_result_t<Sndrs, WhenAllChildReceiver>...>;
+    using children_op_states_t = stdexec::__tuple<stdexec::connect_result_t<Sndrs, WhenAllChildReceiver>...>;
 
 #if defined(KOKKOS_ENABLE_DEBUG)
     //! If this assertion fails, it probably means that one of the branches finishes with an algorithm that is not customized yet.
     static_assert(
         stdexec::__mapply<
             stdexec::__mall_of<stdexec::__q<Impl::queryable_for<get_node_t>::type>>,
-            children_opstates_t
+            children_op_states_t
         >::value,
         "Child senders of the 'when_all' must lead to 'get_node_t' queryable operation states.");
 #endif
@@ -67,12 +67,12 @@ struct WhenAllOpState
 
     using node_t = decltype(stdexec::__apply(
         [](const auto&... ops) { return Kokkos::Experimental::when_all(ops.query(get_node)...); },
-        std::declval<const children_opstates_t&>()));
+        std::declval<const children_op_states_t&>()));
 
     state_t state;
     //! @todo The root node is stored to avoid reference counting incurred by https://github.com/kokkos/kokkos/blob/1945b637c3fab027fe90208753e8b2ec236302d4/core/src/Kokkos_Graph.hpp#L100.
     root_t root;
-    children_opstates_t children_opstates;
+    children_op_states_t children_op_states;
     node_t node;
     std::atomic<size_t> count = sizeof...(Sndrs);
 
@@ -87,10 +87,10 @@ struct WhenAllOpState
          */
         , state{Kokkos::Experimental::get_device_handle(execution_space{})}
         , root(state.graph.root_node())
-        , children_opstates(
+        , children_op_states(
               stdexec::__apply(
-                  [this]<typename... Children>(Children&&... children) -> children_opstates_t {
-                      return children_opstates_t{
+                  [this]<typename... Children>(Children&&... children) -> children_op_states_t {
+                      return children_op_states_t{
                           stdexec::connect(std::forward<Children>(children), WhenAllChildReceiver{this})...};
                   },
                   std::move(sndrs_)))
@@ -101,7 +101,7 @@ struct WhenAllOpState
                       graph_add_aggregate_node_event(agg, child_op.query(get_node)...);
                       return agg;
                   },
-                  children_opstates)) {
+                  children_op_states)) {
     }
 
     const auto& query(get_node_t) const & noexcept {
@@ -159,7 +159,7 @@ struct WhenAllOpState
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Starting all branches before submission.";
 #endif
-        stdexec::__apply([](auto&... ops) -> void { (stdexec::start(ops), ...); }, children_opstates);
+        stdexec::__apply([](auto&... ops) -> void { (stdexec::start(ops), ...); }, children_op_states);
     }
 
     //! If @ref as_one is @c true, there is no need to start the branches.
@@ -206,7 +206,7 @@ struct RemainsOnGraphFor<OpState, Exec> {
 
     static constexpr bool value = stdexec::__mapply<
         stdexec::__mall_of<stdexec::__q<RemainsOnGraphForChild>>,
-        typename OpState::children_opstates_t
+        typename OpState::children_op_states_t
     >::value;
 };
 

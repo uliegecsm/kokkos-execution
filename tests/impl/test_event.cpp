@@ -262,7 +262,7 @@ TEST_F(EventTest, works_intended_usage_pattern) {
 
     bool upon_error = false;
 
-    auto opstate = stdexec::connect(
+    auto op_state = stdexec::connect(
         stdexec::schedule(loop.get_scheduler()) | stdexec::then([&] {
             event_A->wait();
             event_A.reset();
@@ -289,7 +289,7 @@ TEST_F(EventTest, works_intended_usage_pattern) {
         }),
         Tests::Utils::SinkReceiver{});
 
-    opstate.start();
+    op_state.start();
 
     consumer.join();
 

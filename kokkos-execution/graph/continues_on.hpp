@@ -67,29 +67,29 @@ struct ContinuesOnOpState
     >;
 
     using rcvr_t = ContinuesOnReceiver<ContinuesOnOpState, stdexec::env_of_t<Rcvr>>;
-    using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
+    using inner_op_state_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 
     using completion_signal_policy_t =
-        Impl::ContinuesOn::completion_signal_policy_t<inner_opstate_t, execution_space, Rcvr>;
+        Impl::ContinuesOn::completion_signal_policy_t<inner_op_state_t, execution_space, Rcvr>;
 
-    using dependency_t = Impl::ContinuesOn::dependency_for_t<inner_opstate_t, execution_space>;
+    using dependency_t = Impl::ContinuesOn::dependency_for_t<inner_op_state_t, execution_space>;
 
     [[no_unique_address]]
     std::optional<dependency_t> dependency{};
-    inner_opstate_t inner_opstate;
+    inner_op_state_t inner_op_state;
 
     ContinuesOnOpState(Schd&& schd, Sndr&& sndr, Rcvr rcvr) noexcept( // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         std::is_nothrow_constructible_v<base_t, Schd&&, Rcvr&&> && stdexec::__nothrow_connectable<Sndr&&, rcvr_t>)
         : base_t(std::forward<Schd>(schd), std::move(rcvr))
-        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
+        , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }
 
     void start() & noexcept {
-        stdexec::start(inner_opstate);
+        stdexec::start(inner_op_state);
     }
 
     void submit() noexcept {
-        const auto& exec_from = Impl::get_exec(this->inner_opstate).get();
+        const auto& exec_from = Impl::get_exec(this->inner_op_state).get();
         const auto& exec_to = Impl::get_exec(*this).get();
         try {
             this->dependency.emplace(exec_to, exec_from);

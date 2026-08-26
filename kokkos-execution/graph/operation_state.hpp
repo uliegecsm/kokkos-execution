@@ -19,7 +19,7 @@
 #include "kokkos-execution/impl/completion_signal.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
-#include "kokkos-execution/impl/make_opstate.hpp"
+#include "kokkos-execution/impl/make_op_state.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/submitted.hpp"
@@ -36,10 +36,10 @@ concept Closure = requires {
 //! General case of a graph operation state.
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 requires (
-    requires { typename OpState::inner_opstate_t; } &&
-    requires(const OpState& opstate) {
-        { opstate.query(Kokkos::Execution::GraphImpl::get_node) };
-        { opstate.query(Kokkos::Execution::GraphImpl::get_graph) };
+    requires { typename OpState::inner_op_state_t; } &&
+    requires(const OpState& op_state) {
+        { op_state.query(Kokkos::Execution::GraphImpl::get_node) };
+        { op_state.query(Kokkos::Execution::GraphImpl::get_graph) };
     } &&
     requires { typename OpState::execution_space; } &&
     std::same_as<typename OpState::execution_space, Exec>
@@ -58,10 +58,10 @@ requires(
     && stdexec::__is_instance_of<OpState, Kokkos::Execution::GraphImpl::Scheduler<Exec>::template OpState>)
 struct RemainsOnGraphFor<OpState, Exec> : public std::true_type { };
 
-//! Specialization when there is an @c inner_opstate_t alias.
+//! Specialization when there is an @c inner_op_state_t alias.
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
-requires(graph_operation_state_for<OpState, Exec> && requires { typename OpState::inner_opstate_t; })
-struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_opstate_t, Exec> { };
+requires(graph_operation_state_for<OpState, Exec> && requires { typename OpState::inner_op_state_t; })
+struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_op_state_t, Exec> { };
 
 template <typename GraphCompositionPolicy, Kokkos::ExecutionSpace Exec>
 struct State;
@@ -167,10 +167,10 @@ struct OpState
     static_assert((std::same_as<typename RestOfClosures::execution_space, execution_space> && ...));
 
     using rcvr_t = Impl::Receiver<OpState, stdexec::env_of_t<Rcvr>>;
-    using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
-    using graph_composition_policy_t = GraphComposition::policy_t<inner_opstate_t, Rcvr>;
+    using inner_op_state_t = stdexec::connect_result_t<Sndr, rcvr_t>;
+    using graph_composition_policy_t = GraphComposition::policy_t<inner_op_state_t, Rcvr>;
     using state_t = State<graph_composition_policy_t, execution_space>;
-    using predecessor_t = GraphComposition::node_t<execution_space, inner_opstate_t, Rcvr>;
+    using predecessor_t = GraphComposition::node_t<execution_space, inner_op_state_t, Rcvr>;
 
     static constexpr bool is_graph_create = std::same_as<graph_composition_policy_t, GraphComposition::Create>;
 
@@ -179,7 +179,7 @@ struct OpState
         std::declval<FirstClosure>(),
         std::declval<RestOfClosures>()...));
 
-    inner_opstate_t inner_opstate;
+    inner_op_state_t inner_op_state;
     state_t state;
     node_t node;
 
@@ -190,20 +190,20 @@ struct OpState
         FirstClosure clsr,
         RestOfClosures... clsrs) noexcept(false)
         : OpStateBase<execution_space, Rcvr>(std::move(rcvr))
-        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
+        , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
         , state{Kokkos::Impl::get_property<device_handle_t>(clsr.node_props)}
         , node{add_nodes(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Operation state graph composition policy is "
                   << Kokkos::Impl::TypeInfo<graph_composition_policy_t>::name() << ", the receiver is of type "
                   << Kokkos::Impl::TypeInfo<Rcvr>::name() << " and the inner operation state is of type "
-                  << Kokkos::Impl::TypeInfo<inner_opstate_t>::name() << '.';
+                  << Kokkos::Impl::TypeInfo<inner_op_state_t>::name() << '.';
 #endif
     }
 
     /**
      * If the graph composition policy is @ref GraphComposition::Create, return the root node of @ref state graph.
-     * Otherwise, return the result of querying @ref inner_opstate for @ref get_node_t.
+     * Otherwise, return the result of querying @ref inner_op_state for @ref get_node_t.
      */
     const predecessor_t& get_predecessor() const noexcept {
         if constexpr (is_graph_create) {
@@ -213,8 +213,8 @@ struct OpState
 #endif
             return state.get_root_node();
         } else {
-            if constexpr (stdexec::__queryable_with<inner_opstate_t, get_node_t>) {
-                return inner_opstate.query(get_node);
+            if constexpr (stdexec::__queryable_with<inner_op_state_t, get_node_t>) {
+                return inner_op_state.query(get_node);
             } else {
                 return this->completion_signal.rcvr.query(get_node);
             }
@@ -260,7 +260,7 @@ struct OpState
         if constexpr (is_graph_create) {
             return state.graph;
         } else {
-            return inner_opstate.query(get_graph);
+            return inner_op_state.query(get_graph);
         }
     }
 
@@ -274,27 +274,28 @@ struct OpState
     [[nodiscard]]
     constexpr auto query(Impl::get_exec_t) const noexcept -> decltype(auto) requires(!is_graph_create)
     {
-        return Impl::get_exec(inner_opstate);
+        return Impl::get_exec(inner_op_state);
     }
 
     void start() & noexcept {
-        stdexec::start(inner_opstate);
+        stdexec::start(inner_op_state);
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
 };
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
-using make_opstate_t = Impl::MakeOpState<Domain, OpState>::Huddle<Sndr, Rcvr, Clsrs...>;
+using make_op_state_t = Impl::MakeOpState<Domain, OpState>::Huddle<Sndr, Rcvr, Clsrs...>;
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
-using opstate_t = typename make_opstate_t<Sndr, Rcvr, Clsrs...>::type;
+using op_state_t = typename make_op_state_t<Sndr, Rcvr, Clsrs...>::type;
 
 #define KOKKOS_EXECUTION_GRAPH_OPERATION_STATE_CONNECT                                                                 \
     template <stdexec::receiver Rcvr>                                                                                  \
-    constexpr auto connect(Rcvr rcvr) && noexcept(noexcept(make_opstate_t<Sndr, Rcvr, closure_t>{}(                    \
-        std::declval<Sndr>(), std::declval<Rcvr>(), std::declval<closure_t>()))) -> opstate_t<Sndr, Rcvr, closure_t> { \
-        return make_opstate_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));    \
+    constexpr auto connect(Rcvr rcvr) && noexcept(noexcept(make_op_state_t<Sndr, Rcvr, closure_t>{}(                   \
+        std::declval<Sndr>(), std::declval<Rcvr>(), std::declval<closure_t>())))                                       \
+        -> op_state_t<Sndr, Rcvr, closure_t> {                                                                         \
+        return make_op_state_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));   \
     }
 
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING) // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

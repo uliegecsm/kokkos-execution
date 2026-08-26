@@ -34,23 +34,23 @@ struct ScheduleFromOpState
     using base_t = ScheduleFromOpStateBase<Rcvr>;
 
     using rcvr_t = Impl::Receiver<ScheduleFromOpState, stdexec::env_of_t<Rcvr>>;
-    using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
+    using inner_op_state_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 
-    using completion_signal_policy_t = Impl::ScheduleFrom::completion_signal_policy_t<inner_opstate_t, Rcvr>;
+    using completion_signal_policy_t = Impl::ScheduleFrom::completion_signal_policy_t<inner_op_state_t, Rcvr>;
 
-    inner_opstate_t inner_opstate;
+    inner_op_state_t inner_op_state;
 
     ScheduleFromOpState(Sndr&& sndr, Rcvr rcvr) noexcept( // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         stdexec::__nothrow_connectable<Sndr&&, rcvr_t>)
         : base_t(std::move(rcvr))
-        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
+        , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }
 
     [[nodiscard]]
     constexpr auto query(Impl::get_exec_t) const noexcept -> decltype(auto)
-        requires stdexec::__queryable_with<inner_opstate_t, Impl::get_exec_t>
+        requires stdexec::__queryable_with<inner_op_state_t, Impl::get_exec_t>
     {
-        return Impl::get_exec(inner_opstate);
+        return Impl::get_exec(inner_op_state);
     }
 
     void complete(stdexec::set_value_t) noexcept {
@@ -67,7 +67,7 @@ struct ScheduleFromOpState
     }
 
     void start() & noexcept {
-        stdexec::start(inner_opstate);
+        stdexec::start(inner_op_state);
     }
 
     //! Stay in the @ref Kokkos::Execution::GraphImpl::Domain.

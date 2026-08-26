@@ -135,7 +135,7 @@ target_sources(
             kokkos-execution/impl/HPX/dependency.hpp
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
-            kokkos-execution/impl/make_opstate.hpp
+            kokkos-execution/impl/make_op_state.hpp
             kokkos-execution/impl/optional_ref.hpp
             kokkos-execution/impl/optional_storage.hpp
             kokkos-execution/impl/queryable.hpp

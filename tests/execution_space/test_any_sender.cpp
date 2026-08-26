@@ -8,7 +8,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
 #if defined(KOKKOS_COMPILER_GNU) && KOKKOS_COMPILER_GNU == 1520
-#    define KOKKOS_EXECUTION_IMPL_OPSTATE_IMMOVABLE_FIX
+#    define KOKKOS_EXECUTION_IMPL_OP_STATE_IMMOVABLE_FIX
 #endif
 #include "kokkos-execution/execution_space.hpp"
 

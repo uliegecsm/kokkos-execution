@@ -8,7 +8,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
-#include "kokkos-execution/impl/make_opstate.hpp"
+#include "kokkos-execution/impl/make_op_state.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/submitted.hpp"
@@ -104,38 +104,38 @@ struct OpState
     using base_t = OpStateBase<Rcvr, Clsrs...>;
     using rcvr_t = Impl::Receiver<base_t>;
 
-    using inner_opstate_t = stdexec::connect_result_t<Sndr, rcvr_t>;
+    using inner_op_state_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 
-    static constexpr bool opstate_base_is_nothrow_constructible =
+    static constexpr bool op_state_base_is_nothrow_constructible =
         std::is_nothrow_constructible_v<base_t, Rcvr&&, Clsrs&&...>;
 
-    static constexpr bool inner_opstate_is_nothrow_constructible = stdexec::__nothrow_connectable<Sndr&&, rcvr_t>;
+    static constexpr bool inner_op_state_is_nothrow_constructible = stdexec::__nothrow_connectable<Sndr&&, rcvr_t>;
 
-    inner_opstate_t inner_opstate;
+    inner_op_state_t inner_op_state;
 
     //! @bug Needed only for @ref test_any_sender.cpp.
-#if defined(KOKKOS_EXECUTION_IMPL_OPSTATE_IMMOVABLE_FIX)
+#if defined(KOKKOS_EXECUTION_IMPL_OP_STATE_IMMOVABLE_FIX)
     STDEXEC_IMMOVABLE(OpState);
 #endif
 
     constexpr explicit OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         Rcvr rcvr_,
-        Clsrs... clsrs_) noexcept(opstate_base_is_nothrow_constructible && inner_opstate_is_nothrow_constructible)
+        Clsrs... clsrs_) noexcept(op_state_base_is_nothrow_constructible && inner_op_state_is_nothrow_constructible)
         : base_t(std::move(rcvr_), std::move(clsrs_)...)
-        , inner_opstate(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
+        , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }
 
     void start() & noexcept {
-        stdexec::start(inner_opstate);
+        stdexec::start(inner_op_state);
     }
 };
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
-using make_opstate_t = Impl::MakeOpState<Domain, OpState>::Huddle<Sndr, Rcvr, Clsrs...>;
+using make_op_state_t = Impl::MakeOpState<Domain, OpState>::Huddle<Sndr, Rcvr, Clsrs...>;
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
-using opstate_t = typename make_opstate_t<Sndr, Rcvr, Clsrs...>::type;
+using op_state_t = typename make_op_state_t<Sndr, Rcvr, Clsrs...>::type;
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 
