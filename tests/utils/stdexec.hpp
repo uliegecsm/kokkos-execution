@@ -34,8 +34,8 @@ concept has_completion_scheduler_for =
  *       design rationale behind the mandates-vs-constraints choice in the standard.
  */
 template <typename OpState>
-concept operation_state = stdexec::operation_state<OpState> && requires(OpState& opstate) {
-    { opstate.start() } noexcept -> std::same_as<void>;
+concept operation_state = stdexec::operation_state<OpState> && requires(OpState& op_state) {
+    { op_state.start() } noexcept -> std::same_as<void>;
 };
 
 /**

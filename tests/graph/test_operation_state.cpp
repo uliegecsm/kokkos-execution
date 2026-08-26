@@ -72,7 +72,7 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender) {
     static_assert(!stdexec::dependent_sender<sndr_t>);
 
     using outer_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
-    using inner_t = typename outer_t::inner_opstate_t;
+    using inner_t = typename outer_t::inner_op_state_t;
 
     static_assert(stdexec::__is_instance_of<outer_t, Kokkos::Execution::GraphImpl::OpState>);
     static_assert(
@@ -104,9 +104,9 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), dependent_sender_partly_on_graph_do
                               | stdexec::continues_on(gctx.get_scheduler()) | stdexec::then(noop_t{});
 
     using sndr_t = decltype(sndr);
-    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
+    using op_state_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
 
-    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<op_state_t, TEST_EXECUTION_SPACE>);
     static_assert(stdexec::dependent_sender<sndr_t>);
 
     static_assert(!Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
@@ -137,9 +137,9 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_with_continues
                               | stdexec::continues_on(gctx.get_scheduler()) | stdexec::then(noop_t{});
 
     using sndr_t = decltype(sndr);
-    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
+    using op_state_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
 
-    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<op_state_t, TEST_EXECUTION_SPACE>);
     static_assert(Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
@@ -166,9 +166,9 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all) {
         stdexec::schedule(gctx.get_scheduler()) | stdexec::then(noop_t{}));
 
     using sndr_t = decltype(sndr);
-    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
+    using op_state_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
 
-    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<op_state_t, TEST_EXECUTION_SPACE>);
     static_assert(Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
@@ -211,9 +211,9 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all_mi
             | stdexec::continues_on(gctx.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data));
 
     using sndr_t = decltype(sndr);
-    using opstate_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
+    using op_state_t = stdexec::connect_result_t<sndr_t, sync_wait_rcvr_t>;
 
-    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<opstate_t, TEST_EXECUTION_SPACE>);
+    static_assert(Kokkos::Execution::GraphImpl::graph_operation_state_for<op_state_t, TEST_EXECUTION_SPACE>);
     static_assert(!Kokkos::Execution::GraphImpl::remains_on_graph_for<TEST_EXECUTION_SPACE, sndr_t, sync_wait_rcvr_t>);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";

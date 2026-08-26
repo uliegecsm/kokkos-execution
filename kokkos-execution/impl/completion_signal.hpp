@@ -125,14 +125,14 @@ template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct CompletionSignal<SyncPolicy::ScheduleWaitEvent, Exec, Rcvr> {
     using event_storage_t = Impl::event_storage_t<Exec>;
     using delegation_scheduler_t = Impl::delegation_scheduler_of_t<stdexec::env_of_t<Rcvr>>;
-    using inner_opstate_t = stdexec::connect_result_t<
+    using inner_op_state_t = stdexec::connect_result_t<
         stdexec::schedule_result_t<delegation_scheduler_t>,
         ScheduleWaitEventReceiver<Exec, Rcvr>
     >;
 
     Rcvr rcvr;
     event_storage_t event = std::nullopt;
-    OptionalStorage<inner_opstate_t> inner_opstate{};
+    OptionalStorage<inner_op_state_t> inner_op_state{};
 
     void propagate(const Exec& exec) & noexcept {
         if (!RequiresSync<Exec, Rcvr>{}(exec, rcvr)) {
@@ -141,11 +141,11 @@ struct CompletionSignal<SyncPolicy::ScheduleWaitEvent, Exec, Rcvr> {
             try {
                 event.emplace();
                 record(*event, exec);
-                inner_opstate.emplace_from(
+                inner_op_state.emplace_from(
                     stdexec::connect,
                     stdexec::schedule(stdexec::get_delegation_scheduler(stdexec::get_env(rcvr))),
                     ScheduleWaitEventReceiver<Exec, Rcvr>{this});
-                stdexec::start(inner_opstate.get());
+                stdexec::start(inner_op_state.get());
             } catch (...) {
                 stdexec::set_error(std::move(rcvr), std::current_exception());
             }

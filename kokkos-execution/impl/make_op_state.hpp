@@ -1,5 +1,5 @@
-#ifndef KOKKOS_EXECUTION_IMPL_MAKE_OPSTATE_HPP
-#define KOKKOS_EXECUTION_IMPL_MAKE_OPSTATE_HPP
+#ifndef KOKKOS_EXECUTION_IMPL_MAKE_OP_STATE_HPP
+#define KOKKOS_EXECUTION_IMPL_MAKE_OP_STATE_HPP
 
 #include "kokkos-execution/stdexec.hpp"
 
@@ -60,4 +60,4 @@ struct MakeOpState {
 
 } // namespace Kokkos::Execution::Impl
 
-#endif // KOKKOS_EXECUTION_IMPL_MAKE_OPSTATE_HPP
+#endif // KOKKOS_EXECUTION_IMPL_MAKE_OP_STATE_HPP

@@ -194,7 +194,7 @@ TEST_F(BulkTest, no_spurious_copy_on_connect) {
                     | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::Counter{});
 
         [[maybe_unused]]
-        auto lopstate = stdexec::connect(lvalue, Tests::Utils::SinkReceiver{});
+        auto lop_state = stdexec::connect(lvalue, Tests::Utils::SinkReceiver{});
 
         ASSERT_EQ(Tests::Utils::Functors::Counter::copy_assignments, 0);
         ASSERT_EQ(Tests::Utils::Functors::Counter::copy_constructions, 1);
@@ -208,7 +208,7 @@ TEST_F(BulkTest, no_spurious_copy_on_connect) {
                     | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::Counter{});
 
         [[maybe_unused]]
-        auto ropstate = stdexec::connect(std::move(rvalue), Tests::Utils::SinkReceiver{});
+        auto rop_state = stdexec::connect(std::move(rvalue), Tests::Utils::SinkReceiver{});
 
         ASSERT_EQ(Tests::Utils::Functors::Counter::copy_assignments, 0);
         ASSERT_EQ(Tests::Utils::Functors::Counter::copy_constructions, 0);

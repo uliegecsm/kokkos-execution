@@ -135,7 +135,7 @@ consteval bool test_sndr_nothrow_connectable() {
 static_assert(test_sndr_nothrow_connectable());
 
 //! @test Check that the @c stdexec::connect result is @ref Kokkos::Execution::GraphImpl::OpState, and the @c Kokkos node types are hierarchical and fully typed on predecessors.
-consteval bool test_bulk_opstate_traits() {
+consteval bool test_bulk_op_state_traits() {
     using functor_t = Tests::Utils::Functors::NoOp<false, false, false>;
 
     using sndr_t =
@@ -162,7 +162,7 @@ consteval bool test_bulk_opstate_traits() {
 
     return true;
 }
-static_assert(test_bulk_opstate_traits());
+static_assert(test_bulk_op_state_traits());
 
 /**
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well when used with @c stdexec::bulk
