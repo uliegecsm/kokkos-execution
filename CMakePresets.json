@@ -212,7 +212,11 @@
         {
             "name": "intel-OpenMP-SYCL",
             "configurePreset": "intel-OpenMP-SYCL",
-            "inherits": "default"
+            "inherits": "default",
+            "environment": {
+                "$comment": "Should be removed when upgrading from 2025.3.",
+                "LD_PRELOAD": "$penv{UR_ADAPTERS_SEARCH_PATH}/libur_loader.so"
+            }
         }
     ]
 }

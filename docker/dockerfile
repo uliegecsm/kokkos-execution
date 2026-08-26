@@ -155,7 +155,7 @@ EOF
 ENV PATH=/opt/intel/oneapi/compiler/latest/bin/:$PATH
 ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/umf/latest/lib:$LD_LIBRARY_PATH
 
-ARG UNIFIED_RUNTIME_VERSION=6.2.0
+ARG UNIFIED_RUNTIME_VERSION=6.3.0
 
 RUN --mount=type=tmpfs,target=/tmp/build <<EOF
     set -ex
