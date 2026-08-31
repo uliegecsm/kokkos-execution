@@ -168,10 +168,11 @@ jobs:
           - kokkos_backends: [OpenMP, HIP]
             compiler:
               family: rocm
-              version: 7.0.2
-            base_image     : rocm/dev-ubuntu-24.04:7.0.2
+              version: '10.0.0'
+            base_image     : rocm/dev-ubuntu-26.04:10.0.0-full
             platforms      : linux/amd64
             kokkos_archs   : [ZEN5, AMD_GFX1201]
+            python_version : 3.14
           - kokkos_backends: [OpenMP, SYCL]
             compiler:
               family: intel
