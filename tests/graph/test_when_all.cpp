@@ -95,14 +95,16 @@ static_assert(test_sndr_traits());
 //! @test Check @c noexcept specification of sender transformation.
 consteval bool test_sndr_nothrow_transformable() {
     using when_all_sndr_t = decltype(stdexec::when_all(
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
         stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
-        | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
+            | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(std::same_as<
                   stdexec::__demangle_t<when_all_sndr_t>,
                   Tests::Utils::basic_sender_t<
                       stdexec::when_all_t,
                       stdexec::__,
+                      typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t,
                       Tests::Utils::basic_sender_t<
                           stdexec::then_t,
                           Tests::Utils::Functors::NoOp<false, false, false>,
@@ -119,8 +121,9 @@ consteval bool test_sndr_nothrow_transformable() {
     >);
 
     using when_all_maythrow_on_move_sndr_t = decltype(stdexec::when_all(
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
         stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
-        | stdexec::then(Tests::Utils::Functors::NoOp<false, false, true>{})));
+            | stdexec::then(Tests::Utils::Functors::NoOp<false, false, true>{})));
 
     static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
                   Kokkos::Execution::GraphImpl::Domain,
@@ -139,8 +142,8 @@ consteval bool test_sndr_nothrow_connectable() {
     static_assert(!std::is_nothrow_constructible_v<Kokkos::Experimental::Graph<TEST_EXECUTION_SPACE>>);
 
     using when_all_sndr_t = decltype(stdexec::when_all(
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
-        | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())));
 
     static_assert(!stdexec::__nothrow_connectable<when_all_sndr_t, Tests::Utils::SinkReceiver>);
 
@@ -190,14 +193,15 @@ static_assert(test_sndr_cannot_mix_execution_space_type<TEST_EXECUTION_SPACE, Ko
 
 /**
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
- *       when used with a single-branch @c stdexec::when_all.
+ *       when used with a @c stdexec::when_all with a schedule sender in one branch and a single other branch.
  */
-TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
+TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender_and_single_branch) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t gctx{exec};
 
-    auto sndr = stdexec::when_all(stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT(data));
+    auto sndr = stdexec::when_all(
+        stdexec::schedule(gctx.get_scheduler()), stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT(data));
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
@@ -211,7 +215,9 @@ TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
@@ -424,10 +430,11 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
 
     stdexec::sender auto sndr =
         stdexec::when_all(
+            stdexec::schedule(gctx.get_scheduler()),
             stdexec::read_env(stdexec::get_allocator)
-            | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
-            | stdexec::continues_on(gctx.get_scheduler())
-            | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data))
+                | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
+                | stdexec::continues_on(gctx.get_scheduler())
+                | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data))
         | stdexec::write_env(stdexec::prop{stdexec::get_allocator, Tests::Utils::TrackingAllocator<int>{&count}});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
@@ -442,7 +449,9 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 

@@ -44,6 +44,10 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
             ::testing::ElementsAre(__VA_ARGS__)))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define MATCHER_FOR_GRAPH_ROOT_NODE_OF(_graph_create_event_)                                                           \
+    std::get<Kokkos::Execution::GraphImpl::GraphCreateEvent>(_graph_create_event_).root_node
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define MATCHER_FOR_GRAPH_NODE_OF(_graph_add_node_event_)                                                              \
     std::get<Kokkos::Execution::GraphImpl::GraphAddNodeEvent>(_graph_add_node_event_).node
 

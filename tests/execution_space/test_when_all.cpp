@@ -51,8 +51,54 @@ class WhenAllTest
     >;
 };
 
+//! @test A @c stdexec::when_all with no branch is equivalent to @c stdexec::just().
+TEST(WhenAll, no_branch) {
+    auto sndr = stdexec::when_all();
+
+    static_assert(std::same_as<stdexec::tag_of_t<decltype(sndr)>, stdexec::just_t>);
+
+    static_assert(!stdexec::dependent_sender<decltype(sndr)>);
+
+    static_assert(
+        stdexec::get_completion_signatures<decltype(sndr)>()
+        == stdexec::completion_signatures<stdexec::set_value_t()>{});
+
+    ASSERT_TRUE(stdexec::sync_wait(std::move(sndr)).has_value()); // NOLINT(performance-move-const-arg)
+}
+
+//! @test A @c stdexec::when_all(sndr) with a single branch is equivalent to @c auto(sndr).
+TEST(WhenAll, single_branch) {
+    auto sndr = stdexec::just(42);
+
+    static_assert(std::same_as<decltype(stdexec::when_all(sndr)), decltype(sndr)>);
+    static_assert(std::same_as<
+                  decltype(stdexec::when_all(std::move(sndr))), // NOLINT(performance-move-const-arg)
+                  decltype(sndr)
+    >);
+
+    auto&& w_a = stdexec::when_all(sndr);
+    ASSERT_NE(std::addressof(w_a), std::addressof(sndr)); // w_a is a new copy, not a reference to sndr.
+    sndr = stdexec::just(56);
+    const auto result = stdexec::sync_wait(std::move(w_a)); // NOLINT(performance-move-const-arg)
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(std::get<0>(*result), 42);
+    ASSERT_EQ(
+        std::get<0>(*stdexec::sync_wait(stdexec::when_all(std::move(sndr)))), 56); // NOLINT(performance-move-const-arg)
+
+    // lvalues must be copyable; rvalues move.
+    using just_not_copy_constructible_t = decltype(stdexec::just(std::make_unique<int>(0)));
+    static_assert(!std::copy_constructible<just_not_copy_constructible_t>);
+    static_assert(!std::invocable<const stdexec::when_all_t&, just_not_copy_constructible_t&>);
+    static_assert(std::invocable<const stdexec::when_all_t&, just_not_copy_constructible_t&&>);
+}
+
 /**
  * @test A @c stdexec::when_all with a single branch on @ref Kokkos::Execution::ExecutionSpaceContext.
+ *
+ * @note After the implementation of P4269R0 in https://github.com/NVIDIA/stdexec/pull/2124,
+ *       @c when_all(sndr) with a single sender is expression-equivalent to @c auto(sndr). Hence, the sender
+ *       returned by @c when_all(sndr) may have a completion scheduler. Notably, for an execution space completing
+ *       sender @c sndr, @c when_all(sndr) returns an execution space completing sender.
  *
  * @verbatim
  * schedule(esc) | then -- when_all --> sync_wait
@@ -64,6 +110,43 @@ TEST_F(WhenAllTest, single_branch) {
     const context_t esc{exec};
 
     auto sndr = stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data));
+
+    static_assert(std::same_as<
+                  decltype(stdexec::get_completion_domain<stdexec::set_value_t>(stdexec::get_env(sndr))),
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain
+    >);
+
+    static_assert(std::same_as<stdexec::tag_of_t<decltype(sndr)>, stdexec::then_t>);
+    static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<decltype(sndr)>);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    ASSERT_THAT(
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 1);
+}
+
+/**
+ * @test A @c stdexec::when_all with a schedule sender in one branch and a single other branch
+ *       on @ref Kokkos::Execution::ExecutionSpaceContext.
+ *
+ * @verbatim
+ * schedule(esc) --------- \
+ *                          when_all
+ * schedule(esc) | then -- /
+ * @endverbatim
+ */
+TEST_F(WhenAllTest, schedule_sender_and_single_branch) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec};
+
+    auto sndr = stdexec::when_all(
+        stdexec::schedule(esc.get_scheduler()), stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data));
 
     static_assert(std::same_as<
                   decltype(stdexec::get_completion_domain<stdexec::set_value_t>(stdexec::get_env(sndr))),
@@ -97,19 +180,24 @@ TEST_F(WhenAllTest, single_branch) {
 }
 
 /**
- * @test A @c stdexec::when_all with a single branch on @ref Kokkos::Execution::ExecutionSpaceContext,
- *       followed by work on the same @ref Kokkos::Execution::ExecutionSpaceContext.
+ * @test A @c stdexec::when_all with a schedule sender in one branch and a single other branch
+ *       on @ref Kokkos::Execution::ExecutionSpaceContext, followed by work
+ *       on the same @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then -- when_all --> continues_on(esc) | then
+ * schedule(esc) --------- \
+ *                          when_all --> continues_on(esc) | then
+ * schedule(esc) | then -- /
  * @endverbatim
  */
-TEST_F(WhenAllTest, single_branch_followed_by_self) {
+TEST_F(WhenAllTest, schedule_sender_and_single_branch_followed_by_self) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
 
-    auto sndr = stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data))
+    auto sndr = stdexec::when_all(
+                    stdexec::schedule(esc.get_scheduler()),
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data))
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
@@ -125,23 +213,27 @@ TEST_F(WhenAllTest, single_branch_followed_by_self) {
 }
 
 /**
- * @test A @c stdexec::when_all with a single branch with a segment on @ref Kokkos::Execution::ExecutionSpaceContext
- *       followed by a segment on another context. The @c stdexec::when_all is followed by work on the same
+ * @test A @c stdexec::when_all with a schedule sender in one branch and a single other branch
+ *       with a segment on @ref Kokkos::Execution::ExecutionSpaceContext followed by a segment
+ *       on another context. The @c stdexec::when_all is followed by work on the same
  *       @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then --> continues_on(stc) | then -- when_all --> continues_on(esc) | then
+ * schedule(stc) ----------------------------------- \
+ *                                                    when_all --> continues_on(esc) | then
+ * schedule(esc) | then --> continues_on(stc) | then /
  * @endverbatim
  */
-TEST_F(WhenAllTest, single_mixed_branch_followed_by_self) {
+TEST_F(WhenAllTest, schedule_sender_and_single_mixed_branch_followed_by_self) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
     experimental::execution::single_thread_context stc{};
 
     auto sndr = stdexec::when_all(
+                    stdexec::schedule(stc.get_scheduler()),
                     stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data)
-                    | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data))
+                        | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data))
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
@@ -160,20 +252,25 @@ TEST_F(WhenAllTest, single_mixed_branch_followed_by_self) {
 }
 
 /**
- * @test A @c stdexec::when_all with a single branch on @ref Kokkos::Execution::ExecutionSpaceContext, followed by work
- *       on another context, followed by work on the same @ref Kokkos::Execution::ExecutionSpaceContext.
+ * @test A @c stdexec::when_all with a schedule sender in one branch and a single other branch
+ *       on @ref Kokkos::Execution::ExecutionSpaceContext, followed by work on another context,
+ *       followed by work on the same @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then -- when_all --> continues_on(stc) | then --> continues_on(esc) | then
+ * schedule(esc) ------ \
+ *                       when_all --> continues_on(stc) | then --> continues_on(esc) | then
+ * schedule(esc) | then /
  * @endverbatim
  */
-TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
+TEST_F(WhenAllTest, schedule_sender_and_single_branch_followed_by_other_and_finish_on_self) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t esc{exec};
     experimental::execution::single_thread_context stc{};
 
-    auto sndr = stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data))
+    auto sndr = stdexec::when_all(
+                    stdexec::schedule(esc.get_scheduler()),
+                    stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data))
               | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT(data)
               | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
 
@@ -415,9 +512,12 @@ TEST_F(WhenAllTest, two_mixed_branches_followed_by_other_and_finish_on_self) {
  *       because its preceding @c stdexec::when_all has at least one branch on @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then_atomic ------------------------------------------------------------------------ \
- *                                                                                                       when_all --> continues_on(esc) | then
- * schedule(esc) | then_atomic -- when_all --> continues_on(stc) | then_atomic --> continues_on(esc) -- /
+ * schedule(esc) | then_atomic ---------------------------------------------------------------------- \
+ *                                                                                                     \
+ *                                                                                                      when_all --> continues_on(esc) | then
+ * schedule(esc) ------------- \                                                                       /
+ *                              when_all --> continues_on(stc) | then_atomic --> continues_on(esc) -- /
+ * schedule(esc) | then_atomic /
  * @endverbatim
  */
 TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
@@ -428,7 +528,9 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
 
     auto sndr = stdexec::when_all(
                     stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data),
-                    stdexec::when_all(stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data))
+                    stdexec::when_all(
+                        stdexec::schedule(esc.get_scheduler()),
+                        stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data))
                         | Tests::Utils::check_rcvr_env_not_queryable_with<Kokkos::Execution::Impl::get_exec_t>()
                         | stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
                         | stdexec::continues_on(esc.get_scheduler()))

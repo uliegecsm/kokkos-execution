@@ -15,14 +15,15 @@ namespace Kokkos::Execution::GraphImpl {
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is created.
 struct GraphCreateEvent {
     void* graph = nullptr;
+    void* root_node = nullptr;
     uint32_t dev_id = 0;
     uint64_t event_id = 0;
 
     constexpr auto operator<=>(const GraphCreateEvent&) const = default;
 
     friend std::ostream& operator<<(std::ostream& out, const GraphCreateEvent& event) {
-        return out << "GraphCreateEvent: {graph = " << event.graph << ", dev_id = " << event.dev_id
-                   << ", event_id = " << event.event_id << '}';
+        return out << "GraphCreateEvent: {graph = " << event.graph << ", root_node = " << event.root_node
+                   << ", dev_id = " << event.dev_id << ", event_id = " << event.event_id << '}';
     }
 };
 
@@ -107,6 +108,7 @@ void graph_create_event(const Kokkos::Experimental::Graph<Exec>& graph) {
     Kokkos::utils::callbacks::dispatch(
         GraphCreateEvent{
             .graph = get_graph_impl_ptr(graph.root_node()),
+            .root_node = get_node_ptr(graph.root_node()),
             .dev_id = Kokkos::Tools::Experimental::device_id(graph.get_device_handle().m_exec),
             .event_id = Kokkos::utils::callbacks::get_next_event_id()});
 #endif

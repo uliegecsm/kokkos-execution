@@ -45,7 +45,7 @@ struct WhenAllOpState
     //! Receiver for a child of @c stdexec::when_all.
     struct WhenAllChildReceiver : public Impl::Receiver<WhenAllOpState, stdexec::env_of_t<Rcvr>> {
         [[nodiscard]]
-        constexpr auto query(get_node_t) const & noexcept -> const root_t& {
+        auto query(get_node_t) const & noexcept -> const root_t& {
             return this->parent_op->root;
         }
     };
@@ -104,11 +104,11 @@ struct WhenAllOpState
                   children_op_states)) {
     }
 
-    const auto& query(get_node_t) const & noexcept {
+    auto query(get_node_t) const & noexcept -> const node_t& {
         return node;
     }
 
-    const auto& query(get_graph_t) const & noexcept {
+    auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
         return state.graph;
     }
 
@@ -146,6 +146,10 @@ struct WhenAllOpState
     void submit() & noexcept requires(as_one)
     {
         this->submit_graph();
+    }
+
+    void complete(stdexec::set_value_t) & noexcept {
+        this->submit();
     }
 
     template <typename Tag, typename... Args>
