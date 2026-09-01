@@ -1,5 +1,14 @@
 # Find kokkos-utils.
-find_package(KokkosUtils 0.0.4 CONFIG REQUIRED)
+string(
+  JSON
+  KOKKOS_UTILS_VERSION
+  GET
+  "${DEPENDENCIES_JSON}"
+  "github"
+  "kokkos-utils"
+  "version"
+)
+find_package(KokkosUtils ${KOKKOS_UTILS_VERSION} CONFIG REQUIRED)
 
 # Helpers.
 include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
