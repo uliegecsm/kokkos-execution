@@ -251,12 +251,12 @@ struct OpState
     }
 
     [[nodiscard]]
-    constexpr auto query(get_node_t) const & noexcept -> const node_t& {
+    auto query(get_node_t) const & noexcept -> const node_t& {
         return node;
     }
 
     [[nodiscard]]
-    constexpr auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
+    auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
         if constexpr (is_graph_create) {
             return state.graph;
         } else {

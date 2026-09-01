@@ -8,6 +8,7 @@
 #include "kokkos-execution/graph/bulk.hpp"
 #include "kokkos-execution/graph/continues_on.hpp"
 #include "kokkos-execution/graph/domain.hpp"
+#include "kokkos-execution/graph/get_node.hpp"
 #include "kokkos-execution/graph/parallel_for.hpp"
 #include "kokkos-execution/graph/schedule_from.hpp"
 #include "kokkos-execution/graph/sync_wait.hpp"
@@ -42,6 +43,13 @@ struct Scheduler {
         //! @todo Check signature. And check whether we should move the receiver.
         void start() & noexcept {
             stdexec::set_value(std::move(rcvr));
+        }
+
+        [[nodiscard]]
+        auto query(get_node_t) const & noexcept -> const
+            typename Kokkos::Experimental::Graph<Exec>::root_t& requires stdexec::__queryable_with<Rcvr, get_node_t>
+        {
+            return this->rcvr.query(get_node);
         }
     };
 

@@ -136,8 +136,8 @@ TEST_F(WhenAllTest, single_branch) {
  *
  * @verbatim
  * schedule(esc) --------- \
- *                          when_all --> continues_on(esc) | then
- * schedule(stc) | then -- /
+ *                          when_all
+ * schedule(esc) | then -- /
  * @endverbatim
  */
 TEST_F(WhenAllTest, schedule_sender_and_single_branch) {
