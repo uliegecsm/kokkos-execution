@@ -44,8 +44,13 @@ struct WhenAllOpState
 
     //! Receiver for a child of @c stdexec::when_all.
     struct WhenAllChildReceiver : public Impl::Receiver<WhenAllOpState, stdexec::env_of_t<Rcvr>> {
+        /**
+         * @note This function is not declared @c constexpr because while the child operation-state types are being formed,
+         *       the parent operation state may still be incomplete. With @c constexpr, @c clang may attempt constant evaluation
+         *       through @c parent_op leading to an incomplete type compilation error.
+         */
         [[nodiscard]]
-        constexpr auto query(get_node_t) const & noexcept -> const root_t& {
+        auto query(get_node_t) const & noexcept -> const root_t& {
             return this->parent_op->root;
         }
     };
@@ -104,11 +109,13 @@ struct WhenAllOpState
                   children_op_states)) {
     }
 
-    const auto& query(get_node_t) const & noexcept {
+    [[nodiscard]]
+    auto query(get_node_t) const & noexcept -> const node_t& {
         return node;
     }
 
-    const auto& query(get_graph_t) const & noexcept {
+    [[nodiscard]]
+    auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
         return state.graph;
     }
 
