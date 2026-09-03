@@ -205,7 +205,8 @@ struct OpState
      * If the graph composition policy is @ref GraphComposition::Create, return the root node of @ref state graph.
      * Otherwise, return the result of querying @ref inner_op_state for @ref get_node_t.
      */
-    const predecessor_t& get_predecessor() const noexcept {
+    [[nodiscard]]
+    auto get_predecessor() const noexcept -> const predecessor_t& {
         if constexpr (is_graph_create) {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
             PLOG_INFO << "The predecessor is the root node of graph " << get_graph_impl_ptr(state.get_root_node())
@@ -251,12 +252,12 @@ struct OpState
     }
 
     [[nodiscard]]
-    constexpr auto query(get_node_t) const & noexcept -> const node_t& {
+    auto query(get_node_t) const & noexcept -> const node_t& {
         return node;
     }
 
     [[nodiscard]]
-    constexpr auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
+    auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
         if constexpr (is_graph_create) {
             return state.graph;
         } else {
