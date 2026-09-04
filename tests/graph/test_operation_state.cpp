@@ -90,7 +90,8 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 }
@@ -120,7 +121,8 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), dependent_sender_partly_on_graph_do
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 }
@@ -149,9 +151,11 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_with_continues
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(2), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(2)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
@@ -178,8 +182,10 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(Kokkos::Experimental::get_device_handle(TEST_EXECUTION_SPACE{})),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0),
                 MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
@@ -227,9 +233,12 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all_mi
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(Kokkos::Experimental::get_device_handle(TEST_EXECUTION_SPACE{})),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0),
                 MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),

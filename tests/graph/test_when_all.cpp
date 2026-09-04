@@ -209,7 +209,8 @@ TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
@@ -242,8 +243,10 @@ TEST_F(TEST_CATEGORY(WhenAllTest), two_branches) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0),
                 MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
@@ -279,9 +282,12 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0),
                 MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
@@ -341,9 +347,12 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_starting_on_single_thread_cont
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0),
                 MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
@@ -398,9 +407,12 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_some_starting_on_single_thread
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0),
                 MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
@@ -440,7 +452,8 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
                 recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
