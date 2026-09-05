@@ -191,6 +191,10 @@ static_assert(test_sndr_cannot_mix_execution_space_type<TEST_EXECUTION_SPACE, Ko
 /**
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
  *       when used with a single-branch @c stdexec::when_all.
+ *
+ * @verbatim
+ * schedule(gctx) | then -- when_all
+ * @endverbatim
  */
 TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -222,6 +226,12 @@ TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
 /**
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
  *       when used with a two-branches @c stdexec::when_all.
+ *
+ * @verbatim
+ * schedule(gctx) | then_atomic -- \
+ *                                  when_all
+ * schedule(gctx) | then_atomic -- /
+ * @endverbatim
  */
 TEST_F(TEST_CATEGORY(WhenAllTest), two_branches) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -260,6 +270,14 @@ TEST_F(TEST_CATEGORY(WhenAllTest), two_branches) {
 /**
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
  *       when used with a three-branches @c stdexec::when_all.
+ *
+ * @verbatim
+ * schedule(gctx) | then_atomic -- \
+ *                                  \
+ * schedule(gctx) | then_atomic --   when_all
+ *                                  /
+ * schedule(gctx) | then_atomic -- /
+ * @endverbatim
  */
 TEST_F(TEST_CATEGORY(WhenAllTest), three_branches) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -306,6 +324,14 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches) {
  * This test ensures that if the @c stdexec::when_all creates a single graph with the termination
  * of each branch, the graph is submitted only when all branches have complete their work on their respective
  * @c experimental::execution::single_thread_context.
+ *
+ * @verbatim
+ * schedule(stc_a) | then --> continues_on(gctx) | then -- \
+ *                                                          \
+ * schedule(stc_b) | then --> continues_on(gctx) | then --   when_all
+ *                                                          /
+ * schedule(stc_c) | then --> continues_on(gctx) | then -- /
+ * @endverbatim
  */
 TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_starting_on_single_thread_context) {
     const Kokkos::View<value_t[3], Kokkos::SharedSpace> data_per_branch(Kokkos::view_alloc("data - shared space"));
@@ -368,6 +394,14 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_starting_on_single_thread_cont
  * @test Similar to @ref Tests::GraphImpl::WhenAllTest_three_branches_starting_on_single_thread_context_Test,
  *       but some branches start with some work on @c experimental::execution::single_thread_context,
  *       whereas others directly start on @ref Kokkos::Execution::GraphImpl::Domain.
+ *
+ * @verbatim
+ * schedule(stc_a) | then --> continues_on(gctx) | then -- \
+ *                                                          \
+ * schedule(stc_b) | then --> continues_on(gctx) | then --   when_all
+ *                                                          /
+ *                            schedule(gctx)     | then -- /
+ * @endverbatim
  */
 TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_some_starting_on_single_thread_context) {
     const Kokkos::View<value_t[3], Kokkos::SharedSpace> data_per_branch(Kokkos::view_alloc("data - shared space"));
@@ -424,7 +458,13 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_some_starting_on_single_thread
     ASSERT_THAT(Tests::Utils::span_from(data_per_branch), testing::ElementsAre(5, 7, 4));
 }
 
-//! @test The customization of @c stdexec::when_all properly forwards forwarding queries.
+/**
+ * @test The customization of @c stdexec::when_all properly forwards forwarding queries.
+ *
+ * @verbatim
+ * read_env | then -> continues_on(gctx) | check_rcvr_env_queryable_with | then -- when_all | write_env
+ * @endverbatim
+ */
 TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
