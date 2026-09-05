@@ -55,7 +55,7 @@ class WhenAllTest
  * @test A @c stdexec::when_all with a single branch on @ref Kokkos::Execution::ExecutionSpaceContext.
  *
  * @verbatim
- * schedule(esc) | then -- when_all --> sync_wait
+ * schedule(esc) | then -- when_all
  * @endverbatim
  */
 TEST_F(WhenAllTest, single_branch) {
@@ -530,6 +530,14 @@ TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
 /**
  * @test Stress-test the @c stdexec::when_all customization by creating many branches, each starting in
  *       a dedicated @c experimental::execution::single_thread_context, using its own @ref Kokkos::Execution::ExecutionSpaceContext.
+ *
+ * @verbatim
+ * just() | then -> continues_on(stc_A) | then -> continues_on(esc_A) | then_atomic -- \
+ *                                                                                      \
+ * ...                                                                                   when_all
+ *                                                                                      /
+ * just() | then -> continues_on(stc_F) | then -> continues_on(esc_F) | then_atomic -- /
+ * @endverbatim
  */
 TEST_F(WhenAllTest, many_concurrent_branches) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
