@@ -227,9 +227,11 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), then_continues_on_single_thread_context_c
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(2), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(2)),
@@ -264,9 +266,11 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_same_graph_scheduler_instan
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(2), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(2)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
@@ -310,9 +314,11 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle_A, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(0), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle_B),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_B, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(2), device_handle_B, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                 MATCHER_FOR_GRAPH_SUBMIT(exec_A, recorded_events.at(0)),
                 MATCHER_FOR_RECORD_EVENT(exec_A),
                 MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(5)),
@@ -324,9 +330,11 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
                 recorded_events,
                 testing::ElementsAre(
                     MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle_A, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(0), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                     MATCHER_FOR_GRAPH_CREATE(device_handle_B),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_B, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(2), device_handle_B, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_A, recorded_events.at(0)),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_B, recorded_events.at(2)),
                     MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "sync_wait"))));
@@ -335,9 +343,11 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
                 recorded_events,
                 testing::ElementsAre(
                     MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle_A, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(0), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                     MATCHER_FOR_GRAPH_CREATE(device_handle_B),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_B, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(2), device_handle_B, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_A, recorded_events.at(0)),
                     MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "dependency")),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_B, recorded_events.at(2)),
@@ -388,11 +398,14 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle_A, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(0), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle_B),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_B, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(2), device_handle_B, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(4), device_handle_A, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(4), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(4))),
                 MATCHER_FOR_GRAPH_SUBMIT(exec_A, recorded_events.at(0)),
                 MATCHER_FOR_RECORD_EVENT(exec_A),
                 MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(7)),
@@ -407,11 +420,14 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
                 recorded_events,
                 testing::ElementsAre(
                     MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle_A, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(0), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                     MATCHER_FOR_GRAPH_CREATE(device_handle_B),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_B, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(2), device_handle_B, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                     MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(4), device_handle_A, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(4), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(4))),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_A, recorded_events.at(0)),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_B, recorded_events.at(2)),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_A, recorded_events.at(4)),
@@ -422,11 +438,14 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
                 recorded_events,
                 testing::ElementsAre(
                     MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle_A, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(0), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                     MATCHER_FOR_GRAPH_CREATE(device_handle_B),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_B, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(2), device_handle_B, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                     MATCHER_FOR_GRAPH_CREATE(device_handle_A),
-                    MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(4), device_handle_A, nullptr),
+                    MATCHER_FOR_GRAPH_ADDNODE(
+                        recorded_events.at(4), device_handle_A, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(4))),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_A, recorded_events.at(0)),
                     MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "dependency")),
                     MATCHER_FOR_GRAPH_SUBMIT(exec_B, recorded_events.at(2)),
@@ -470,11 +489,14 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_GRAPH_CREATE(device_handle),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle_h),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_h, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(2), device_handle_h, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(4), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(4), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(4))),
                 MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
                 MATCHER_FOR_GRAPH_SUBMIT(exec_h, recorded_events.at(2)),
                 MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(4)),
@@ -486,11 +508,14 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_GRAPH_CREATE(device_handle),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle_h),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_h, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(2), device_handle_h, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(4), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(4), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(4))),
                 MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
                 MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_WAIT_EXEC_EVENT(exec_h, recorded_events.at(7)),
@@ -504,11 +529,14 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), transition_to_another_graph_scheduler_ins
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_GRAPH_CREATE(device_handle),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle_h),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(2), device_handle_h, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(2), device_handle_h, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2))),
                 MATCHER_FOR_GRAPH_CREATE(device_handle),
-                MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(4), device_handle, nullptr),
+                MATCHER_FOR_GRAPH_ADDNODE(
+                    recorded_events.at(4), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(4))),
                 MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "dependency")),
                 MATCHER_FOR_GRAPH_SUBMIT(exec_h, recorded_events.at(2)),

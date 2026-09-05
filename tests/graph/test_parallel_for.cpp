@@ -156,7 +156,8 @@ TEST_F(ParallelForTest, parallel_for_schedule) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
@@ -189,7 +190,8 @@ TEST_F(ParallelForTest, parallel_for_starts_on) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
 
@@ -216,7 +218,8 @@ TEST_F(ParallelForTest, parallel_for_schedule_tagged_operator) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 

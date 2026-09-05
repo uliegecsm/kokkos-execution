@@ -83,6 +83,11 @@ TEST_F(EventsTest, create_instantiate_and_submit) {
         Kokkos::Execution::GraphImpl::submit_graph(graph, exec);
     });
     ASSERT_THAT(
+        recorded_events.at(0),
+        AGraphCreateEvent(
+            testing::Field(&Kokkos::Execution::GraphImpl::GraphCreateEvent::root_node, testing::NotNull())));
+
+    ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
@@ -108,7 +113,8 @@ TEST_F(EventsTest, create_and_add_nodes) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
-            MATCHER_FOR_GRAPH_ADDNODE(recorded_events.at(0), device_handle, nullptr),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)))));
 }

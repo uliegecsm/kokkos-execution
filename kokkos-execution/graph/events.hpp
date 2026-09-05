@@ -15,14 +15,15 @@ namespace Kokkos::Execution::GraphImpl {
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is created.
 struct GraphCreateEvent {
     void* graph = nullptr;
+    void* root_node = nullptr;
     uint32_t dev_id = 0;
     uint64_t event_id = 0;
 
     constexpr auto operator<=>(const GraphCreateEvent&) const = default;
 
     friend std::ostream& operator<<(std::ostream& out, const GraphCreateEvent& event) {
-        return out << "GraphCreateEvent: {graph = " << event.graph << ", dev_id = " << event.dev_id
-                   << ", event_id = " << event.event_id << '}';
+        return out << "GraphCreateEvent: {graph = " << event.graph << ", root_node = " << event.root_node
+                   << ", dev_id = " << event.dev_id << ", event_id = " << event.event_id << '}';
     }
 };
 
@@ -104,9 +105,11 @@ auto* get_node_ptr(const NodeType& node) noexcept {
 template <Kokkos::ExecutionSpace Exec>
 void graph_create_event(const Kokkos::Experimental::Graph<Exec>& graph) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+    const auto root = graph.root_node();
     Kokkos::utils::callbacks::dispatch(
         GraphCreateEvent{
-            .graph = get_graph_impl_ptr(graph.root_node()),
+            .graph = get_graph_impl_ptr(root),
+            .root_node = get_node_ptr(root),
             .dev_id = Kokkos::Tools::Experimental::device_id(graph.get_device_handle().m_exec),
             .event_id = Kokkos::utils::callbacks::get_next_event_id()});
 #endif
@@ -131,12 +134,10 @@ void graph_add_node_event(
     const NodeType& node,
     const Kokkos::Impl::DeviceHandle<Exec>& device_handle) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
-    const bool is_predecessor_root = predecessor.get_node_kind() == Kokkos::Experimental::GraphNodeKind::Root;
-
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
             .graph = get_graph_impl_ptr(predecessor),
-            .predecessor = is_predecessor_root ? nullptr : get_node_ptr(predecessor),
+            .predecessor = get_node_ptr(predecessor),
             .node = get_node_ptr(node),
             .dev_id = Kokkos::Tools::Experimental::device_id(device_handle.m_exec)});
 #endif
