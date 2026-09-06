@@ -5,6 +5,7 @@
 #include "tests/utils/category.hpp"
 #include "tests/utils/check_scheduler.hpp"
 #include "tests/utils/graph_context.hpp"
+#include "tests/utils/sink_receiver.hpp"
 
 /**
  * @addtogroup unittests
@@ -102,5 +103,47 @@ consteval bool test_schedule_sender_attrs_queries() {
     return true;
 }
 static_assert(test_schedule_sender_attrs_queries());
+
+//! @test Check that @ref Kokkos::Execution::GraphImpl::Scheduler::OpState may/may not be queried for a graph node when the receiver provides/does not provide the query.
+consteval bool test_schedule_sender_opstate() {
+    using prop_t = stdexec::prop<
+        Kokkos::Execution::GraphImpl::get_node_t,
+        const Kokkos::Execution::GraphImpl::GraphComposition::node_t<TEST_EXECUTION_SPACE>&
+    >;
+    static_assert(stdexec::__queryable_with<prop_t, Kokkos::Execution::GraphImpl::get_node_t>);
+    static_assert(std::same_as<
+                  stdexec::__query_result_t<prop_t, Kokkos::Execution::GraphImpl::get_node_t>,
+                  const Kokkos::Execution::GraphImpl::GraphComposition::node_t<TEST_EXECUTION_SPACE>&
+    >);
+
+    //! For a receiver that does not provide the query, the operation state is instantiable, but not queryable for a graph node.
+    using rcvr_without_prop_t = Tests::Utils::SinkReceiver;
+    static_assert(!stdexec::__queryable_with<rcvr_without_prop_t, Kokkos::Execution::GraphImpl::get_node_t>);
+    static_assert(!stdexec::__queryable_with<
+                  stdexec::connect_result_t<graph_schedule_sender_t&&, rcvr_without_prop_t>,
+                  Kokkos::Execution::GraphImpl::get_node_t
+    >);
+
+    //! For a receiver that provides the query, the operation state is instantiable and queryable for a graph node.
+    struct ReceiverWithProp
+        : Tests::Utils::SinkReceiver
+        , prop_t { };
+    using rcvr_with_prop_t = ReceiverWithProp;
+    static_assert(stdexec::__queryable_with<rcvr_with_prop_t, Kokkos::Execution::GraphImpl::get_node_t>);
+    static_assert(stdexec::__queryable_with<
+                  stdexec::connect_result_t<graph_schedule_sender_t&&, rcvr_with_prop_t>,
+                  Kokkos::Execution::GraphImpl::get_node_t
+    >);
+    static_assert(std::same_as<
+                  stdexec::__query_result_t<
+                      stdexec::connect_result_t<graph_schedule_sender_t&&, rcvr_with_prop_t>,
+                      Kokkos::Execution::GraphImpl::get_node_t
+                  >,
+                  const Kokkos::Execution::GraphImpl::GraphComposition::node_t<TEST_EXECUTION_SPACE>&
+    >);
+
+    return true;
+}
+static_assert(test_schedule_sender_opstate());
 
 } // namespace Tests::GraphImpl
