@@ -189,6 +189,44 @@ consteval bool test_sndr_cannot_mix_execution_space_type() {
 static_assert(test_sndr_cannot_mix_execution_space_type<TEST_EXECUTION_SPACE, Kokkos::DefaultHostExecutionSpace>());
 
 /**
+ * @test Check that @c stdexec::when_all allows a branch to consist of only the schedule sender @ref Kokkos::Execution::GraphImpl::Scheduler::Sender.
+ *
+ * @verbatim
+ *                   schedule(gctx) -------------- \
+ *                                                  when_all
+ * schedule(stc) --> continues_on(gctx) -- then -- /
+ * @endverbatim
+ *
+ * @todo Make sure that a bare @c continues_on(gctx) works as well.
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender) {
+    experimental::execution::single_thread_context stc{};
+    const context_t gctx{exec};
+
+    auto sndr = stdexec::when_all(
+        stdexec::schedule(gctx.get_scheduler()),
+        stdexec::schedule(stc.get_scheduler()) | stdexec::continues_on(gctx.get_scheduler()) | stdexec::then([]() { }));
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(sndr)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(default_device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+            MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
+}
+
+/**
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
  *       when used with a single-branch @c stdexec::when_all.
  *
