@@ -77,10 +77,9 @@ struct Receiver {
         runloop_state->loop.finish();
     }
 
-    void submitted(OptionalConstEventRef<Exec> dep) && noexcept {
-        if (dep.has_value()) {
-            Impl::wait(dep.get());
-        }
+    template <Kokkos::ExecutionSpace... Execs>
+    void submitted(OptionalConstEventRef<Execs>... deps) && noexcept {
+        Impl::wait_on(deps...);
         result->emplace();
         runloop_state->loop.finish();
     }

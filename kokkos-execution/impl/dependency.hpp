@@ -59,6 +59,40 @@ Dependency<Exec, Exec> {
     }
 };
 
+//! Optionally stores a reference to a @c const @ref Impl::Event.
+template <Kokkos::ExecutionSpace Exec>
+using OptionalConstEventRef = OptionalRef<const Event<Exec>>;
+
+//! Blocks the calling host thread until the @p deps complete.
+template <Kokkos::ExecutionSpace... ExecsFrom>
+void wait_on(OptionalConstEventRef<ExecsFrom>... deps) {
+    auto wait_on_if = [](const auto& dep) {
+        if (dep.has_value()) {
+            wait(dep.get());
+        }
+    };
+    (..., wait_on_if(deps));
+}
+
+/**
+ * @brief Order future operations enqueued into @p exec_to after the @p deps.
+ *
+ * @todo Refactor this function so that non-blocking dependencies are enqueued first.
+ */
+template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace... ExecsFrom>
+void depend_on(const ExecTo& exec_to, OptionalConstEventRef<ExecsFrom>... deps) {
+    const auto depend_on_if = [&]<Kokkos::ExecutionSpace ExecFrom>(const OptionalConstEventRef<ExecFrom>& dep) {
+        if (!dep.has_value())
+            return;
+        if constexpr (std::same_as<ExecFrom, ExecTo> && has_exec_wait_event<ExecTo>) {
+            wait(exec_to, dep.get());
+        } else {
+            wait(dep.get());
+        }
+    };
+    (..., depend_on_if(deps));
+}
+
 } // namespace Kokkos::Execution::Impl
 
 #if defined(KOKKOS_ENABLE_CUDA)
