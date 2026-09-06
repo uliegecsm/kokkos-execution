@@ -123,7 +123,7 @@ jobs:
           - kokkos_backends: [OpenMP, SYCL]
             compiler:
               family: intel
-              version: '2025.3'
+              version: '2026.0'
             runs-on: "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix: -volta70
           - kokkos_backends: [OpenMP]
@@ -179,7 +179,8 @@ jobs:
             -DKokkosExecution_ENABLE_EXTRA_TYPE_CHECKING=${{ matrix.extra_type_checking && 'ON' || 'OFF' }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd || 20 }}
       - run: |
-          cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} -j4
+          cmake --build --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
+            -j=${{ matrix.compiler.family == 'intel' && 2 || 4 }}
       - run: |
           ctest --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
       - name: CTest output artifact exists.
