@@ -95,14 +95,16 @@ static_assert(test_sndr_traits());
 //! @test Check @c noexcept specification of sender transformation.
 consteval bool test_sndr_nothrow_transformable() {
     using when_all_sndr_t = decltype(stdexec::when_all(
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
         stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
-        | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
+            | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(std::same_as<
                   stdexec::__demangle_t<when_all_sndr_t>,
                   Tests::Utils::basic_sender_t<
                       stdexec::when_all_t,
                       stdexec::__,
+                      typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t,
                       Tests::Utils::basic_sender_t<
                           stdexec::then_t,
                           Tests::Utils::Functors::NoOp<false, false, false>,
@@ -119,8 +121,9 @@ consteval bool test_sndr_nothrow_transformable() {
     >);
 
     using when_all_maythrow_on_move_sndr_t = decltype(stdexec::when_all(
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
         stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
-        | stdexec::then(Tests::Utils::Functors::NoOp<false, false, true>{})));
+            | stdexec::then(Tests::Utils::Functors::NoOp<false, false, true>{})));
 
     static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
                   Kokkos::Execution::GraphImpl::Domain,
@@ -139,8 +142,9 @@ consteval bool test_sndr_nothrow_connectable() {
     static_assert(!std::is_nothrow_constructible_v<Kokkos::Experimental::Graph<TEST_EXECUTION_SPACE>>);
 
     using when_all_sndr_t = decltype(stdexec::when_all(
+        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
         stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
-        | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
+            | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(!stdexec::__nothrow_connectable<when_all_sndr_t, Tests::Utils::SinkReceiver>);
 
@@ -227,19 +231,67 @@ TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender) {
 }
 
 /**
- * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
- *       when used with a single-branch @c stdexec::when_all.
+ * @test A @c stdexec::when_all with a single branch on @ref Kokkos::Execution::GraphContext.
  *
  * @verbatim
  * schedule(gctx) | then -- when_all
  * @endverbatim
+ *
+ * @note After the implementation of P4269R0 in https://github.com/NVIDIA/stdexec/pull/2124,
+ *       @c when_all(sndr) with a single sender is expression-equivalent to @c auto(sndr). Hence, the sender
+ *       returned by @c when_all(sndr) may have a completion scheduler. Notably, for a graph completing
+ *       sender @c sndr, @c when_all(sndr) returns a graph completing sender.
  */
-TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
+TEST_F(TEST_CATEGORY(WhenAllTest), single_branch) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t gctx{exec};
 
     auto sndr = stdexec::when_all(stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT(data));
+
+    static_assert(std::same_as<
+                  decltype(stdexec::get_completion_domain<stdexec::set_value_t>(stdexec::get_env(sndr))),
+                  Kokkos::Execution::GraphImpl::Domain
+    >);
+
+    static_assert(std::same_as<stdexec::tag_of_t<decltype(sndr)>, stdexec::then_t>);
+    static_assert(Kokkos::Execution::GraphImpl::graph_completing_sender<decltype(sndr)>);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    KOKKOS_EXECUTION_TEST_UTILS_GRAPH_FENCE(exec);
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 1);
+}
+
+/**
+ * @test Check that @ref Kokkos::Execution::GraphContext does its duty well
+ *       when used with a @c stdexec::when_all with a schedule sender in one branch and a single other branch.
+ *
+ * @verbatim
+ * schedule(gctx) --------- \
+ *                           when_all
+ * schedule(gctx) | then -- /
+ * @endverbatim
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender_and_single_branch) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t gctx{exec};
+
+    auto sndr = stdexec::when_all(
+        stdexec::schedule(gctx.get_scheduler()), stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT(data));
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
@@ -254,7 +306,9 @@ TEST_F(TEST_CATEGORY(WhenAllTest), one_branch) {
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
@@ -500,7 +554,9 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_some_starting_on_single_thread
  * @test The customization of @c stdexec::when_all properly forwards forwarding queries.
  *
  * @verbatim
- * read_env | then -> continues_on(gctx) | check_rcvr_env_queryable_with | then -- when_all | write_env
+ *                    schedule(gctx) --------------------------------------------- \
+ *                                                                                  when_all | write_env
+ * read_env | then -> continues_on(gctx) | check_rcvr_env_queryable_with | then -- /
  * @endverbatim
  */
 TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
@@ -514,10 +570,11 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
 
     stdexec::sender auto sndr =
         stdexec::when_all(
+            stdexec::schedule(gctx.get_scheduler()),
             stdexec::read_env(stdexec::get_allocator)
-            | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
-            | stdexec::continues_on(gctx.get_scheduler())
-            | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data))
+                | stdexec::then([&value](auto allocator) { value = Tests::Utils::round_trip_allocate(allocator, 42); })
+                | stdexec::continues_on(gctx.get_scheduler())
+                | Tests::Utils::check_rcvr_env_queryable_with<stdexec::get_allocator_t>() | THEN_INCREMENT(data))
         | stdexec::write_env(stdexec::prop{stdexec::get_allocator, Tests::Utils::TrackingAllocator<int>{&count}});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
@@ -533,7 +590,9 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
             MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+                recorded_events.at(0),
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
