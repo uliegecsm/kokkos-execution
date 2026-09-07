@@ -155,6 +155,10 @@ struct WhenAllOpState
         this->submit_graph();
     }
 
+    void complete(stdexec::set_value_t) & noexcept {
+        this->submit();
+    }
+
     template <typename Tag, typename... Args>
     requires(!std::same_as<Tag, stdexec::set_value_t>)
     void complete(Tag, Args&&... args) & noexcept {
