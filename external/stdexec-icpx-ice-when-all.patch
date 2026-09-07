@@ -1,27 +1,34 @@
+commit 87a3f57273845f7933d02e11e0a5b438e48fa2d9
+Author: Maarten Arnst <maarten.arnst@uliege.be>
+Date:   Tue Sep 1 18:52:35 2026 +0200
+
+    stdexec icpx ice when all patch
+    
+    Signed-off-by: Maarten Arnst <maarten.arnst@uliege.be>
+
 diff --git a/include/stdexec/__detail/__when_all.hpp b/include/stdexec/__detail/__when_all.hpp
-index 97a8b13c..e6a8d34e 100644
+index 014bed23..746035fa 100644
 --- a/include/stdexec/__detail/__when_all.hpp
 +++ b/include/stdexec/__detail/__when_all.hpp
-@@ -292,37 +292,36 @@ namespace STDEXEC
- 
-       constexpr void __complete() noexcept
-       {
--        // Stop callback is no longer needed. Destroy it.
-         __on_stop_.reset();
+@@ -616,35 +616,35 @@ namespace STDEXEC
+         {
+           __on_stop_.reset();
+         }
 -        // All child operations have completed and arrived at the barrier.
 -        switch (__state_.load(__std::memory_order_relaxed))
--        {
--        case __stopped:
-+          const auto value = __state_.load(__std::memory_order_relaxed);
-+          if(value == __stopped) __complete_stopped();
-+          if(value == __started) __complete_started();
-+          if(value == __error)   __complete_error();
++        const auto value = __state_.load(__std::memory_order_relaxed);
++        if(value == __stopped) __complete_stopped();
++        if(value == __started) __complete_started();
++        if(value == __error)   __complete_error();
 +      }
 +
 +      constexpr void __complete_stopped() noexcept {
-           if constexpr (_SendsStopped)
-           {
-             STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
++        if constexpr (_SendsStopped)
+         {
+-        case __stopped:
+-          if constexpr (_SendsStopped)
+-          {
+-            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
 -            break;
 -          }
 -          // This is reachable because the stop callback sets __stopped whether
@@ -29,30 +36,41 @@ index 97a8b13c..e6a8d34e 100644
 -          // same as __started
 -          [[fallthrough]];
 -        case __started:
-+        } else {
-+            __complete_started();
-+        }
-+      }
-+
-+      constexpr void __complete_started() noexcept {
-           if constexpr (!__std::same_as<_ValuesTuple, __ignore>)
-           {
-             // All child operations completed successfully:
-             __when_all::__set_values(__rcvr_, __values_);
-           }
+-          if constexpr (!__std::same_as<_ValuesTuple, __ignore>)
+-          {
+-            // All child operations completed successfully:
+-            __when_all::__set_values(__rcvr_, __values_);
+-          }
 -          break;
 -        case __error:
-+      }
-+
-+      constexpr void __complete_error() noexcept {
-           if constexpr (!__same_as<_ErrorsVariant, __variant<>>)
-           {
-             // One or more child operations completed with an error:
-             STDEXEC::__visit(__mk_completion_fn(set_error, __rcvr_),
-                              static_cast<_ErrorsVariant&&>(__errors_));
+-          if constexpr (!__same_as<_ErrorsVariant, __variant<>>)
+-          {
+-            // One or more child operations completed with an error:
+-            STDEXEC::__visit(__mk_completion_fn(set_error, __rcvr_),
+-                             static_cast<_ErrorsVariant&&>(__errors_));
 -          }
 -          break;
 -        default:;
++          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
++        } else {
++          __complete_started();
++        }  
++      }    
++
++      constexpr void __complete_started() noexcept {
++        if constexpr (!__std::same_as<_ValuesTuple, __ignore>)
++        {
++          // All child operations completed successfully:
++          __when_all::__set_values(__rcvr_, __values_);
++        }
++      }
++
++      constexpr void __complete_error() noexcept {
++        if constexpr (!__same_as<_ErrorsVariant, __variant<>>)
++        {
++          // One or more child operations completed with an error:
++          STDEXEC::__visit(__mk_completion_fn(set_error, __rcvr_),
++                           static_cast<_ErrorsVariant&&>(__errors_));
          }
        }
  
