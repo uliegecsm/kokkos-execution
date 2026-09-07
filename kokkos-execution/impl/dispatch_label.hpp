@@ -35,9 +35,9 @@ static constexpr auto dispatch_label_v = [] {
     constexpr auto prefix = Kokkos::Impl::TypeInfo<Exec>::name();
     std::array<char, prefix.size() + Suffix.size() + 1> buf{};
     auto iter = buf.begin();
-    for (auto charac: prefix)
+    for (const auto charac: prefix)
         *iter++ = charac;
-    for (auto charac: Suffix)
+    for (const auto charac: Suffix)
         *iter++ = charac;
     return buf;
 }();

@@ -142,15 +142,18 @@ struct OpStateBase {
 };
 
 //! Add all nodes as a sequence. Hence, only the first node may be added after the root node.
-template <typename Predecessor, Closure FirstClosure, Closure... RestOfClosures>
+template <typename Predecessor, Closure FirstClosure>
 requires NodeRef<std::remove_cvref_t<Predecessor>>
+static auto add_nodes(Predecessor&& predecessor, FirstClosure&& clsr) {
+    return std::forward<FirstClosure>(clsr).add_node(std::forward<Predecessor>(predecessor));
+}
+
+template <typename Predecessor, Closure FirstClosure, Closure... RestOfClosures>
+requires NodeRef<std::remove_cvref_t<Predecessor>> && (sizeof...(RestOfClosures) > 0)
 static auto add_nodes(Predecessor&& predecessor, FirstClosure&& clsr, RestOfClosures&&... clsrs) {
-    auto node = std::forward<FirstClosure>(clsr).add_node(std::forward<Predecessor>(predecessor));
-    if constexpr (sizeof...(RestOfClosures) == 0) {
-        return node;
-    } else {
-        return add_nodes(std::move(node), std::forward<RestOfClosures>(clsrs)...);
-    }
+    return add_nodes(
+        std::forward<FirstClosure>(clsr).add_node(std::forward<Predecessor>(predecessor)),
+        std::forward<RestOfClosures>(clsrs)...);
 }
 
 //! Operation state that adds all closures as a sequence of nodes.

@@ -26,7 +26,7 @@ struct ParallelForClosure {
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
-        auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
+        const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
         auto node = predecessor.then_parallel_for(
             std::move(node_props), std::forward<ExecPolicy>(policy), std::forward<Functor>(functor));
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("parallel_for", node, predecessor)
@@ -79,7 +79,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
         if constexpr (graph_completing_sender<Sndr, Env>) {
             auto& [label, functor, policy] = data;
 
-            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+            const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
             return trnsfrmd_sndr_t<Env, Data, Sndr>{
                 .clsr =

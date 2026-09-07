@@ -37,7 +37,7 @@ struct TransformSenderFor<stdexec::bulk_t> {
         if constexpr (execution_space_completing_sender<Sndr, Env>) {
             auto& [parallel_policy, shape, functor] = data;
 
-            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+            const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
             return trnsfrmd_sndr_t<Env, Data, Sndr>{
                 {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),

@@ -94,9 +94,10 @@ struct WhenAllOpState
         , root(state.graph.root_node())
         , children_op_states(
               stdexec::__apply(
-                  [this]<typename... Children>(Children&&... children) -> children_op_states_t {
+                  [this](auto&&... children) -> children_op_states_t {
+                      static_assert((std::same_as<decltype(children), Sndrs&&> && ...));
                       return children_op_states_t{
-                          stdexec::connect(std::forward<Children>(children), WhenAllChildReceiver{this})...};
+                          stdexec::connect(std::forward<Sndrs>(children), WhenAllChildReceiver{this})...};
                   },
                   std::move(sndrs_)))
         , node(

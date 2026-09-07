@@ -233,7 +233,7 @@ TEST_F(ThenTest, then_lifetime) {
     };
 
     //! Run the whole test in a lambda.
-    auto run_test = [&]() {
+    const auto run_test = [&]() {
         auto chain = create_chain_in_scope();
 
         using chain_t = decltype(chain);
