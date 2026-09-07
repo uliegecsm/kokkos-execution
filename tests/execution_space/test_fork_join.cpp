@@ -107,18 +107,12 @@ TEST_F(ForkJoinTest, continues_on) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         std::move(sndr)); // NOLINT(performance-move-const-arg)
 
-    ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
-        } else {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
-        }
-    }());
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_RECORD_EVENT(exec),
+            MATCHER_FOR_WAIT_EVENT(recorded_events.at(1))));
 
     ASSERT_EQ(data(), 3);
 }
@@ -158,7 +152,8 @@ TEST_F(ForkJoinTest, continues_on_bulk) {
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(3)));
         }
     }());
 

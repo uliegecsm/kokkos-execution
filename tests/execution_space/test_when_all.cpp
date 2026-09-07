@@ -15,8 +15,10 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/no_op.hpp"
+#include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/kokkos.hpp"
+#include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
 #include "tests/utils/sync_wait.hpp"
 
@@ -51,6 +53,113 @@ class WhenAllTest
     >;
 };
 
+//! @test Check traits of @c Kokkos::Execution::ExecutionSpaceImpl::WhenAllSender with two branches.
+consteval bool test_when_all_two_branches_traits() {
+    //! Schedule sender.
+    using schd_sndr_t = typename WhenAllTest::schedule_sender_t;
+
+    //! Parallel for sender.
+    using functor_t = Tests::Utils::Functors::SumIndices<typename WhenAllTest::view_s_t>;
+    using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
+    using pfor_sndr_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
+        Kokkos::Execution::parallel_for_t,
+        schd_sndr_t,
+        std::string,
+        functor_t,
+        policy_t
+    >;
+
+    //! When all sender of two parallel for senders.
+    using when_all_sndr_t = Kokkos::Execution::ExecutionSpaceImpl::WhenAllSender<pfor_sndr_t, pfor_sndr_t>;
+
+    //! Has the expected completion signatures.
+    using completion_signatures_t = stdexec::__completion_signatures_of_t<when_all_sndr_t, stdexec::env<>>;
+
+    static_assert(stdexec::__mset_eq<
+                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
+                  completion_signatures_t
+    >);
+
+    //! Has the expected completion domain.
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, when_all_sndr_t, stdexec::env<>>,
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain
+    >);
+
+    //! Does not advertise a completion scheduler.
+    static_assert(!Tests::Utils::has_completion_scheduler_for<when_all_sndr_t, stdexec::set_value_t, stdexec::env<>>);
+
+    //! Is connectable.
+    static_assert(stdexec::sender_to<when_all_sndr_t, Tests::Utils::SinkReceiver>);
+
+    //! It is nothrow connectable.
+    static_assert(stdexec::__nothrow_connectable<when_all_sndr_t, Tests::Utils::SinkReceiver>);
+
+    //! The branches are connected to a receiver that supports submitted depend on, but not submitted order on.
+    using connect_result_t = stdexec::connect_result_t<when_all_sndr_t, Tests::Utils::SinkReceiver>;
+    using when_all_child_receiver_0_t = Kokkos::Execution::ExecutionSpaceImpl::WhenAllChildReceiver<
+        TEST_EXECUTION_SPACE,
+        0,
+        connect_result_t,
+        stdexec::env<>
+    >;
+    static_assert(
+        Kokkos::Execution::Impl::supports_submitted_depend_on<when_all_child_receiver_0_t, TEST_EXECUTION_SPACE>);
+    static_assert(!Kokkos::Execution::Impl::supports_submitted_order_on<when_all_child_receiver_0_t>);
+
+    return true;
+}
+static_assert(test_when_all_two_branches_traits());
+
+/**
+ * @test Check traits of @c Kokkos::Execution::ExecutionSpaceImpl::WhenAllSender with a mixed branch
+ *       in an environment that contains a stop token.
+ */
+consteval bool test_when_all_mixed_branch_traits() {
+    //! Schedule sender.
+    using stc_schd_sndr_t = decltype(stdexec::schedule(
+        std::declval<experimental::execution::single_thread_context>().get_scheduler()));
+
+    //! Mixed branch with continues on and parallel for sender.
+    using con_sndr_t =
+        Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnSender<typename WhenAllTest::scheduler_t, stc_schd_sndr_t>;
+    using functor_t = Tests::Utils::Functors::SumIndices<typename WhenAllTest::view_s_t>;
+    using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
+    using pfor_sndr_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
+        Kokkos::Execution::parallel_for_t,
+        con_sndr_t,
+        std::string,
+        functor_t,
+        policy_t
+    >;
+    using when_all_sndr_t = Kokkos::Execution::ExecutionSpaceImpl::WhenAllSender<pfor_sndr_t>;
+
+    //! Has the expected completion signatures.
+    using env_with_stop_token_t = stdexec::prop<stdexec::get_stop_token_t, stdexec::inplace_stop_token>;
+    static_assert(stdexec::sends_stopped<stc_schd_sndr_t, env_with_stop_token_t>);
+
+    using completion_signatures_t = stdexec::__completion_signatures_of_t<when_all_sndr_t, env_with_stop_token_t>;
+
+    static_assert(
+        stdexec::__mset_eq<
+            stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr), stdexec::set_stopped_t()>,
+            completion_signatures_t
+        >);
+
+    //! Has the expected completion domain.
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, when_all_sndr_t, env_with_stop_token_t>,
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain
+    >);
+
+    //! Does not advertise a completion scheduler.
+    static_assert(
+        !Tests::Utils::has_completion_scheduler_for<when_all_sndr_t, stdexec::set_value_t, env_with_stop_token_t>);
+
+    return true;
+}
+static_assert(test_when_all_mixed_branch_traits());
+
 /**
  * @test A @c stdexec::when_all with a single branch on @ref Kokkos::Execution::ExecutionSpaceContext.
  *
@@ -80,18 +189,12 @@ TEST_F(WhenAllTest, single_branch) {
 
     /// Because the sender returned by @c stdexec::when_all is not an execution space completing sender,
     /// the default implementation of @c stdexec::sync_wait is used.
-    ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
-        } else {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
-        }
-    }());
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_RECORD_EVENT(exec),
+            MATCHER_FOR_WAIT_EVENT(recorded_events.at(1))));
 
     ASSERT_EQ(data(), 1);
 }
@@ -183,22 +286,14 @@ TEST_F(WhenAllTest, single_branch_followed_by_other_and_finish_on_self) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
-    ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        } else {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        }
-    }());
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_RECORD_EVENT(exec),
+            MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 3);
 }
@@ -272,34 +367,36 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
-    if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
+    if constexpr (Kokkos::Execution::Impl::has_exec_wait_event<TEST_EXECUTION_SPACE>) {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec_B),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec_A, recorded_events.at(2)),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
     } else {
-        ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
-                return testing::ElementsAre(
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
-                    MATCHER_FOR_RECORD_EVENT(exec_B),
-                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait")));
-
-            } else {
-                return testing::ElementsAre(
+        if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
+            ASSERT_THAT(
+                recorded_events,
+                testing::ElementsAre(
                     MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
                     MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
                     MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait")));
-            }
-        }());
+                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+        } else {
+            ASSERT_THAT(
+                recorded_events,
+                testing::ElementsAre(
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec_B, "then")),
+                    MATCHER_FOR_RECORD_EVENT(exec_B),
+                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec_A, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "sync_wait"))));
+        }
     }
 
     ASSERT_EQ(data(), 3);
@@ -335,33 +432,38 @@ TEST_F(WhenAllTest, two_branches_host_device_followed_by_device) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
-    if (Tests::Utils::are_same_instances(exec, exec_h)) {
+    if constexpr (
+        Kokkos::Execution::Impl::has_exec_wait_event<host_execution_space>
+        && std::same_as<host_execution_space, TEST_EXECUTION_SPACE>) {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec_h),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec, recorded_events.at(2)),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     } else {
-        ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<host_execution_space>) {
-                return testing::ElementsAre(
+        if (Tests::Utils::are_same_instances(exec, exec_h)) {
+            ASSERT_THAT(
+                recorded_events,
+                testing::ElementsAre(
+                    MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
+                    MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+        } else {
+            ASSERT_THAT(
+                recorded_events,
+                testing::ElementsAre(
                     MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                     MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
                     MATCHER_FOR_RECORD_EVENT(exec_h),
                     MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
                     MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-            } else {
-                return testing::ElementsAre(
-                    MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "after dispatch")),
-                    MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                    MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-            }
-        }());
+                    MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+        }
     }
 
     ASSERT_EQ(data(), 3);
@@ -440,24 +542,15 @@ TEST_F(WhenAllTest, nested_with_inner_followed_by_other) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
-    ASSERT_THAT(recorded_events, [&]() {
-        if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        } else {
-            return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-        }
-    }());
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_RECORD_EVENT(exec),
+            MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
+            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 4);
 }
@@ -489,41 +582,48 @@ TEST_F(WhenAllTest, nested_when_all_with_independent_branch) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
-    if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
+    if constexpr (Kokkos::Execution::Impl::has_exec_wait_event<TEST_EXECUTION_SPACE>) {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
                 MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
+                MATCHER_FOR_RECORD_EVENT(exec_B),
+                MATCHER_FOR_WAIT_EXEC_EVENT(exec_A, recorded_events.at(2)),
                 MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "after dispatch")),
+                MATCHER_FOR_RECORD_EVENT(exec_A),
                 MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
-                MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "after dispatch"))));
+                MATCHER_FOR_RECORD_EVENT(exec_C),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(5)),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(7))));
     } else {
-        ASSERT_THAT(recorded_events, [&]() {
-            if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
-                return testing::ElementsAre(
+        if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
+            ASSERT_THAT(
+                recorded_events,
+                testing::ElementsAre(
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
+                    MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
+                    MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
+                    MATCHER_FOR_RECORD_EVENT(exec_A),
+                    MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
+                    MATCHER_FOR_RECORD_EVENT(exec_C),
+                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(3)),
+                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(5))));
+        } else {
+            ASSERT_THAT(
+                recorded_events,
+                testing::ElementsAre(
                     MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
                     MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
                     MATCHER_FOR_RECORD_EVENT(exec_B),
-                    MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
-                    MATCHER_FOR_RECORD_EVENT(exec_C),
                     MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)),
                     MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
                     MATCHER_FOR_RECORD_EVENT(exec_A),
-                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
-                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(7)));
-            } else {
-                return testing::ElementsAre(
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, "'A'"),
-                    MATCHER_FOR_BEGIN_PFOR(exec_B, "'B'"),
-                    MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec_B, "after dispatch")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, "'D'"),
-                    MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec_A, "after dispatch")),
                     MATCHER_FOR_BEGIN_PFOR(exec_C, "'C'"),
-                    MATCHER_FOR_BEGIN_FENCE(exec_C, dispatch_label(exec_C, "after dispatch")));
-            }
-        }());
+                    MATCHER_FOR_RECORD_EVENT(exec_C),
+                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(5)),
+                    MATCHER_FOR_WAIT_EVENT(recorded_events.at(7))));
+        }
     }
 }
 

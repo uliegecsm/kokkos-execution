@@ -36,6 +36,16 @@ concept signals_submitted =
     && requires { typename std::remove_cvref_t<Op>::completion_signal_policy_t; }
     && submitted_policy<typename std::remove_cvref_t<Op>::completion_signal_policy_t>;
 
+template <typename Op>
+concept signals_submitted_order_on =
+    signals_submitted<Op>
+    && std::same_as<typename std::remove_cvref_t<Op>::completion_signal_policy_t, SubmittedPolicy::OrderOnExec>;
+
+template <typename Op>
+concept signals_submitted_depend_on =
+    signals_submitted<Op>
+    && std::same_as<typename std::remove_cvref_t<Op>::completion_signal_policy_t, SubmittedPolicy::DependOnEvent>;
+
 } // namespace Kokkos::Execution::Impl
 
 #endif // KOKKOS_EXECUTION_IMPL_SUBMITTED_HPP
