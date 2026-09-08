@@ -40,7 +40,7 @@ struct TransformSenderFor<stdexec::then_t> {
                  Sndr&&
         >) {
         if constexpr (execution_space_completing_sender<Sndr, Env>) {
-            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+            const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
             return trnsfrmd_sndr_t<Env, Functor, Sndr>{
                 {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),

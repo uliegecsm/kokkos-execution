@@ -36,7 +36,7 @@ struct ThenClosure {
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
-        auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
+        const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
         auto node = predecessor.then(std::move(node_props), std::forward<Functor>(functor));
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("then", node, predecessor)
         graph_add_node_event(predecessor, node, device_handle);
@@ -77,7 +77,7 @@ struct TransformSenderFor<stdexec::then_t> {
                  Sndr&&
         >) {
         if constexpr (graph_completing_sender<Sndr, Env>) {
-            auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+            const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
             return trnsfrmd_sndr_t<Env, Functor, Sndr>{
                 .clsr =

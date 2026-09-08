@@ -52,7 +52,7 @@ struct Event<Kokkos::Cuda> {
 template <Kokkos::ExecutionSpace... ExecFrom>
 requires(std::same_as<ExecFrom, Kokkos::Cuda> && ...)
 void impl_wait(const Kokkos::Cuda& exec, const Event<ExecFrom>&... events) {
-    auto do_impl_wait = [&exec](const auto& event) {
+    const auto do_impl_wait = [&exec](const auto& event) {
         KOKKOS_EXPECTS(bool(event.cuda_event()));
         KOKKOS_IMPL_CUDA_SAFE_CALL(cudaStreamWaitEvent(exec.cuda_stream(), event.cuda_event()));
     };

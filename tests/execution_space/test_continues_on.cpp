@@ -113,14 +113,14 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     >);
 
     //! Continue on an execution space instance of a different type.
-    auto sch_h = esc_h.get_scheduler();
+    const auto sch_h = esc_h.get_scheduler();
     auto schs_A_then_con_B_then_con_h_then = std::move(schs_A_then_con_B_then) // NOLINT(performance-move-const-arg)
                                            | stdexec::continues_on(sch_h) | THEN_LABELED('h');
     ASSERT_EQ(
         stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(schs_A_then_con_B_then_con_h_then)),
         sch_h);
 
-    auto op_state = stdexec::connect(
+    const auto op_state = stdexec::connect(
         std::move(schs_A_then_con_B_then_con_h_then), // NOLINT(performance-move-const-arg)
         Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space, std::true_type>{
             .state = std::addressof(esc_h.m_state), .runloop_state = nullptr, .result = nullptr});

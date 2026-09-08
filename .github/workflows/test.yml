@@ -84,16 +84,16 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
-          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "20", extra_type_checking: true}
-          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "23"}
-          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 22}, cxxstd: "20", cmake_build_type: Debug}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "20", extra_type_checking: true}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "23"}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "20", cmake_build_type: Debug}
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
               version: 14
-          - {kokkos_backends: [HPX], compiler: {family: clang, version: 22}}
-          - {kokkos_backends: [HPX], compiler: {family: clang, version: 22}, cxxflags: "-fsanitize=address"}
-          - {kokkos_backends: [HPX], compiler: {family: clang, version: 22}, cxxflags: "-fsanitize=leak"}
+          - {kokkos_backends: [HPX], compiler: {family: clang, version: 23}}
+          - {kokkos_backends: [HPX], compiler: {family: clang, version: 23}, cxxflags: "-fsanitize=address"}
+          - {kokkos_backends: [HPX], compiler: {family: clang, version: 23}, cxxflags: "-fsanitize=leak"}
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
@@ -103,13 +103,13 @@ jobs:
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
-              version: 22
+              version: 23
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'blackwell120', 'gpu:0']"
             tag_suffix     : -blackwell120
           - kokkos_backends: [HPX, Cuda]
             compiler:
               family: clang
-              version: 22
+              version: 23
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'blackwell120', 'gpu:0']"
             tag_suffix     : -blackwell120
             extra_type_checking: true
@@ -129,7 +129,7 @@ jobs:
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
-              version: 22
+              version: 23
             runs-on: "['ubuntu-24.04-arm']"
             tag_suffix: -arm64
     container:
