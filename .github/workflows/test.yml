@@ -42,7 +42,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - {compiler: {family: gnu, version: 14}, cmake_build_type: Debug}
+          - {compiler: {family: gnu, version: 15}, cmake_build_type: Debug}
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.cmake_build_type }}
     steps:
@@ -77,20 +77,20 @@ jobs:
           - kokkos_backends: [Threads]
             compiler:
               family: gnu
-              version: 14
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cmake_build_type: Debug}
+              version: 15
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cmake_build_type: Release}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cmake_build_type: Debug}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxstd: "23"}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=address"}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=leak"}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=address"}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=leak"}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "20", extra_type_checking: true}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "23"}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "20", cmake_build_type: Debug}
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
-              version: 14
+              version: 15
           - {kokkos_backends: [HPX], compiler: {family: clang, version: 23}}
           - {kokkos_backends: [HPX], compiler: {family: clang, version: 23}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [HPX], compiler: {family: clang, version: 23}, cxxflags: "-fsanitize=leak"}
@@ -201,7 +201,7 @@ jobs:
     needs: [build-images, format]
     runs-on: [self-hosted, linux, docker, amd64]
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:gnu-14-OpenMP-Release
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:gnu-15-OpenMP-Release
     steps:
       - uses: actions/checkout@v7
         with:
