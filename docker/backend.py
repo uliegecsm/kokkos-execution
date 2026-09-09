@@ -11,6 +11,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--kokkos-backends', type=str, required=True)
     parser.add_argument('--compiler-family', type=str, required=True)
     parser.add_argument('--dependencies', type=pathlib.Path, required=True)
+    parser.add_argument('--cxxstd', type=int, required=True)
     parser.add_argument('--input', type=pathlib.Path, required=True)
     parser.add_argument('--output', type=pathlib.Path, required=True)
     return parser.parse_args()
@@ -26,7 +27,7 @@ def get_cxx_compiler_for(family: str) -> str:
             raise ValueError
 
 @typeguard.typechecked
-def install_hpx_requirements(*, compiler_family: str, dependencies: dict) -> str:
+def install_hpx_requirements(*, compiler_family: str, dependencies: dict, cxxstd: int) -> str:
     """
     Requirements for the `HPX` backend.
     """
@@ -59,7 +60,7 @@ RUN --mount=type=tmpfs,target=/tmp/build <<EOF
         -DCMAKE_C_COMPILER=should-not-be-needed \\
         -DCMAKE_CXX_COMPILER={cmake_cxx_compiler} \\
         -DCMAKE_CXX_EXTENSIONS=OFF \\
-        -DHPX_WITH_CXX_STANDARD=20 \\
+        -DHPX_WITH_CXX_STANDARD={cxxstd} \\
         -DHPX_WITH_EXAMPLES=OFF \\
         -DHPX_WITH_MALLOC=system \\
         -DHPX_WITH_NETWORKING=OFF \\
@@ -74,7 +75,7 @@ ENV HPX_ROOT=/opt/hpx-${{HPX_REF}}
 """
 
 @typeguard.typechecked
-def main(*, dependencies: pathlib.Path, kokkos_backends: str, input: pathlib.Path, output: pathlib.Path, compiler_family: str) -> None:
+def main(*, dependencies: pathlib.Path, cxxstd: int, kokkos_backends: str, input: pathlib.Path, output: pathlib.Path, compiler_family: str) -> None:
     with open(dependencies, 'r') as f:
         deps = json.load(f)
 
@@ -83,7 +84,7 @@ def main(*, dependencies: pathlib.Path, kokkos_backends: str, input: pathlib.Pat
     for x in kokkos_backends.split(','):
         match x:
             case 'HPX':
-                content.append(install_hpx_requirements(compiler_family=compiler_family, dependencies=deps))
+                content.append(install_hpx_requirements(compiler_family=compiler_family, dependencies=deps, cxxstd=cxxstd))
             case _:
                 logging.info(f'There is no requirement yet for Kokkos backend {x}.')
 

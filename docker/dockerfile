@@ -220,6 +220,7 @@ EOF
 FROM requirements-compiler-${COMPILER_FAMILY} AS google-test-compile
 
 ARG GOOGLETEST_VERSION
+ARG CXX_STD
 
 ADD https://github.com/google/googletest/archive/refs/tags/v${GOOGLETEST_VERSION}.tar.gz /tmp/
 
@@ -234,6 +235,7 @@ RUN <<EOF
 
     cmake -S . -B build \
         --toolchain /opt/toolchain.cmake \
+        -DCMAKE_CXX_STANDARD=${CXX_STD} \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/opt/google-test-${GOOGLETEST_VERSION}
 
@@ -255,6 +257,7 @@ ARG KOKKOS_ARCHS
 ARG KOKKOS_PRESET
 ARG KOKKOS_SHA
 ARG KOKKOS_USERNAME
+ARG CXX_STD
 
 ADD https://github.com/${KOKKOS_USERNAME}/kokkos/archive/${KOKKOS_SHA}.tar.gz /tmp/
 
@@ -272,6 +275,7 @@ RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kok
     : "${CMAKE_BUILD_TYPE?is not defined.}"
 
     cmake -S . --preset=${KOKKOS_PRESET} -LA \
+        -DCMAKE_CXX_STANDARD=${CXX_STD} \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         $([ -n "$KOKKOS_ARCHS" ] && echo $KOKKOS_ARCHS | tr ',' '\n' | sed 's/^/-DKokkos_ARCH_/; s/$/=ON/') \
         -DCMAKE_INSTALL_PREFIX=/opt/kokkos-${KOKKOS_SHA}/${KOKKOS_PRESET}
@@ -286,6 +290,7 @@ ARG COMPILER_FAMILY
 ARG KOKKOS_PRESET
 ARG KOKKOS_SHA
 ARG KOKKOS_UTILS_SHA
+ARG CXX_STD
 
 ADD https://github.com/uliegecsm/kokkos-utils/archive/${KOKKOS_UTILS_SHA}.tar.gz /tmp/
 
@@ -305,6 +310,7 @@ RUN --mount=target=/cmake/presets/kokkos-utils.json,type=bind,source=cmake/prese
     : "${CMAKE_BUILD_TYPE?is not defined.}"
 
     cmake -S . --preset=${KOKKOS_PRESET} \
+        -DCMAKE_CXX_STANDARD=${CXX_STD} \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -DCMAKE_INSTALL_PREFIX=/opt/kokkos-utils-${KOKKOS_UTILS_SHA}/${KOKKOS_PRESET}
 

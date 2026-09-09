@@ -34,6 +34,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Find Kokkos.
 find_package(Kokkos REQUIRED COMPONENTS kokkoscore)
 
+# Unless explicitly requested, use the standard of the installed Kokkos.
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD "${Kokkos_CXX_STANDARD}")
+endif()
+
 if(KokkosExecution_ENABLE_CLANG_TIDY)
   # Setup clang-tidy configuration.
   configure_file(${CMAKE_SOURCE_DIR}/.clang-tidy ${CMAKE_BINARY_DIR}/.clang-tidy @ONLY)
