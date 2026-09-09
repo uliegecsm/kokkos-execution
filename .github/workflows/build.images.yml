@@ -119,29 +119,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
+          - {compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug}
           - kokkos_backends: [Threads]
             compiler:
               family: gnu
-              version: 14
-            base_image: ubuntu:24.04
+              version: 15
+            base_image: ubuntu:26.04
             platforms: linux/amd64
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Release}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, python_version: 3.14}
-          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Debug}
-          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:24.04, platforms: linux/amd64, cmake_build_type: Release}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, python_version: 3.12}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release}
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
-              version: 14
-            base_image     : ubuntu:24.04
+              version: 15
+            base_image     : ubuntu:26.04
             platforms      : linux/amd64
           - kokkos_backends: [HPX]
             compiler:
               family: clang
               version: 23
-            base_image     : ubuntu:24.04
+            base_image     : ubuntu:26.04
             platforms      : linux/amd64
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
@@ -150,14 +150,14 @@ jobs:
             base_image     : nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
             platforms      : linux/amd64
             kokkos_archs   : [VOLTA70]
+            python_version : 3.12
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
               version: 23
-            base_image     : nvcr.io/nvidia/cuda:13.3.0-devel-ubuntu26.04
+            base_image     : nvcr.io/nvidia/cuda:13.3.1-devel-ubuntu26.04
             platforms      : linux/amd64
             kokkos_archs   : [BLACKWELL120]
-            python_version : 3.14
           - kokkos_backends: [HPX, Cuda]
             compiler:
               family: clang
@@ -165,6 +165,7 @@ jobs:
             base_image     : nvcr.io/nvidia/cuda:13.1.0-devel-ubuntu24.04
             platforms      : linux/amd64
             kokkos_archs   : [BLACKWELL120]
+            python_version : 3.12
           - kokkos_backends: [OpenMP, HIP]
             compiler:
               family: rocm
@@ -172,7 +173,6 @@ jobs:
             base_image     : rocm/dev-ubuntu-26.04:10.0.0-full
             platforms      : linux/amd64
             kokkos_archs   : [ZEN5, AMD_GFX1201]
-            python_version : 3.14
           - kokkos_backends: [OpenMP, SYCL]
             compiler:
               family: intel
@@ -180,11 +180,12 @@ jobs:
             base_image: nvcr.io/nvidia/cuda:12.8.1-devel-ubuntu24.04
             platforms: linux/amd64
             kokkos_archs: [VOLTA70]
+            python_version : 3.12
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
               version: 23
-            base_image     : ubuntu:24.04
+            base_image     : ubuntu:26.04
             platforms      : linux/arm64
             runs-on        : "['ubuntu-24.04-arm']"
           # After this line come the images we build, but don't test.
@@ -192,7 +193,7 @@ jobs:
             compiler:
               family: clang
               version: 23
-            base_image     : nvcr.io/nvidia/cuda:13.1.0-devel-ubuntu24.04
+            base_image     : nvcr.io/nvidia/cuda:13.3.1-devel-ubuntu26.04
             platforms      : linux/amd64
             kokkos_archs   : [ZEN3, AMPERE86]
     steps:
@@ -261,5 +262,5 @@ jobs:
                 KOKKOS_SHA=${{ env.KOKKOS_SHA }}
                 KOKKOS_USERNAME=${{ env.KOKKOS_USERNAME }}
                 KOKKOS_UTILS_SHA=${{ env.KOKKOS_UTILS_SHA }}
-                PYTHON_VERSION=${{ matrix.python_version || '3.12' }}
+                PYTHON_VERSION=${{ matrix.python_version || '3.14' }}
             labels: "org.opencontainers.image.source=${{ github.repositoryUrl }}"

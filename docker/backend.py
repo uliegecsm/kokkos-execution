@@ -41,7 +41,10 @@ ARG HPX_REF={hpx_ref}
 RUN --mount=type=tmpfs,target=/tmp/build <<EOF
     set -ex
 
-    apt-helpers install-packages --update --clean --packages hwloc libasio-dev libboost-all-dev
+    # Headers-only libboost-dev because libboost-all-dev brings in libboost-mpi-dev that brings in libopenmpi-dev
+    # that brings in an incomplete gcc-N toolchain that may break clang's libstdc++ reliance.
+    # See also: https://github.com/TheHPXProject/hpx/blob/v1.11.0/docs/sphinx/manual/prerequisites.rst#software-and-libraries
+    apt-helpers install-packages --update --clean --packages libhwloc-dev hwloc libasio-dev libboost-dev
 
     cd /tmp/build/
 
