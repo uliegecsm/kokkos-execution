@@ -119,7 +119,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug}
+          - {compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug, cxxstd: "20"} # serial-only smoke test
           - kokkos_backends: [Threads]
             compiler:
               family: gnu
@@ -129,7 +129,7 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, base_image: ubuntu:24.04, platforms: linux/amd64, python_version: 3.12}
-          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug}
+          - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug, cxxstd: "20"}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release}
           - kokkos_backends: [HPX]
             compiler:
@@ -151,6 +151,7 @@ jobs:
             platforms      : linux/amd64
             kokkos_archs   : [VOLTA70]
             python_version : 3.12
+            cxxstd         : 20
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
@@ -181,6 +182,7 @@ jobs:
             platforms: linux/amd64
             kokkos_archs: [VOLTA70]
             python_version : 3.12
+            cxxstd         : 20
           - kokkos_backends: [OpenMP]
             compiler:
               family: clang
@@ -213,6 +215,7 @@ jobs:
           python3 docker/backend.py \
             --kokkos-backends=${{ join(matrix.kokkos_backends, ',') }} \
             --dependencies=dependencies.json \
+            --cxxstd=${{ matrix.cxxstd || '23' }} \
             --input=docker/dockerfile \
             --compiler-family=${{ matrix.compiler.family }} \
             --output=docker/dockerfile.backend
@@ -263,4 +266,5 @@ jobs:
                 KOKKOS_USERNAME=${{ env.KOKKOS_USERNAME }}
                 KOKKOS_UTILS_SHA=${{ env.KOKKOS_UTILS_SHA }}
                 PYTHON_VERSION=${{ matrix.python_version || '3.14' }}
+                CXX_STD=${{ matrix.cxxstd || '23' }}
             labels: "org.opencontainers.image.source=${{ github.repositoryUrl }}"
