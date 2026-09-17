@@ -250,17 +250,20 @@ TEST_F(ThenTest, then_starts_on) {
 
     using sndr_t = decltype(sndr);
 
-    //! It has a completion scheduler for the value channel, but it is a dependent sender.
+    //! It is a dependent sender.
     static_assert(stdexec::dependent_sender<sndr_t>);
-    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t>);
-    static_assert(std::same_as<
-                  Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, sndr_t>,
-                  typename ThenTest::scheduler_t
-    >);
     static_assert(Tests::Utils::has_completion_signatures<
                   sndr_t,
                   stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
                   stdexec::env<>
+    >);
+
+    //! It has a completion scheduler for the value channel.
+    static_assert(stdexec::__completes_where_it_starts<stdexec::set_value_t, stdexec::env_of_t<work_t>>);
+    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, stdexec::env<>>);
+    static_assert(std::same_as<
+                  Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>,
+                  typename ThenTest::scheduler_t
     >);
 
     //! The completion domain will be @ref Kokkos::Execution::GraphImpl::Domain.
