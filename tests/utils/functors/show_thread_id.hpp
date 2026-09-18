@@ -14,7 +14,7 @@ struct ShowThreadID {
     }
 };
 
-//! Add a @c then using @ref Tests::Utils::Functors::ShowThreadID. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+//! Add a @c then calling @ref Tests::Utils::Functors::ShowThreadID. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THEN_SHOW_THREAD_ID stdexec::then(Tests::Utils::Functors::ShowThreadID{})
 
 } // namespace Tests::Utils::Functors
