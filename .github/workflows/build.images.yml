@@ -156,7 +156,7 @@ jobs:
             compiler:
               family: clang
               version: 23
-            base_image     : nvcr.io/nvidia/cuda:13.3.1-devel-ubuntu26.04
+            base_image     : nvcr.io/nvidia/cuda:13.4.1-devel-ubuntu26.04
             platforms      : linux/amd64
             kokkos_archs   : [BLACKWELL120]
           - kokkos_backends: [HPX, Cuda]
@@ -195,7 +195,7 @@ jobs:
             compiler:
               family: clang
               version: 23
-            base_image     : nvcr.io/nvidia/cuda:13.3.1-devel-ubuntu26.04
+            base_image     : nvcr.io/nvidia/cuda:13.4.1-devel-ubuntu26.04
             platforms      : linux/amd64
             kokkos_archs   : [ZEN3, AMPERE86]
     steps:
