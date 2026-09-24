@@ -298,14 +298,31 @@ TEST_F(ParallelForTest, starts_on_parallel_region) {
 
     const view_s_t witness(Kokkos::view_alloc(exec, "data - shared space"));
 
-    auto sndr = stdexec::just()
-              | Kokkos::Execution::parallel_for(
-                    std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
-                    Tests::Utils::Functors::SumIndices{.data = witness});
+    auto chain = stdexec::just()
+               | Kokkos::Execution::parallel_for(
+                     std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
+                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+                     Tests::Utils::Functors::SumIndices{.data = witness});
+
+    using chain_t = decltype(chain);
+
+    static_assert(
+        stdexec::get_completion_signatures<chain_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
+    static_assert(!Tests::Utils::has_completion_scheduler_for<chain_t, stdexec::set_value_t>);
+    static_assert(
+        std::same_as<stdexec::__completion_domain_of_t<stdexec::set_value_t, chain_t>, stdexec::indeterminate_domain<>>);
 
     const context_t esc{exec};
-    auto starts_on = stdexec::starts_on(esc.get_scheduler(), std::move(sndr));
+    auto starts_on = stdexec::starts_on(esc.get_scheduler(), std::move(chain));
+
+    using starts_on_t = decltype(starts_on);
+
+    static_assert(stdexec::__has_eptr_completion<chain_t>);
+    static_assert(!stdexec::dependent_sender<starts_on_t>);
+    static_assert(
+        stdexec::get_completion_signatures<starts_on_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
 
     /**
      * Note that @c stdexec transforms the @c stdexec::starts_on sender into a sequence sender. This is why the operation
