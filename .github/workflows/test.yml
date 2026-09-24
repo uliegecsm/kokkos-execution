@@ -132,7 +132,7 @@ jobs:
             compiler:
               family: clang
               version: 23
-            runs-on: "['ubuntu-24.04-arm']"
+            runs-on: "['ubuntu-26.04-arm']"
             tag_suffix: -arm64
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.tag_suffix }}
@@ -201,7 +201,7 @@ jobs:
 
   documentation:
     needs: [build-images, format]
-    runs-on: [self-hosted, linux, docker, amd64]
+    runs-on: ubuntu-latest
     container:
       image: ${{ needs.build-images.outputs.CI_IMAGE }}:gnu-15-OpenMP-Release
     steps:

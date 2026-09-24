@@ -84,7 +84,7 @@ jobs:
   build-builder:
     needs: [set-vars, setup-skips]
     if: ${{ ! failure() && ! cancelled() && needs.setup-skips.outputs.build-builder == 'true' }}
-    runs-on: [self-hosted, linux, docker, amd64]
+    runs-on: ubuntu-latest
     container:
       image: docker:latest
     steps:
@@ -112,7 +112,7 @@ jobs:
   build-images:
     needs: [set-vars, setup-skips, build-builder]
     if: ${{ ! failure() && ! cancelled() && needs.setup-skips.outputs.build-images == 'true' }}
-    runs-on: ${{ fromJSON(matrix.runs-on || '["self-hosted", "linux", "docker", "amd64"]') }}
+    runs-on: ${{ matrix.runs-on && fromJSON(matrix.runs-on) || 'ubuntu-latest' }}
     container:
       image: ${{ needs.set-vars.outputs.CI_BUILDER }}
     strategy:
@@ -189,7 +189,7 @@ jobs:
               version: 23
             base_image     : ubuntu:26.04
             platforms      : linux/arm64
-            runs-on        : "['ubuntu-24.04-arm']"
+            runs-on        : "['ubuntu-26.04-arm']"
           # After this line come the images we build, but don't test.
           - kokkos_backends: [HPX, Cuda]
             compiler:
