@@ -133,12 +133,10 @@ TEST_F(ThenTest, then_starts_on) {
     /// It hasn't been connected yet, so the domain is indeterminate.
     using chain_t = decltype(chain);
 
+    static_assert(
+        stdexec::get_completion_signatures<chain_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
     static_assert(!Tests::Utils::has_completion_scheduler_for<chain_t, stdexec::set_value_t>);
-    static_assert(Tests::Utils::has_completion_signatures<
-                  chain_t,
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>
-    >);
-
     static_assert(
         std::same_as<stdexec::__completion_domain_of_t<stdexec::set_value_t, chain_t>, stdexec::indeterminate_domain<>>);
 
@@ -147,20 +145,23 @@ TEST_F(ThenTest, then_starts_on) {
 
     using starts_on_t = decltype(starts_on);
 
-    //! It is a dependent sender.
-    static_assert(stdexec::dependent_sender<starts_on_t>);
-    static_assert(std::same_as<
-                  std::invoke_result_t<stdexec::get_completion_signatures_t, starts_on_t, stdexec::env<>>,
-                  stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>
-    >);
+    //! It is not a dependent sender.
+    static_assert(stdexec::__has_eptr_completion<chain_t>);
+    static_assert(!stdexec::dependent_sender<starts_on_t>);
+    static_assert(
+        stdexec::get_completion_signatures<starts_on_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
 
     //! It has a completion scheduler for the value channel.
     static_assert(stdexec::__completes_where_it_starts<stdexec::set_value_t, stdexec::env_of_t<chain_t>>);
     static_assert(Tests::Utils::has_completion_scheduler_for<starts_on_t, stdexec::set_value_t, stdexec::env<>>);
     static_assert(std::same_as<
-                  decltype(stdexec::get_completion_scheduler<stdexec::set_value_t>(
-                      stdexec::get_env(starts_on), stdexec::env<>{})),
+                  Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, starts_on_t, stdexec::env<>>,
                   scheduler_t
+    >);
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, starts_on_t, stdexec::env<>>,
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain
     >);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";

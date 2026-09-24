@@ -231,50 +231,46 @@ TEST_F(ThenTest, then_starts_on) {
     const context_t gctx{exec};
 
     //! Create a sender that does not start with a schedule sender.
-    auto work = stdexec::just() | THEN_INCREMENT(data);
+    auto chain = stdexec::just() | THEN_INCREMENT(data);
 
     /// The sender cannot be queried for a completion scheduler, nor does it have a determinate domain.
     /// It may complete on the value channel or the error channel, since the @c stdexec::then functor is not @c noexcept.
-    using work_t = decltype(work);
+    using chain_t = decltype(chain);
 
-    static_assert(!Tests::Utils::has_completion_scheduler_for<work_t, stdexec::set_value_t>);
-    static_assert(Tests::Utils::has_completion_signatures<
-                  work_t,
-                  stdexec::__mset<stdexec::set_error_t(std::exception_ptr), stdexec::set_value_t()>
-    >);
     static_assert(
-        std::same_as<stdexec::__completion_domain_of_t<stdexec::set_value_t, work_t>, stdexec::indeterminate_domain<>>);
+        stdexec::get_completion_signatures<chain_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
+    static_assert(!Tests::Utils::has_completion_scheduler_for<chain_t, stdexec::set_value_t>);
+    static_assert(
+        std::same_as<stdexec::__completion_domain_of_t<stdexec::set_value_t, chain_t>, stdexec::indeterminate_domain<>>);
 
     //! Call @c stdexec::starts_on.
-    auto sndr = stdexec::starts_on(gctx.get_scheduler(), std::move(work));
+    auto starts_on = stdexec::starts_on(gctx.get_scheduler(), std::move(chain));
 
-    using sndr_t = decltype(sndr);
+    using starts_on_t = decltype(starts_on);
 
-    //! It is a dependent sender.
-    static_assert(stdexec::dependent_sender<sndr_t>);
-    static_assert(Tests::Utils::has_completion_signatures<
-                  sndr_t,
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
-                  stdexec::env<>
-    >);
+    //! It is not a dependent sender.
+    static_assert(stdexec::__has_eptr_completion<chain_t>);
+    static_assert(!stdexec::dependent_sender<starts_on_t>);
+    static_assert(
+        stdexec::get_completion_signatures<starts_on_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
 
     //! It has a completion scheduler for the value channel.
-    static_assert(stdexec::__completes_where_it_starts<stdexec::set_value_t, stdexec::env_of_t<work_t>>);
-    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, stdexec::env<>>);
+    static_assert(stdexec::__completes_where_it_starts<stdexec::set_value_t, stdexec::env_of_t<chain_t>>);
+    static_assert(Tests::Utils::has_completion_scheduler_for<starts_on_t, stdexec::set_value_t, stdexec::env<>>);
     static_assert(std::same_as<
-                  Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>,
-                  typename ThenTest::scheduler_t
+                  Kokkos::Execution::Impl::completion_scheduler_of_t<stdexec::set_value_t, starts_on_t, stdexec::env<>>,
+                  scheduler_t
     >);
-
-    //! The completion domain will be @ref Kokkos::Execution::GraphImpl::Domain.
     static_assert(std::same_as<
-                  stdexec::__completion_domain_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>,
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, starts_on_t, stdexec::env<>>,
                   Kokkos::Execution::GraphImpl::Domain
     >);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on));
 
     ASSERT_THAT(
         recorded_events,

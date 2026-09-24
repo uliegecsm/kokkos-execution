@@ -173,14 +173,31 @@ TEST_F(ParallelForTest, parallel_for_starts_on) {
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
-    auto sndr = stdexec::just()
-              | Kokkos::Execution::parallel_for(
-                    std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
-                    Tests::Utils::Functors::SumIndices{.data = data});
+    auto chain = stdexec::just()
+               | Kokkos::Execution::parallel_for(
+                     std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
+                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+                     Tests::Utils::Functors::SumIndices{.data = data});
+
+    using chain_t = decltype(chain);
+
+    static_assert(
+        stdexec::get_completion_signatures<chain_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
+    static_assert(!Tests::Utils::has_completion_scheduler_for<chain_t, stdexec::set_value_t>);
+    static_assert(
+        std::same_as<stdexec::__completion_domain_of_t<stdexec::set_value_t, chain_t>, stdexec::indeterminate_domain<>>);
 
     const context_t gctx{exec};
-    auto starts_on = stdexec::starts_on(gctx.get_scheduler(), std::move(sndr));
+    auto starts_on = stdexec::starts_on(gctx.get_scheduler(), std::move(chain));
+
+    using starts_on_t = decltype(starts_on);
+
+    static_assert(stdexec::__has_eptr_completion<chain_t>);
+    static_assert(!stdexec::dependent_sender<starts_on_t>);
+    static_assert(
+        stdexec::get_completion_signatures<starts_on_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on));
 
