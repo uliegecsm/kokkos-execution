@@ -11,6 +11,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "tests/utils/check_scheduler_type.hpp"
 #include "tests/utils/functors/show_thread_id.hpp"
+#include "tests/utils/functors/store_thread_id.hpp"
 
 /**
  * @addtogroup unittests
@@ -28,22 +29,30 @@ namespace Tests {
 using run_loop_scheduler_t = stdexec::run_loop::scheduler;
 using static_thread_pool_scheduler_t = experimental::execution::_pool_::_static_thread_pool::scheduler;
 
-//! @test Default scheduler.
+//! @test Start scheduler.
 TEST(check_scheduler, default) {
+    std::thread::id tid;
+
     stdexec::sync_wait(
         stdexec::just() | Tests::Utils::check_scheduler_type<stdexec::set_value_t, run_loop_scheduler_t>()
-        | THEN_SHOW_THREAD_ID);
+        | THEN_STORE_THREAD_ID(&tid));
+
+    ASSERT_EQ(tid, std::this_thread::get_id());
 }
 
 //! @test @c experimental::execution::static_thread_pool scheduler.
 TEST(check_scheduler, static_thread_pool) {
+    std::thread::id tid;
+
     experimental::execution::static_thread_pool pool{1};
 
     auto chain = stdexec::schedule(pool.get_scheduler())
                | Tests::Utils::check_scheduler_type<stdexec::set_value_t, static_thread_pool_scheduler_t>()
-               | THEN_SHOW_THREAD_ID;
+               | THEN_STORE_THREAD_ID(&tid);
 
     stdexec::sync_wait(std::move(chain)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_NE(tid, std::this_thread::get_id());
 }
 
 /**
