@@ -73,12 +73,10 @@ consteval bool test_sndr_traits() {
     static_assert(Kokkos::Execution::Impl::dispatching_sender<pfor_sndr_t> == IsDispatchingSender);
 
     //! Has the expected completion signatures.
-    using completion_signatures_t = stdexec::__completion_signatures_of_t<pfor_sndr_t, stdexec::env<>>;
-
-    static_assert(stdexec::__mset_eq<
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
-                  completion_signatures_t
-    >);
+    static_assert(!stdexec::dependent_sender<pfor_sndr_t>);
+    static_assert(
+        stdexec::get_completion_signatures<pfor_sndr_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
 
     //! Has the expected completion domain.
     static_assert(std::same_as<

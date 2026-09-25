@@ -113,4 +113,14 @@ consteval bool test_schedule_sender_attrs_queries() {
 }
 static_assert(test_schedule_sender_attrs_queries());
 
+//! @test Check completion signatures of @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender.
+consteval bool test_schedule_sender_completion_signatures() {
+    constexpr auto completions = stdexec::completion_signatures<stdexec::set_value_t()>{};
+
+    static_assert(stdexec::get_completion_signatures<execution_space_schedule_sender_t>() == completions);
+
+    return true;
+}
+static_assert(test_schedule_sender_completion_signatures());
+
 } // namespace Tests::ExecutionSpaceImpl

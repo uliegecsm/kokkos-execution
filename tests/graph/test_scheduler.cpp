@@ -104,6 +104,16 @@ consteval bool test_schedule_sender_attrs_queries() {
 }
 static_assert(test_schedule_sender_attrs_queries());
 
+//! @test Check completion signatures of @ref Kokkos::Execution::GraphImpl::Scheduler::Sender.
+consteval bool test_schedule_sender_completion_signatures() {
+    constexpr auto completions = stdexec::completion_signatures<stdexec::set_value_t()>{};
+
+    static_assert(stdexec::get_completion_signatures<graph_schedule_sender_t>() == completions);
+
+    return true;
+}
+static_assert(test_schedule_sender_completion_signatures());
+
 //! @test Check that @ref Kokkos::Execution::GraphImpl::Scheduler::OpState may/may not be queried for a graph node when the receiver provides/does not provide the query.
 consteval bool test_schedule_sender_opstate() {
     using prop_t = stdexec::prop<

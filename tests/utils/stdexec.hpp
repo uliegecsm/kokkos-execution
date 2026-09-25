@@ -11,9 +11,6 @@ namespace Tests::Utils {
 template <typename... Args>
 using basic_sender_t = typename stdexec::__basic_sender<Args...>::type;
 
-template <typename Sndr, typename Signatures, typename... Env>
-concept has_completion_signatures = stdexec::__mset_eq<Signatures, stdexec::__completion_signatures_of_t<Sndr, Env...>>;
-
 template <typename Sndr, typename Tag, typename... Env>
 concept has_completion_scheduler_for =
     std::invocable<stdexec::get_completion_scheduler_t<Tag>, stdexec::env_of_t<Sndr>, Env...>;

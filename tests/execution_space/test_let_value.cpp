@@ -67,11 +67,9 @@ TEST_F(LetValueTest, scoped_allocation) {
     static_assert(stdexec::dependent_sender<decltype(allocate)>);
 
     //! @c Kokkos::View is nothrow movable, so the error channel is not added.
-    static_assert(Tests::Utils::has_completion_signatures<
-                  decltype(allocate),
-                  stdexec::__mset<stdexec::set_value_t(view_of_5_t)>,
-                  stdexec::env<>
-    >);
+    static_assert(
+        stdexec::get_completion_signatures<decltype(allocate), stdexec::env<>>()
+        == stdexec::completion_signatures<stdexec::set_value_t(view_of_5_t)>{});
 
     //! Use the scratch view to make some meaningful computation.
     auto run = std::move(allocate) // NOLINT(performance-move-const-arg)
@@ -109,11 +107,12 @@ TEST_F(LetValueTest, scoped_allocation) {
                           });
                });
 
-    static_assert(Tests::Utils::has_completion_signatures<
-                  decltype(run),
-                  stdexec::__mset<stdexec::set_value_t(view_of_5_t), stdexec::set_error_t(std::exception_ptr)>,
-                  stdexec::env<>
-    >);
+    static_assert(
+        stdexec::get_completion_signatures<decltype(run), stdexec::env<>>()
+        == stdexec::completion_signatures<
+            stdexec::set_value_t(view_of_5_t),
+            stdexec::set_error_t(std::exception_ptr)
+        >{});
 
     //! Check the result of the computation.
     auto check = std::move(run) // NOLINT(performance-move-const-arg)
@@ -148,11 +147,9 @@ TEST_F(LetValueTest, scoped_allocation) {
                                 });
                  });
 
-    static_assert(Tests::Utils::has_completion_signatures<
-                  decltype(check),
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
-                  stdexec::env<>
-    >);
+    static_assert(
+        stdexec::get_completion_signatures<decltype(check), stdexec::env<>>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
