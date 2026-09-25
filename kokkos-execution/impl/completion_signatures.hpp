@@ -16,12 +16,12 @@ namespace Kokkos::Execution::Impl {
  */
 template <stdexec::sender Sndr, stdexec::__valid_completion_signatures ExtraSigs, typename... Env>
 consteval auto completion_signatures_add() {
-    using completions_t = stdexec::__completion_signatures_of_t<Sndr, Env...>;
+    constexpr auto completions = stdexec::get_completion_signatures<Sndr, Env...>();
 
     if constexpr (stdexec::__sends<stdexec::set_value_t, Sndr, Env...>) {
-        return stdexec::__concat_completion_signatures(completions_t{}, ExtraSigs{});
+        return stdexec::__concat_completion_signatures(completions, ExtraSigs{});
     } else {
-        return completions_t{};
+        return completions;
     }
 }
 
@@ -43,7 +43,7 @@ using completion_signatures_add_t = decltype(completion_signatures_add<Sndr, Ext
 #define KOKKOS_EXECUTION_COMPL_SIGS_KEEP(_decayed_self_type_, _sndr_type_)                                             \
     template <stdexec::__decays_to<_decayed_self_type_> Self, typename... Env>                                         \
     static consteval auto get_completion_signatures() {                                                                \
-        return stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, _sndr_type_>, Env...>{};            \
+        return stdexec::get_completion_signatures<stdexec::__copy_cvref_t<Self, _sndr_type_>, Env...>();               \
     }
 
 } // namespace Kokkos::Execution::Impl

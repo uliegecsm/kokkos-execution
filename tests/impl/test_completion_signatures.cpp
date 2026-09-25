@@ -29,57 +29,59 @@ using sndr_t =
     decltype(stdexec::schedule(std::declval<experimental::execution::single_thread_context>().get_scheduler()) | stdexec::then([]() noexcept {
              }));
 
-//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add_t without added completion signature and an empty environment.
+//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add without added completion signature and an empty environment.
 consteval bool test_add_nothing_empty_env() {
     static_assert(
-        stdexec::__mset_eq<
-            stdexec::__mset<stdexec::set_value_t()>,
-            Kokkos::Execution::Impl::completion_signatures_add_t<sndr_t, stdexec::completion_signatures<>, stdexec::env<>>
-        >);
+        Kokkos::Execution::Impl::completion_signatures_add<sndr_t, stdexec::completion_signatures<>, stdexec::env<>>()
+        == stdexec::completion_signatures<stdexec::set_value_t()>{});
+
     return true;
 }
 static_assert(test_add_nothing_empty_env());
 
-//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add_t with an added error completion signature and an empty environment.
+//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add with an added error completion signature and an empty environment.
 consteval bool test_add_error_empty_env() {
-    static_assert(stdexec::__mset_eq<
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(float)>,
-                  Kokkos::Execution::Impl::completion_signatures_add_t<
-                      sndr_t,
-                      stdexec::completion_signatures<stdexec::set_error_t(float)>,
-                      stdexec::env<>
-                  >
-    >);
+    static_assert(
+        Kokkos::Execution::Impl::completion_signatures_add<
+            sndr_t,
+            stdexec::completion_signatures<stdexec::set_error_t(float)>,
+            stdexec::env<>
+        >()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(float)>{});
+
     return true;
 }
 static_assert(test_add_error_empty_env());
 
 using env_with_stop_token_t = stdexec::prop<stdexec::get_stop_token_t, stdexec::inplace_stop_token>;
 
-//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add_t without added completion signature and @ref env_with_stop_token_t.
+//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add without added completion signature and @ref env_with_stop_token_t.
 consteval bool test_add_nothing_stop_env() {
-    static_assert(stdexec::__mset_eq<
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_stopped_t()>,
-                  Kokkos::Execution::Impl::completion_signatures_add_t<
-                      sndr_t,
-                      stdexec::completion_signatures<>,
-                      env_with_stop_token_t
-                  >
-    >);
+    static_assert(
+        Kokkos::Execution::Impl::completion_signatures_add<
+            sndr_t,
+            stdexec::completion_signatures<>,
+            env_with_stop_token_t
+        >()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>{});
+
     return true;
 }
 static_assert(test_add_nothing_stop_env());
 
-//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add_t with an added error completion signature and @ref env_with_stop_token_t.
+//! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add with an added error completion signature and @ref env_with_stop_token_t.
 consteval bool test_add_error_stop_env() {
-    static_assert(stdexec::__mset_eq<
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_stopped_t(), stdexec::set_error_t(float)>,
-                  Kokkos::Execution::Impl::completion_signatures_add_t<
-                      sndr_t,
-                      stdexec::completion_signatures<stdexec::set_error_t(float)>,
-                      env_with_stop_token_t
-                  >
-    >);
+    static_assert(
+        Kokkos::Execution::Impl::completion_signatures_add<
+            sndr_t,
+            stdexec::completion_signatures<stdexec::set_error_t(float)>,
+            env_with_stop_token_t
+        >()
+        == stdexec::completion_signatures<
+            stdexec::set_value_t(),
+            stdexec::set_error_t(float),
+            stdexec::set_stopped_t()
+        >{});
 
     return true;
 }
@@ -105,10 +107,9 @@ TEST_F(CompletionSignaturesTest, parallel_for) {
                                         | stdexec::continues_on(esc.get_scheduler());
 
     //! The stopped channel of the @c experimental::execution::single_thread_context is properly propagated.
-    static_assert(stdexec::__mset_eq<
-                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_stopped_t()>,
-                  stdexec::__completion_signatures_of_t<decltype(stc_then_continues_on_esc_sndr), env_with_stop_token_t>
-    >);
+    static_assert(
+        stdexec::get_completion_signatures<decltype(stc_then_continues_on_esc_sndr), env_with_stop_token_t>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>{});
 
     auto stc_then_continues_on_esc_then_sndr =
         std::move(stc_then_continues_on_esc_sndr) // NOLINT(performance-move-const-arg)
@@ -116,10 +117,12 @@ TEST_F(CompletionSignaturesTest, parallel_for) {
 
     //! The stopped channel is propagated, and the error channel is added.
     static_assert(
-        stdexec::__mset_eq<
-            stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr), stdexec::set_stopped_t()>,
-            stdexec::__completion_signatures_of_t<decltype(stc_then_continues_on_esc_then_sndr), env_with_stop_token_t>
-        >);
+        stdexec::get_completion_signatures<decltype(stc_then_continues_on_esc_then_sndr), env_with_stop_token_t>()
+        == stdexec::completion_signatures<
+            stdexec::set_value_t(),
+            stdexec::set_error_t(std::exception_ptr),
+            stdexec::set_stopped_t()
+        >{});
 
     auto stc_then_continues_on_esc_then_then_sndr =
         std::move(stc_then_continues_on_esc_then_sndr)
@@ -127,13 +130,12 @@ TEST_F(CompletionSignaturesTest, parallel_for) {
 
     //! The error channel was already added, it is added only once.
     static_assert(
-        stdexec::__mset_eq<
-            stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr), stdexec::set_stopped_t()>,
-            stdexec::__completion_signatures_of_t<
-                decltype(stc_then_continues_on_esc_then_then_sndr),
-                env_with_stop_token_t
-            >
-        >);
+        stdexec::get_completion_signatures<decltype(stc_then_continues_on_esc_then_then_sndr), env_with_stop_token_t>()
+        == stdexec::completion_signatures<
+            stdexec::set_value_t(),
+            stdexec::set_error_t(std::exception_ptr),
+            stdexec::set_stopped_t()
+        >{});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 

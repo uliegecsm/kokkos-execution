@@ -64,10 +64,7 @@ TEST_F(AnySenderTest, then) {
                   stdexec::default_domain
     >);
 
-    static_assert(std::same_as<
-                  std::invoke_result_t<stdexec::get_completion_signatures_t, any_sender_t, stdexec::env<>>,
-                  completion_signatures_t
-    >);
+    static_assert(stdexec::get_completion_signatures<any_sender_t, stdexec::env<>>() == completion_signatures_t{});
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
