@@ -11,7 +11,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-execution/execution_space.hpp"
 
 #include "tests/utils/callback_matchers.hpp"
-#include "tests/utils/check_scheduler_type.hpp"
+#include "tests/utils/check_completion_scheduler_type.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
@@ -59,7 +59,7 @@ TEST_F(ForkJoinTest, diamond) {
         | stdexec::then(Tests::Utils::Functors::LoadCheckAdd<int, false>{.prev = 0, .value = 4, .data = data.data()})
         | experimental::execution::fork_join(
             stdexec::continues_on(esc.get_scheduler())
-                | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>()
+                | Tests::Utils::check_completion_scheduler_type<stdexec::set_value_t, scheduler_t>()
                 | THEN_INCREMENT_ATOMIC(System, data) | stdexec::continues_on(pool.get_scheduler()),
             stdexec::continues_on(pool.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data))
         | stdexec::continues_on(esc.get_scheduler())

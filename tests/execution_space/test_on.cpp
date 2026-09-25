@@ -4,7 +4,7 @@
 #include "kokkos-execution/execution_space.hpp"
 
 #include "tests/utils/callback_matchers.hpp"
-#include "tests/utils/check_scheduler_type.hpp"
+#include "tests/utils/check_completion_scheduler_type.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/kokkos.hpp"
@@ -52,11 +52,14 @@ TEST_F(OnTest, on_same_execution_space_instance) {
     const context_t esc{exec};
 
     auto chain = stdexec::schedule(esc.get_scheduler())
-               | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT(data)
+               | Tests::Utils::check_completion_scheduler_type<stdexec::set_value_t, scheduler_t>()
+               | THEN_INCREMENT(data)
                | stdexec::on(
                      esc.get_scheduler(),
-                     Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT(data))
-               | Tests::Utils::check_scheduler_type<stdexec::set_value_t, scheduler_t>() | THEN_INCREMENT(data);
+                     Tests::Utils::check_completion_scheduler_type<stdexec::set_value_t, scheduler_t>()
+                         | THEN_INCREMENT(data))
+               | Tests::Utils::check_completion_scheduler_type<stdexec::set_value_t, scheduler_t>()
+               | THEN_INCREMENT(data);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
