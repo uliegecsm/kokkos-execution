@@ -122,15 +122,17 @@ struct Scheduler {
  */
 template <Kokkos::ExecutionSpace Exec>
 struct ExecutionSpaceContext {
-    using state_t = Impl::State<Exec>;
+    using execution_space = Exec;
+
+    using state_t = Impl::State<execution_space>;
 
     state_t m_state;
 
-    explicit ExecutionSpaceContext(Exec exec) // NOLINT(performance-unnecessary-value-param)
+    explicit ExecutionSpaceContext(execution_space exec) // NOLINT(performance-unnecessary-value-param)
         : m_state{std::move(exec)} {
     }
 
-    auto get_scheduler() const noexcept -> ExecutionSpaceImpl::Scheduler<Exec> {
+    auto get_scheduler() const noexcept -> ExecutionSpaceImpl::Scheduler<execution_space> {
         return {const_cast<state_t*>(&m_state)};
     }
 };
