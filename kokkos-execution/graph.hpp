@@ -123,15 +123,17 @@ struct Scheduler {
 //! Execution context using @c Kokkos::Experimental::Graph under the hood.
 template <Kokkos::ExecutionSpace Exec>
 struct GraphContext {
-    using state_t = Impl::State<Exec>;
+    using execution_space = Exec;
+
+    using state_t = Impl::State<execution_space>;
 
     state_t m_state;
 
-    explicit GraphContext(Exec exec) // NOLINT(performance-unnecessary-value-param)
+    explicit GraphContext(execution_space exec) // NOLINT(performance-unnecessary-value-param)
         : m_state{std::move(exec)} {
     }
 
-    auto get_scheduler() const noexcept -> GraphImpl::Scheduler<Exec> {
+    auto get_scheduler() const noexcept -> GraphImpl::Scheduler<execution_space> {
         return {const_cast<state_t*>(&m_state)};
     }
 };

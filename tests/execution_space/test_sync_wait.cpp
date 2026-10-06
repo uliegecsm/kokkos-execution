@@ -21,7 +21,16 @@
  * The tests can be found in @ref tests/execution_space/test_sync_wait.cpp.
  */
 
-namespace Tests::ExecutionSpaceImpl {
+namespace Tests {
+
+namespace Utils {
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    SyncWaitTestExecutionSpaceInstantiation,
+    SyncWaitTest,
+    ::testing::Types<Kokkos::Execution::ExecutionSpaceContext<TEST_EXECUTION_SPACE>>);
+} // namespace Utils
+
+namespace ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
@@ -44,7 +53,7 @@ static_assert(Tests::Utils::check_nothrow_apply_sender<
 >());
 
 //! @test Check that calling @c stdexec::sync_wait on a sender that does not have any operation in it will not result in a spurious fence.
-TEST_F(SyncWaitTest, sync_wait) {
+TEST_F(SyncWaitTest, no_spurious_fence) {
     const context_t esc{exec};
 
     auto sndr = stdexec::schedule(esc.get_scheduler());
@@ -69,4 +78,6 @@ TEST_F(SyncWaitTest, rethrows) {
         testing::ThrowsMessage<std::runtime_error>(testing::StrEq("ThrowsWhenCopied: Throwing in copy constructor!")));
 }
 
-} // namespace Tests::ExecutionSpaceImpl
+} // namespace ExecutionSpaceImpl
+
+} // namespace Tests

@@ -15,13 +15,12 @@ namespace Kokkos::Execution::Impl::SyncWait {
 struct env {
     stdexec::run_loop::scheduler schd;
 
+    template <
+        stdexec::__one_of<stdexec::get_scheduler_t, stdexec::get_start_scheduler_t, stdexec::get_delegation_scheduler_t>
+            Query
+    >
     [[nodiscard]]
-    auto query(stdexec::get_scheduler_t) const noexcept -> stdexec::run_loop::scheduler {
-        return schd;
-    }
-
-    [[nodiscard]]
-    auto query(stdexec::get_delegation_scheduler_t) const noexcept -> stdexec::run_loop::scheduler {
+    auto query(Query) const noexcept -> stdexec::run_loop::scheduler {
         return schd;
     }
 };
@@ -131,6 +130,8 @@ struct SyncWait {
 
         stdexec::start(op_state);
 
+        /// The run-loop must be started on the thread on which the operation state is started,
+        /// so that the @c stdexec::get_start_scheduler query holds by construction.
         runloop_state.loop.run();
 
         if constexpr (sends_error<Sndr&&>::value)

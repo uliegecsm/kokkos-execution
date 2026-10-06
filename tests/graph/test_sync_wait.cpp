@@ -20,7 +20,16 @@
  * The tests can be found in @ref tests/graph/test_sync_wait.cpp.
  */
 
-namespace Tests::GraphImpl {
+namespace Tests {
+
+namespace Utils {
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    SyncWaitTestGraphInstantiation,
+    SyncWaitTest,
+    ::testing::Types<Kokkos::Execution::GraphContext<TEST_EXECUTION_SPACE>>);
+} // namespace Utils
+
+namespace GraphImpl {
 
 using namespace Kokkos::utils::callbacks;
 
@@ -38,7 +47,7 @@ static_assert(Tests::Utils::check_nothrow_apply_sender<
 >());
 
 //! @test Check that calling @c stdexec::sync_wait on a sender that does not have any operation in it will not result in a spurious fence.
-TEST_F(SyncWaitTest, sync_wait) {
+TEST_F(SyncWaitTest, no_spurious_fence) {
     const context_t gctx{exec};
 
     auto sndr = stdexec::schedule(gctx.get_scheduler());
@@ -52,4 +61,6 @@ TEST_F(SyncWaitTest, sync_wait) {
         testing::IsEmpty());
 }
 
-} // namespace Tests::GraphImpl
+} // namespace GraphImpl
+
+} // namespace Tests
