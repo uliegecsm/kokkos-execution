@@ -7,6 +7,7 @@
 
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/check_node_type.hpp"
 #include "tests/utils/check_rcvr_env.hpp"
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/functors/increment.hpp"
@@ -223,6 +224,27 @@ TEST_F(ThenTest, then_schedule) {
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 7);
+}
+
+//! @test Check the node types of the underlying @c Kokkos::Graph for two successive @c then nodes.
+TEST_F(ThenTest, then_schedule_node_type) {
+    using functor_t = Tests::Utils::Functors::NoOp<false, false, false>;
+
+    using expt_node_t = Kokkos::Experimental::GraphNodeRef<
+        TEST_EXECUTION_SPACE,
+        Kokkos::Impl::GraphNodeThenImpl<TEST_EXECUTION_SPACE, Kokkos::Experimental::ThenPolicy<>, functor_t>,
+        Kokkos::Experimental::GraphNodeRef<
+            TEST_EXECUTION_SPACE,
+            Kokkos::Impl::GraphNodeThenImpl<TEST_EXECUTION_SPACE, Kokkos::Experimental::ThenPolicy<>, functor_t>,
+            Kokkos::Experimental::GraphNodeRef<TEST_EXECUTION_SPACE, Kokkos::Experimental::GraphNodeRootTag>
+        >
+    >;
+
+    const context_t gctx{exec};
+
+    stdexec::sync_wait(
+        stdexec::schedule(gctx.get_scheduler()) | stdexec::then(functor_t{}) | stdexec::then(functor_t{})
+        | Tests::Utils::check_node_type<expt_node_t>());
 }
 
 /**
