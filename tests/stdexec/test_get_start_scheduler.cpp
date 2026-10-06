@@ -28,6 +28,7 @@ namespace Tests {
 consteval bool test_is_forwarding_query() {
     return stdexec::forwarding_query(stdexec::get_start_scheduler);
 }
+
 static_assert(test_is_forwarding_query());
 
 /**

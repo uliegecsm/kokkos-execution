@@ -68,6 +68,7 @@ struct SyncPolicyTag { };
  */
 struct SyncPolicy {
     struct InlineFenceExec : SyncPolicyTag { };
+
     struct ScheduleWaitEvent : SyncPolicyTag { };
 };
 
@@ -164,6 +165,7 @@ struct SubmittedPolicyTag { };
  */
 struct SubmittedPolicy {
     struct OrderOnExec : SubmittedPolicyTag { };
+
     struct DependOnEvent : SubmittedPolicyTag { };
 };
 

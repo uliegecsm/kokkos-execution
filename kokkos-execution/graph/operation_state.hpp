@@ -318,6 +318,7 @@ template <stdexec::sender Sndr, stdexec::receiver Rcvr, typename FirstClosure, t
 extern __mtype<Kokkos::Execution::GraphImpl::OpState<__demangle_t<Sndr>, Rcvr, FirstClosure, RestOfClosures...>>
     __demangle_v<Kokkos::Execution::GraphImpl::OpState<Sndr, Rcvr, FirstClosure, RestOfClosures...>>;
 } // namespace stdexec::__detail
+
 // NOLINTEND(bugprone-reserved-identifier)
 
 #endif // KOKKOS_EXECUTION_GRAPH_OPERATION_STATE_HPP

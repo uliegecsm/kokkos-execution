@@ -71,6 +71,7 @@ consteval bool test_schedule_from_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_schedule_from_sndr_traits());
 
 //! @test Check traits of the sender created by the customized @c stdexec::continues_on.
@@ -110,6 +111,7 @@ consteval bool test_continues_on_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_continues_on_sndr_traits());
 
 //! @test Check @c noexcept specification of sender transformation.
@@ -158,6 +160,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_transformable());
 
 /**

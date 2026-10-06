@@ -51,6 +51,7 @@ consteval bool test_op_state_traits() {
 
     return true;
 }
+
 static_assert(test_op_state_traits());
 
 /**
@@ -84,6 +85,7 @@ constexpr bool test_op_state_passed_by_const_ref() {
 
     return true;
 }
+
 static_assert(test_op_state_passed_by_const_ref());
 
 //! @test Check construction, query for execution space instance, and start.
@@ -150,6 +152,7 @@ consteval bool test_op_state_flattened_from_two() {
 
     return true;
 }
+
 static_assert(test_op_state_flattened_from_two());
 
 //! @test Check construction of flattened operation state from three parallel for senders.
@@ -204,6 +207,7 @@ consteval bool test_op_state_flattened_from_three() {
 
     return true;
 }
+
 static_assert(test_op_state_flattened_from_three());
 
 //! @test Check construction of flattened operation state from three parallel for senders with mixed tags.
@@ -256,6 +260,7 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
 
     return true;
 }
+
 static_assert(test_op_state_flattened_from_three_mixed_tags());
 
 } // namespace Tests::ExecutionSpaceImpl

@@ -11,8 +11,10 @@ struct SinkReceiver {
 
     void set_value(auto&&...) && noexcept {
     }
+
     void set_error(auto&&) && noexcept {
     }
+
     void set_stopped() && noexcept {
     }
 

@@ -37,6 +37,7 @@ consteval bool test_add_nothing_empty_env() {
 
     return true;
 }
+
 static_assert(test_add_nothing_empty_env());
 
 //! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add with an added error completion signature and an empty environment.
@@ -51,6 +52,7 @@ consteval bool test_add_error_empty_env() {
 
     return true;
 }
+
 static_assert(test_add_error_empty_env());
 
 using env_with_stop_token_t = stdexec::prop<stdexec::get_stop_token_t, stdexec::inplace_stop_token>;
@@ -67,6 +69,7 @@ consteval bool test_add_nothing_stop_env() {
 
     return true;
 }
+
 static_assert(test_add_nothing_stop_env());
 
 //! @test Check return type of @ref Kokkos::Execution::Impl::completion_signatures_add with an added error completion signature and @ref env_with_stop_token_t.
@@ -85,6 +88,7 @@ consteval bool test_add_error_stop_env() {
 
     return true;
 }
+
 static_assert(test_add_error_stop_env());
 
 class CompletionSignaturesTest : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE> { };

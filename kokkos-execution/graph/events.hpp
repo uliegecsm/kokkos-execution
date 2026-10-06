@@ -163,7 +163,6 @@ void graph_instantiate_event(const Kokkos::Experimental::Graph<Exec>& graph) {
 #endif
 }
 
-
 //! Record a @ref GraphSubmitEvent event.
 template <Kokkos::ExecutionSpace Exec>
 void graph_submit_event(const Kokkos::Experimental::Graph<Exec>& graph, const Exec& exec) {

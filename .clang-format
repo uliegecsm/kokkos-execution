@@ -128,7 +128,7 @@ RemoveParentheses: Leave
 RemoveSemicolon: true
 RequiresClausePosition: WithPreceding
 RequiresExpressionIndentation: OuterScope
-SeparateDefinitionBlocks: Leave
+SeparateDefinitionBlocks: Always
 ShortNamespaceLines: 0
 SkipMacroDefinitionBody: false
 SortIncludes:

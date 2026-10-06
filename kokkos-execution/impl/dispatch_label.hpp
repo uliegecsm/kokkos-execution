@@ -24,6 +24,7 @@ struct FixedString {
     consteval auto begin() const {
         return data;
     }
+
     consteval auto end() const {
         return data + N - 1;
     }

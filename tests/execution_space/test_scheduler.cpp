@@ -53,6 +53,7 @@ consteval bool test_scheduler_schedule() {
 
     return true;
 }
+
 static_assert(test_scheduler_schedule());
 
 /**
@@ -67,6 +68,7 @@ consteval bool test_schedule_sender_attrs() {
 
     return true;
 }
+
 static_assert(test_schedule_sender_attrs());
 
 //! @test Check @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler queries.
@@ -89,6 +91,7 @@ consteval bool test_scheduler_queries() {
 
     return true;
 }
+
 static_assert(test_scheduler_queries());
 
 //! @test Check queries of @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender::Attributes.
@@ -111,6 +114,7 @@ consteval bool test_schedule_sender_attrs_queries() {
 
     return true;
 }
+
 static_assert(test_schedule_sender_attrs_queries());
 
 //! @test Check completion signatures of @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender.
@@ -121,6 +125,7 @@ consteval bool test_schedule_sender_completion_signatures() {
 
     return true;
 }
+
 static_assert(test_schedule_sender_completion_signatures());
 
 } // namespace Tests::ExecutionSpaceImpl

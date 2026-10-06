@@ -90,6 +90,7 @@ consteval bool test_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_sndr_traits());
 
 //! @test Check @c noexcept specification of sender transformation.
@@ -134,6 +135,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_transformable());
 
 //! @test Check that it cannot be nothrow-connected.
@@ -150,6 +152,7 @@ consteval bool test_sndr_nothrow_connectable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_connectable());
 
 /**
@@ -190,6 +193,7 @@ consteval bool test_sndr_cannot_mix_execution_space_type() {
         return true;
     }
 }
+
 static_assert(test_sndr_cannot_mix_execution_space_type<TEST_EXECUTION_SPACE, Kokkos::DefaultHostExecutionSpace>());
 
 /**

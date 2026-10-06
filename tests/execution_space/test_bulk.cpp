@@ -77,6 +77,7 @@ consteval bool test_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_sndr_traits());
 
 //! @test Check @c noexcept specification of sender transformation.
@@ -103,6 +104,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_transformable());
 
 //! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
@@ -145,6 +147,7 @@ constexpr bool test_op_state_passed_by_const_ref() {
 
     return true;
 }
+
 static_assert(test_op_state_passed_by_const_ref());
 
 //! @test Check that @ref Kokkos::Execution::ExecutionSpaceContext does its duty well when used with @c bulk.

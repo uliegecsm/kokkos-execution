@@ -70,6 +70,7 @@ consteval bool test_noexcept() {
 
     return true;
 }
+
 static_assert(test_noexcept());
 
 //! @test Check events recorded for graph creation, instantiation and submission.

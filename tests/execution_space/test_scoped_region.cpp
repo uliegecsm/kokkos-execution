@@ -51,6 +51,7 @@ consteval bool test_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_sndr_traits());
 
 /**

@@ -42,6 +42,7 @@ struct ThenClosure {
         graph_add_node_event(predecessor, node, device_handle);
         return node;
     }
+
     node_props_t node_props;
     Functor functor; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
@@ -101,6 +102,7 @@ template <typename Exec, typename Sndr, typename Functor>
 extern __mtype<Kokkos::Execution::GraphImpl::ThenSender<Exec, __demangle_t<Sndr>, Functor>>
     __demangle_v<Kokkos::Execution::GraphImpl::ThenSender<Exec, Sndr, Functor>>;
 } // namespace stdexec::__detail
+
 // NOLINTEND(bugprone-reserved-identifier)
 
 #endif // KOKKOS_EXECUTION_GRAPH_THEN_HPP

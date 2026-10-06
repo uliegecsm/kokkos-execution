@@ -8,6 +8,7 @@
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 struct WithExecEnvPolicy { };
+
 struct WithoutExecEnvPolicy { };
 
 //! Unconditionally join @p exec to @p env.

@@ -40,6 +40,7 @@
         Kokkos::utils::callbacks::PartialMatcher<Kokkos::utils::callbacks::BeginDeepCopyEvent>{}(                      \
             Kokkos::utils::callbacks::BeginDeepCopyEvent{                                                              \
                 .dst = KOKKOS_IMPL_STRIP_PARENS(_dst_), .src = KOKKOS_IMPL_STRIP_PARENS(_src_)}))
+
 // NOLINTEND(cppcoreguidelines-macro-usage)
 
 //! Get the dispatch label from @p Exec and @p label.
@@ -76,6 +77,7 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::Impl, WaitEvent)
         ::testing::Field(                                                                                              \
             &Kokkos::Execution::Impl::WaitEvent::dev_id,                                                               \
             ::testing::Eq(Kokkos::Tools::Experimental::device_id(_exec_))))
+
 // NOLINTEND(cppcoreguidelines-macro-usage)
 
 //! Matcher to filter out events that are just noise for tests.

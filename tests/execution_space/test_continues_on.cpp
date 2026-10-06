@@ -55,6 +55,7 @@ consteval bool test_schedule_from_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_schedule_from_sndr_traits());
 
 //! @test Check traits of the sender created by the customized @c stdexec::continues_on.
@@ -63,6 +64,7 @@ consteval bool test_continues_on_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_continues_on_sndr_traits());
 
 //! @test Check that the @ref Kokkos::Execution::Impl::get_exec_t query is forwarded as expected.
@@ -467,6 +469,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_transformable());
 
 } // namespace Tests::ExecutionSpaceImpl
