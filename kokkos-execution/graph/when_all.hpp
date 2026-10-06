@@ -312,6 +312,7 @@ template <typename... Sndrs>
 extern __mtype<Kokkos::Execution::GraphImpl::WhenAllSender<__demangle_t<Sndrs>...>>
     __demangle_v<Kokkos::Execution::GraphImpl::WhenAllSender<Sndrs...>>;
 } // namespace stdexec::__detail
+
 // NOLINTEND(bugprone-reserved-identifier)
 
 #endif // KOKKOS_EXECUTION_GRAPH_WHEN_ALL_HPP

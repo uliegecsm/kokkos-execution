@@ -76,6 +76,7 @@ consteval bool test_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_sndr_traits());
 
 //! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
@@ -118,6 +119,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_transformable());
 
 //! @test Check that it cannot be nothrow-connected.
@@ -132,6 +134,7 @@ consteval bool test_sndr_nothrow_connectable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_connectable());
 
 //! @test Check that the @c stdexec::connect result is @ref Kokkos::Execution::GraphImpl::OpState, and the @c Kokkos node types are hierarchical and fully typed on predecessors.
@@ -161,6 +164,7 @@ consteval bool test_then_op_state_traits() {
 
     return true;
 }
+
 static_assert(test_then_op_state_traits());
 
 /**

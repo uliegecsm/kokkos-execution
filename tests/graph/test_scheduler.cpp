@@ -52,6 +52,7 @@ consteval bool test_scheduler_schedule() {
 
     return true;
 }
+
 static_assert(test_scheduler_schedule());
 
 /**
@@ -63,6 +64,7 @@ consteval bool test_schedule_sender_attrs() {
 
     return true;
 }
+
 static_assert(test_schedule_sender_attrs());
 
 //! @test Check @ref Kokkos::Execution::GraphImpl::Scheduler queries.
@@ -80,6 +82,7 @@ consteval bool test_scheduler_queries() {
 
     return true;
 }
+
 static_assert(test_scheduler_queries());
 
 //! @test Check queries of @ref Kokkos::Execution::GraphImpl::Scheduler::Sender::Attributes.
@@ -102,6 +105,7 @@ consteval bool test_schedule_sender_attrs_queries() {
 
     return true;
 }
+
 static_assert(test_schedule_sender_attrs_queries());
 
 //! @test Check completion signatures of @ref Kokkos::Execution::GraphImpl::Scheduler::Sender.
@@ -112,6 +116,7 @@ consteval bool test_schedule_sender_completion_signatures() {
 
     return true;
 }
+
 static_assert(test_schedule_sender_completion_signatures());
 
 //! @test Check that @ref Kokkos::Execution::GraphImpl::Scheduler::OpState may/may not be queried for a graph node when the receiver provides/does not provide the query.
@@ -138,6 +143,7 @@ consteval bool test_schedule_sender_opstate() {
     struct ReceiverWithProp
         : Tests::Utils::SinkReceiver
         , prop_t { };
+
     using rcvr_with_prop_t = ReceiverWithProp;
     static_assert(stdexec::__queryable_with<rcvr_with_prop_t, Kokkos::Execution::GraphImpl::get_node_t>);
     static_assert(stdexec::__queryable_with<
@@ -154,6 +160,7 @@ consteval bool test_schedule_sender_opstate() {
 
     return true;
 }
+
 static_assert(test_schedule_sender_opstate());
 
 } // namespace Tests::GraphImpl

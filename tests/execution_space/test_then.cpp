@@ -71,6 +71,7 @@ consteval bool test_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_sndr_traits());
 
 //! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
@@ -310,6 +311,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     return true;
 }
+
 static_assert(test_sndr_nothrow_transformable());
 
 //! @test The customization of @c stdexec::then properly forwards forwarding queries.

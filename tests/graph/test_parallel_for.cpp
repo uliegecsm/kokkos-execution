@@ -103,6 +103,7 @@ consteval bool test_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_sndr_traits<Kokkos::Execution::Impl::ParallelForSender, true>());
 static_assert(test_sndr_traits<Kokkos::Execution::GraphImpl::ParallelForSender, false>());
 
@@ -120,6 +121,7 @@ consteval bool test_closure_traits() {
 
     return true;
 }
+
 static_assert(test_closure_traits<typename ParallelForTest::view_s_t>());
 static_assert(test_closure_traits<std::span<int>>());
 

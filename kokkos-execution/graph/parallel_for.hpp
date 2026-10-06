@@ -33,6 +33,7 @@ struct ParallelForClosure {
         graph_add_node_event(predecessor, node, device_handle);
         return node;
     }
+
     node_props_t node_props;
     Functor functor; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     ExecPolicy policy;
@@ -104,6 +105,7 @@ template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::Execut
 extern __mtype<Kokkos::Execution::GraphImpl::ParallelForSender<__demangle_t<Sndr>, Label, Functor, ExecPolicy>>
     __demangle_v<Kokkos::Execution::GraphImpl::ParallelForSender<Sndr, Label, Functor, ExecPolicy>>;
 } // namespace stdexec::__detail
+
 // NOLINTEND(bugprone-reserved-identifier)
 
 #endif // KOKKOS_EXECUTION_GRAPH_PARALLEL_FOR_HPP

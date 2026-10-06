@@ -104,6 +104,7 @@ consteval bool test_sndr_traits() {
 
     return true;
 }
+
 static_assert(test_sndr_traits<Kokkos::Execution::Impl::ParallelForSender, true>());
 static_assert(test_sndr_traits<
               Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender,
@@ -142,6 +143,7 @@ consteval bool test_sndr_decomposition() {
 
     return true;
 }
+
 static_assert(test_sndr_decomposition());
 
 //! @test Check traits of @ref Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure.
@@ -158,6 +160,7 @@ consteval bool test_closure_traits() {
 
     return true;
 }
+
 static_assert(test_closure_traits<typename ParallelForTest::view_s_t>());
 static_assert(test_closure_traits<std::span<int>>());
 

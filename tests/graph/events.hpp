@@ -74,7 +74,6 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
             ::testing::Eq(                                                                                             \
                 std::get<Kokkos::Execution::GraphImpl::GraphCreateEvent>(_graph_create_event_variant_).graph)))
 
-
 //! Similar to @ref EventDiscardMatcher, for graph-related events.
 template <Kokkos::ExecutionSpace Exec>
 struct GraphEventDiscardMatcher {

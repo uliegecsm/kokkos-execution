@@ -102,6 +102,7 @@ consteval bool test_completion_signal_traits() {
 
     return true;
 }
+
 static_assert(test_completion_signal_traits());
 
 //! @test Check @ref Kokkos::Execution::Impl::CompletionSignal with @ref Kokkos::Execution::Impl::SyncPolicy::InlineFenceExec.

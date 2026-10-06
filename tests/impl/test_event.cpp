@@ -51,6 +51,7 @@ consteval bool test_models_event() {
 
     return true;
 }
+
 static_assert(test_models_event<TEST_EXECUTION_SPACE>());
 
 //! @test Check @ref Kokkos::Execution::Impl::has_exec_wait_event.
@@ -73,6 +74,7 @@ consteval bool test_has_exec_wait_event() {
         return true;
     }
 }
+
 static_assert(test_has_exec_wait_event<TEST_EXECUTION_SPACE>());
 
 //! @test Check the stream operator of @ref Kokkos::Execution::Impl::RecordEvent.
