@@ -18,8 +18,8 @@ concept has_exec_wait_event = HasExecWaitEvent<Exec>::value;
 /**
  * @brief This is the default implementation.
  *
- * Create a dependency between operations enqueud into one execution space instance @p exec_from (from any thread)
- * with those that will be enqueud into another execution space instance @p exec_to.
+ * Create a dependency between operations enqueued into one execution space instance @p exec_from (from any thread)
+ * with those that will be enqueued into another execution space instance @p exec_to.
  *
  * The dependency results in the same semantic guarantees as a @c Kokkos fence, *i.e.* it
  * guarantees both the ordering and the side effects visibility.

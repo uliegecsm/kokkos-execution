@@ -16,7 +16,7 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-//! Receiver for @c continues_on.
+//! Receiver for @c stdexec::continues_on.
 template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
 struct ContinuesOnReceiver : public Impl::Receiver<ParentOp, Env> {
     using exec_env_policy_t = typename ParentOp::exec_env_policy_t;

@@ -10,7 +10,7 @@
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-//! Receiver for @c continues_on.
+//! Receiver for @c stdexec::continues_on.
 template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
 struct ContinuesOnReceiver : public Impl::Receiver<ParentOp, Env> {
     using exec_env_policy_t = typename ParentOp::exec_env_policy_t;
@@ -116,7 +116,7 @@ struct ContinuesOnOpState
     }
 };
 
-//! Sender for @c continues_on.
+//! Sender for @c stdexec::continues_on.
 template <stdexec::scheduler Schd, stdexec::sender Sndr>
 struct ContinuesOnSender {
     using sender_concept = stdexec::sender_tag;

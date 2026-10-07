@@ -86,7 +86,7 @@ struct WhenAllOpState
         : base_t(std::move(rcvr_))
         /**
          * @todo The graph will be created on the default device and submitted on the default execution space instance.
-         *       The device selection for each node will still happen correctly occording to each node properties.
+         *       The device selection for each node will still happen correctly according to each node properties.
          *       A possibility could be to ask the successor of @c stdexec::when_all for an execution space instance
          *       to submit the graph onto.
          */
