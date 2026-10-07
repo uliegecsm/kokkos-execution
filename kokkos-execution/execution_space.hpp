@@ -67,6 +67,17 @@ struct Scheduler {
                 return {};
             }
 
+            // because for "empty" parallel regions there is nothing to do and we complete directly (on the thread that called start)
+            // while for non-empty regions, we dispatch asynchronously on the device but there is a synchronization barrier
+            // like a fence or event wait, also on the thread that called start.
+            // so if asynchrnous_affine means "takes time, but comes back to you on the same thread" than ok
+            // Question: can this query influence the start scheduler ? Probably not.
+            //              but does it influence the completion scheduler ? Propbably not...
+            [[nodiscard]]
+            constexpr auto query(exec::get_completion_behavior_t<stdexec::set_value_t>) const noexcept {
+                return exec::completion_behavior::inline_completion | exec::completion_behavior::asynchronous_affine;
+            }
+
             Impl::State<Exec>* state;
         };
 

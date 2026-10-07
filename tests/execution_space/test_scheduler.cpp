@@ -1,5 +1,11 @@
 #include "gtest/gtest.h"
 
+#include "kokkos-execution/utils/ignore_warnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/completion_behavior.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 #include "kokkos-execution/execution_space.hpp"
 
 #include "tests/utils/category.hpp"
@@ -127,5 +133,19 @@ consteval bool test_schedule_sender_completion_signatures() {
 }
 
 static_assert(test_schedule_sender_completion_signatures());
+
+//! @test Check completion behavior advertised by @ref Kokkos::Execution::ExecutionSpaceImpl::Scheduler::Sender.
+consteval bool test_schedule_sender_completion_behavior() {
+    static_assert(
+        exec::get_completion_behavior<
+            stdexec::set_value_t,
+            decltype(stdexec::schedule(std::declval<const execution_space_scheduler_t&>()))
+        >()
+        == (exec::completion_behavior::inline_completion | exec::completion_behavior::asynchronous_affine));
+
+    return true;
+}
+
+static_assert(test_schedule_sender_completion_behavior());
 
 } // namespace Tests::ExecutionSpaceImpl
