@@ -113,10 +113,23 @@ struct EventDiscardMatcher {
      *
      * See https://github.com/uliegecsm/kokkos-execution/issues/150.
      */
+    static constexpr bool hpx_on_destruction(const Kokkos::utils::callbacks::BeginFenceEvent& event) {
+        return event.name != "Kokkos::Experimental::HPX: fence on destruction";
+    }
+
+    /**
+     * See https://github.com/kokkos/kokkos/pull/9643. It is sometimes misspelled
+     * as of https://github.com/kokkos/kokkos/commit/167aba1b5c8d7737bf3615259f85b2005744fdc1,
+     * therefore @c starts_with must be used to cover all cases.
+     */
+    static constexpr bool hpx_parallel_reduce_unmanaged(const Kokkos::utils::callbacks::BeginFenceEvent& event) {
+        return !event.name.starts_with("Kokkos::Experimental::HPX: fence due to forced sync");
+    }
+
     bool operator()(const Kokkos::utils::callbacks::BeginFenceEvent& event) const
         requires std::same_as<Exec, Kokkos::Experimental::HPX>
     {
-        return event.name != "Kokkos::Experimental::HPX: fence on destruction";
+        return hpx_on_destruction(event) && hpx_parallel_reduce_unmanaged(event);
     }
 #endif
 

@@ -2,6 +2,7 @@
 #define KOKKOS_EXECUTION_IMPL_SENDER_CONCEPTS_HPP
 
 #include "kokkos-execution/parallel_for.hpp"
+#include "kokkos-execution/parallel_reduce.hpp"
 #include "kokkos-execution/stdexec.hpp"
 
 namespace Kokkos::Execution::Impl {
@@ -14,7 +15,8 @@ concept dispatching_sender = stdexec::sender<Sndr> && requires {
         stdexec::tag_of_t<Sndr>,
         stdexec::bulk_t,
         stdexec::then_t,
-        Kokkos::Execution::parallel_for_t
+        Kokkos::Execution::parallel_for_t,
+        Kokkos::Execution::parallel_reduce_t
     >;
 };
 
