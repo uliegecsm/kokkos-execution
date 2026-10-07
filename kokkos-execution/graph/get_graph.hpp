@@ -16,7 +16,8 @@ struct get_graph_t : public stdexec::__query<get_graph_t> { };
 
 inline constexpr get_graph_t get_graph{};
 
-#if defined(KOKKOS_COMPILER_GNU) && (KOKKOS_COMPILER_GNU == 1420 || KOKKOS_COMPILER_GNU == 1520)
+#if defined(KOKKOS_COMPILER_GNU)                                                                                       \
+    && (KOKKOS_COMPILER_GNU == 1420 || KOKKOS_COMPILER_GNU == 1520 || KOKKOS_COMPILER_GNU == 1601)
 //! @bug May be related to https://gcc.gnu.org/legacy-ml/gcc-bugs/2019-01/msg01795.html.
 template <typename... Booleans>
 struct gcc_mor_helper {
@@ -38,7 +39,8 @@ struct GraphComposition {
     //! Use the @ref Attach policy if any @p Queryables is queryable with @ref get_node_t.
     template <typename... Queryables>
     using policy_t = std::conditional_t<
-#if defined(KOKKOS_COMPILER_GNU) && (KOKKOS_COMPILER_GNU == 1420 || KOKKOS_COMPILER_GNU == 1520)
+#if defined(KOKKOS_COMPILER_GNU)                                                                                       \
+    && (KOKKOS_COMPILER_GNU == 1420 || KOKKOS_COMPILER_GNU == 1520 || KOKKOS_COMPILER_GNU == 1601)
         gcc_mor_v<stdexec::__mbool<stdexec::__queryable_with<Queryables, get_node_t>>...>,
 #else
         (stdexec::__queryable_with<Queryables, get_node_t> || ...),

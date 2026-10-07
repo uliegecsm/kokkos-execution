@@ -81,6 +81,7 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 14}, cmake_build_type: Release}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cmake_build_type: Debug}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}}
+          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 16}, cmake_build_type: Release, cxxstd: 26}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=leak"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
