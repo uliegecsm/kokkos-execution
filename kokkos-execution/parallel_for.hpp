@@ -19,29 +19,32 @@ struct ParallelForData;
 
 //! Custom algorithm for the @c Kokkos::parallel_for construct.
 struct parallel_for_t {
-    template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-    constexpr auto operator()(std::string label, ExecPolicy policy, Functor functor) const {
-        return stdexec::__closure(*this, std::move(label), std::move(policy), std::move(functor));
+    template <typename Functor, typename ExecPolicy>
+    requires Kokkos::ExecutionPolicy<std::remove_cvref_t<ExecPolicy>>
+    constexpr auto operator()(std::string label, ExecPolicy&& policy, Functor&& functor) const {
+        return stdexec::__closure(
+            *this, std::move(label), std::forward<ExecPolicy>(policy), std::forward<Functor>(functor));
     }
 
-    template <typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-    constexpr auto operator()(ExecPolicy policy, Functor functor) const {
-        return this->operator()("", std::move(policy), std::move(functor));
+    template <typename Functor, typename ExecPolicy>
+    requires Kokkos::ExecutionPolicy<std::remove_cvref_t<ExecPolicy>>
+    constexpr auto operator()(ExecPolicy&& policy, Functor&& functor) const {
+        return this->operator()("", std::forward<ExecPolicy>(policy), std::forward<Functor>(functor));
     }
 
     template <typename Functor, std::integral T>
-    constexpr auto operator()(std::string label, const T work_count, Functor functor) const {
+    constexpr auto operator()(std::string label, const T work_count, Functor&& functor) const {
         using execution_space =
             typename Kokkos::Impl::FunctorPolicyExecutionSpace<std::remove_cvref_t<Functor>, void>::execution_space;
         using policy_t = Kokkos::RangePolicy<execution_space>;
 
-        return this->operator()(std::move(label), policy_t(0, work_count), std::move(functor));
+        return this->operator()(std::move(label), policy_t(0, work_count), std::forward<Functor>(functor));
     }
 
     //! @warning May default to @c Kokkos::DefaultExecutionSpace, see https://github.com/kokkos/kokkos/blob/be33a115413f5eef8f82ff0ad1ca85c331edf153/core/src/Kokkos_Parallel.hpp#L155-L157.
     template <typename Functor, std::integral T>
-    constexpr auto operator()(const T work_count, Functor functor) const {
-        return this->operator()("", work_count, std::move(functor));
+    constexpr auto operator()(const T work_count, Functor&& functor) const {
+        return this->operator()("", work_count, std::forward<Functor>(functor));
     }
 
     template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
