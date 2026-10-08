@@ -18,3 +18,8 @@ repos:
     rev: v0.6.13
     hooks:
     - id: cmake-format
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.51.1
+    hooks:
+      - id: typos

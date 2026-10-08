@@ -21,7 +21,7 @@
  * -------------------------------------------------------------------------------
  *
  * This group of tests check that @ref Kokkos::Execution::ExecutionSpaceContext properly customizes
- * @c continues_on.
+ * @c stdexec::continues_on.
  *
  * The tests can be found in @ref tests/execution_space/test_continues_on.cpp.
  */

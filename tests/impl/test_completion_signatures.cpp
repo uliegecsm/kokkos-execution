@@ -96,7 +96,7 @@ class CompletionSignaturesTest : public Tests::Utils::ExecutionSpaceContextTest<
 /**
  * @test Check the propagation and addition of the value/error/stopped channels.
  *
- * This test implicitly exercices @ref KOKKOS_EXECUTION_COMPL_SIGS_ADD and @ref KOKKOS_EXECUTION_COMPL_SIGS_KEEP.
+ * This test implicitly exercises @ref KOKKOS_EXECUTION_COMPL_SIGS_ADD and @ref KOKKOS_EXECUTION_COMPL_SIGS_KEEP.
  */
 TEST_F(CompletionSignaturesTest, parallel_for) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
