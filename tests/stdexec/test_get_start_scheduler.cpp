@@ -104,6 +104,7 @@ TEST(get_start_scheduler, let_value) {
  * - https://github.com/NVIDIA/stdexec/blob/5f94dbac91de3c4869fe695b7fe4d0ed66c0612d/include/stdexec/__detail/__continues_on.hpp#L193
  * - https://github.com/NVIDIA/stdexec/blob/5f94dbac91de3c4869fe695b7fe4d0ed66c0612d/include/stdexec/__detail/__continues_on.hpp#L127
  * - https://github.com/NVIDIA/stdexec/issues/2268
+ * - https://github.com/NVIDIA/stdexec/pull/2277
  */
 TEST(get_start_scheduler, continues_on) {
     std::thread::id pool_tid, tid;
@@ -126,6 +127,57 @@ TEST(get_start_scheduler, continues_on) {
     stdexec::sync_wait(std::move(sndr)); // NOLINT(performance-move-const-arg)
 
     ASSERT_EQ(tid, pool_tid); // run-time behavior is as expected
+    ASSERT_NE(tid, std::this_thread::get_id());
+}
+
+/**
+ * @test Similar to the previous test, but with an error completion.
+ *
+ * @c stdexec::continues_on stores the error and rethrows it from the scheduler's context.
+ *
+ * See also:
+ * - https://github.com/NVIDIA/stdexec/blob/abde4e4548902ae83e92d71209a1fb3a35a6cc0c/include/stdexec/__detail/__continues_on.hpp#L349-L353
+ * - https://github.com/NVIDIA/stdexec/pull/2277
+ */
+TEST(get_start_scheduler, continues_on_error_completion) {
+    experimental::execution::static_thread_pool pool{1};
+    std::thread::id pool_tid, tid;
+
+    auto sndr = stdexec::schedule(pool.get_scheduler()) | THEN_STORE_THREAD_ID(&pool_tid)
+              | stdexec::then([]() { throw std::runtime_error{"error"}; })
+              | stdexec::continues_on(stdexec::inline_scheduler{});
+
+    static_assert(std::same_as<
+                  stdexec::__completion_scheduler_of_t<
+                      stdexec::set_error_t,
+                      decltype(sndr),
+                      stdexec::prop<stdexec::get_start_scheduler_t, stdexec::run_loop::scheduler>
+                  >,
+                  decltype(pool.get_scheduler())
+    >);
+
+    auto sndr_with_upon_error = std::move(sndr) // NOLINT(performance-move-const-arg)
+                              | UPON_ERROR_STORE_THREAD_ID(&tid);
+
+    static_assert(stdexec::__never_sends<
+                  stdexec::set_error_t,
+                  decltype(sndr_with_upon_error),
+                  stdexec::prop<stdexec::get_start_scheduler_t, stdexec::run_loop::scheduler>
+    >);
+
+    static_assert(
+        std::same_as<
+            stdexec::__completion_scheduler_of_t<
+                stdexec::set_value_t,
+                decltype(sndr_with_upon_error),
+                stdexec::prop<stdexec::get_start_scheduler_t, stdexec::run_loop::scheduler>
+            >,
+            stdexec::run_loop::scheduler // does not match run-time behavior; should be decltype(pool.get_scheduler())
+        >);
+
+    stdexec::sync_wait(std::move(sndr_with_upon_error)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_EQ(tid, pool_tid);
     ASSERT_NE(tid, std::this_thread::get_id());
 }
 

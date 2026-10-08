@@ -8,15 +8,19 @@
 namespace Tests::Utils::Functors {
 
 struct StoreThreadID {
-    void operator()() const noexcept {
+    template <typename... Args>
+    void operator()(Args&&...) const noexcept {
         *tid = std::this_thread::get_id();
     }
 
     std::thread::id* tid;
 };
 
-//! Add a @c then calling @ref Tests::Utils::Functors::StoreThreadID. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THEN_STORE_THREAD_ID(__id__) stdexec::then(Tests::Utils::Functors::StoreThreadID{__id__})
+//! Add a @c stdexec::then calling @ref Tests::Utils::Functors::StoreThreadID. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THEN_STORE_THREAD_ID(__id__)       stdexec::then(Tests::Utils::Functors::StoreThreadID{__id__})
+
+//! Add a @c stdexec::upon_error calling @ref Tests::Utils::Functors::StoreThreadID. // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define UPON_ERROR_STORE_THREAD_ID(__id__) stdexec::upon_error(Tests::Utils::Functors::StoreThreadID{__id__})
 
 } // namespace Tests::Utils::Functors
 
