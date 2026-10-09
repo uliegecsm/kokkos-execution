@@ -22,22 +22,26 @@ namespace Tests {
 using Empty = Kokkos::Execution::Impl::Empty;
 using ThrowsWhenCopied = Tests::Utils::Functors::ThrowsWhenCopied;
 
-//! @test The @c rvalue is properly move-constructed and can be in a constant expression.
+//! @test An @c rvalue is move-constructed and can be in a constant expression.
 consteval bool test_closure_from_rvalue() {
     ThrowsWhenCopied value;
 
     [[maybe_unused]]
-    const auto res = stdexec::__closure(std::move(value));
+    const auto res_from_xvalue = stdexec::__closure(std::move(value));
+
+    [[maybe_unused]]
+    const auto res_from_prvalue = stdexec::__closure(ThrowsWhenCopied{});
 
     return true;
 }
 
 static_assert(test_closure_from_rvalue());
 
+
 #if defined(__cpp_constexpr_exceptions)
 //! @test It will copy-construct @c lvalues.
 consteval bool test_closure_from_lvalue() {
-    ThrowsWhenCopied value;
+    const ThrowsWhenCopied value;
     try {
         //! This is supposed to throw.
         [[maybe_unused]]
@@ -48,7 +52,7 @@ consteval bool test_closure_from_lvalue() {
     }
 }
 
-static_assert(test_closure_copies_lvalues());
+static_assert(test_closure_from_lvalue());
 #endif
 
 /**
@@ -78,7 +82,7 @@ consteval bool test_decays() {
 
 static_assert(test_decays());
 
-class CounterTest : public testing::Test {
+class ClosureTest : public testing::Test {
    protected:
     using counter_t = Tests::Utils::Functors::Counter;
    public:
@@ -88,13 +92,13 @@ class CounterTest : public testing::Test {
 };
 
 //! @test Check how things are moved/copied around with @ref Tests::Utils::Functors::Counter.
-TEST_F(CounterTest, stored_by_value) {
+TEST_F(ClosureTest, stored_by_value) {
     counter_t counter{};
 
     [[maybe_unused]]
-    const auto r1 = stdexec::__closure(counter);
+    const auto res1 = stdexec::__closure(counter);
     [[maybe_unused]]
-    const auto r2 = stdexec::__closure(counter);
+    const auto res2 = stdexec::__closure(counter);
 
     ASSERT_EQ(counter_t::copy_constructions, 2);
     ASSERT_EQ(counter_t::copy_assignments, 0);
@@ -102,11 +106,19 @@ TEST_F(CounterTest, stored_by_value) {
     ASSERT_EQ(counter_t::move_assignments, 0);
 
     [[maybe_unused]]
-    const auto r3 = stdexec::__closure(std::move(counter));
+    const auto res3 = stdexec::__closure(std::move(counter));
 
     ASSERT_EQ(counter_t::copy_constructions, 2);
     ASSERT_EQ(counter_t::copy_assignments, 0);
     ASSERT_EQ(counter_t::move_constructions, 1);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+
+    [[maybe_unused]]
+    const auto res4 = stdexec::__closure(counter_t{});
+
+    ASSERT_EQ(counter_t::copy_constructions, 2);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 2);
     ASSERT_EQ(counter_t::move_assignments, 0);
 }
 

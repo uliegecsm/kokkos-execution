@@ -47,13 +47,14 @@ struct parallel_for_t {
         return this->operator()("", work_count, std::forward<Functor>(functor));
     }
 
-    template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-    constexpr auto operator()(Sndr&& sndr, std::string label, ExecPolicy policy, Functor functor) const
-        noexcept(stdexec::__nothrow_decay_copyable<Sndr, Functor, ExecPolicy>)
-            -> Impl::ParallelForSender<Sndr, std::string, Functor, ExecPolicy> {
+    template <stdexec::sender Sndr, typename Functor, typename ExecPolicy>
+    requires Kokkos::ExecutionPolicy<std::remove_cvref_t<ExecPolicy>>
+    constexpr auto operator()(Sndr&& sndr, std::string label, ExecPolicy&& policy, Functor&& functor) const noexcept(
+        stdexec::__nothrow_decay_copyable<Sndr, Functor, ExecPolicy>)
+        -> Impl::ParallelForSender<Sndr, std::string, std::remove_cvref_t<Functor>, std::remove_cvref_t<ExecPolicy>> {
         return {
             {parallel_for_t{},
-             Impl::ParallelForData{std::move(label), std::move(functor), std::move(policy)},
+             Impl::ParallelForData{std::move(label), std::forward<Functor>(functor), std::forward<ExecPolicy>(policy)},
              std::forward<Sndr>(sndr)}
         };
     }
