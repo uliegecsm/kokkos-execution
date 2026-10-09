@@ -21,7 +21,8 @@ struct ParallelForData;
 struct parallel_for_t {
     template <typename Functor, typename ExecPolicy>
     requires Kokkos::ExecutionPolicy<std::remove_cvref_t<ExecPolicy>>
-    constexpr auto operator()(std::string label, ExecPolicy&& policy, Functor&& functor) const {
+    constexpr auto operator()(std::string label, ExecPolicy&& policy, Functor&& functor) const
+        noexcept(stdexec::__nothrow_decay_copyable<Functor, ExecPolicy>) {
         return stdexec::__closure(
             *this, std::move(label), std::forward<ExecPolicy>(policy), std::forward<Functor>(functor));
     }

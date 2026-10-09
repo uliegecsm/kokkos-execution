@@ -8,6 +8,7 @@
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/execution_space_context.hpp"
+#include "tests/utils/functors/counter.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
@@ -44,6 +45,42 @@ class ParallelForTest
     >;
     using variant_t = typename recorder_listener_t::event_variant_t;
 };
+
+//! @test Check that the @c noexcept contract of @ref Kokkos::Execution::parallel_for is as expected.
+consteval bool test_parallel_for_noexcept_contract() {
+    //! Schedule sender.
+    using schd_sndr_t = typename ParallelForTest::schedule_sender_t;
+
+    //! Parallel for sender.
+    using label_t = std::string;
+    using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
+
+    static_assert(noexcept(Kokkos::Execution::parallel_for(
+        std::declval<label_t>(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_for(
+        std::declval<label_t>(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, true, false>&>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_for(
+        std::declval<label_t>(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, true>>())));
+
+    static_assert(noexcept(
+        std::declval<schd_sndr_t>()
+        | Kokkos::Execution::parallel_for(
+            std::declval<label_t>(),
+            std::declval<policy_t>(),
+            std::declval<Tests::Utils::Functors::NoOp<false, false, false>>())));
+
+    return true;
+}
+
+static_assert(test_parallel_for_noexcept_contract());
 
 /**
  * @test Check traits of sender returned by @ref Kokkos::Execution::parallel_for either uncustomized
@@ -259,6 +296,33 @@ TEST_F(ParallelForTest, closure_object_creation_overloads) {
     ASSERT_THAT(recorded_events.at(ievent), MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
 
     ASSERT_EQ(witness(), ievent * size / 2 * (size - 1));
+}
+
+//! @test Check @ref Kokkos::Execution::parallel_for closure object creation perfectly forwards the functor.
+TEST_F(ParallelForTest, closure_object_creation_perfectly_forwards_functor) {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    const Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy(0, 1);
+    counter_t counter;
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto closure_from_lvalue_functor = Kokkos::Execution::parallel_for("label", policy, counter);
+
+    ASSERT_EQ(counter_t::copy_constructions, 1);
+    ASSERT_EQ(counter_t::move_constructions, 0);
+
+    [[maybe_unused]]
+    const auto closure_from_xvalue_functor = Kokkos::Execution::parallel_for("label", policy, std::move(counter));
+
+    ASSERT_EQ(counter_t::copy_constructions, 1);
+    ASSERT_EQ(counter_t::move_constructions, 1);
+
+    [[maybe_unused]]
+    const auto closure_from_prvalue_functor = Kokkos::Execution::parallel_for("label", policy, counter_t{});
+
+    ASSERT_EQ(counter_t::copy_constructions, 1);
+    ASSERT_EQ(counter_t::move_constructions, 2);
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for with two consecutive parallel regions and check there is no fence in between.
