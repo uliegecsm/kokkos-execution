@@ -14,11 +14,13 @@ option(KokkosExecution_ENABLE_CLANG_TIDY "Enable clang-tidy checks" OFF)
 option(KokkosExecution_ENABLE_DEBUG_LOGGING "Enable debug logging" OFF)
 option(KokkosExecution_ENABLE_DOCS "Enable documentation" OFF)
 option(KokkosExecution_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking, but increases compile time" OFF)
-option(KokkosExecution_ENABLE_TESTS "Enable testing" ON)
+option(KokkosExecution_ENABLE_EXAMPLES "Enable examples" ON)
+option(KokkosExecution_ENABLE_TESTS "Enable tests" ON)
 
 include(CMakeDependentOption)
 cmake_dependent_option(
-  KokkosExecution_ENABLE_EVENT_DISPATCH "Enable event dispatch à la Kokkos Tools" ON KokkosExecution_ENABLE_TESTS OFF
+  KokkosExecution_ENABLE_EVENT_DISPATCH "Enable event dispatch à la Kokkos Tools" ON
+  "(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)" OFF
 )
 
 foreach(KE_OPTION IN ITEMS CLANG_TIDY DEBUG_LOGGING DOCS TESTS EVENT_DISPATCH)
@@ -72,7 +74,7 @@ cpmaddpackage(
 # Compiler warnings.
 include(cmake/modules/warnings.cmake)
 
-if(KokkosExecution_ENABLE_DEBUG_LOGGING OR KokkosExecution_ENABLE_TESTS)
+if(KokkosExecution_ENABLE_DEBUG_LOGGING OR KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
   # Add Plog logging library.
   include(cmake/modules/BuildPlog.cmake)
 endif()
@@ -175,8 +177,21 @@ if(KokkosExecution_ENABLE_DEBUG_LOGGING)
   target_link_libraries(kokkosexecution INTERFACE $<BUILD_INTERFACE:plog::plog>)
 endif()
 
+if(KokkosExecution_ENABLE_EVENT_DISPATCH OR KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
+  # Find kokkos-utils.
+  string(
+    JSON
+    KOKKOS_UTILS_VERSION
+    GET
+    "${DEPENDENCIES_JSON}"
+    "github"
+    "kokkos-utils"
+    "version"
+  )
+  find_package(KokkosUtils ${KOKKOS_UTILS_VERSION} CONFIG REQUIRED)
+endif()
+
 if(KokkosExecution_ENABLE_EVENT_DISPATCH)
-  find_package(KokkosUtils CONFIG REQUIRED)
   target_compile_definitions(kokkosexecution INTERFACE KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
   target_link_libraries(kokkosexecution INTERFACE $<BUILD_INTERFACE:Kokkos::kokkosutils>)
 endif()
@@ -221,10 +236,22 @@ if(KokkosExecution_ENABLE_TESTS OR KokkosExecution_ENABLE_DOCS)
   find_package(GTest ${GTest_REQUIRED_VERSION} CONFIG REQUIRED)
 endif()
 
+# Helpers.
+if(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS)
+  include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
+  include(${CMAKE_SOURCE_DIR}/cmake/modules/kokkos_exec_mapping.cmake)
+endif()
+
 # Testing.
 if(KokkosExecution_ENABLE_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+# Examples.
+if(KokkosExecution_ENABLE_EXAMPLES)
+  enable_testing()
+  add_subdirectory(examples)
 endif()
 
 # Documentation.
