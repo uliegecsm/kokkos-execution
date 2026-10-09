@@ -33,7 +33,7 @@ auto no_execution_space_scheduler_in_env() noexcept {
         stdexec::_WHAT_(CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_EXECUTION_SPACE_SCHEDULER),
         stdexec::_WHY_(BECAUSE_THERE_IS_NO_EXECUTION_SPACE_SCHEDULER_IN_THE_ENVIRONMENT),
         stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, Tag),
-        stdexec::_WITH_PRETTY_SENDER_<Sndr>,
+        stdexec::_WITH_SENDER_<Sndr>,
         stdexec::_WITH_ENVIRONMENT_(Env...)
     >{};
 }

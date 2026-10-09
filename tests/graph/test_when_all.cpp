@@ -101,13 +101,12 @@ consteval bool test_sndr_nothrow_transformable() {
             | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<when_all_sndr_t>,
-                  Tests::Utils::basic_sender_t<
+                  when_all_sndr_t,
+                  stdexec::__sexpr<
                       stdexec::when_all_t,
                       stdexec::__,
                       typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t,
-                      Tests::Utils::basic_sender_t<
-                          stdexec::then_t,
+                      stdexec::then_t::__sender<
                           Tests::Utils::Functors::NoOp<false, false, false>,
                           typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t
                       >

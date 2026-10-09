@@ -7,10 +7,6 @@
 
 namespace Tests::Utils {
 
-//! See https://github.com/NVIDIA/stdexec/pull/1873#discussion_r2834863237.
-template <typename... Args>
-using basic_sender_t = typename stdexec::__basic_sender<Args...>::type;
-
 template <typename Sndr, typename Tag, typename... Env>
 concept has_completion_scheduler_for =
     std::invocable<stdexec::get_completion_scheduler_t<Tag>, stdexec::env_of_t<Sndr>, Env...>;

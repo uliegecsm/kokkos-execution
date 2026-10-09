@@ -96,13 +96,4 @@ struct TransformSenderFor<stdexec::then_t> {
 
 } // namespace Kokkos::Execution::GraphImpl
 
-// NOLINTBEGIN(bugprone-reserved-identifier)
-namespace stdexec::__detail {
-template <typename Exec, typename Sndr, typename Functor>
-extern __mtype<Kokkos::Execution::GraphImpl::ThenSender<Exec, __demangle_t<Sndr>, Functor>>
-    __demangle_v<Kokkos::Execution::GraphImpl::ThenSender<Exec, Sndr, Functor>>;
-} // namespace stdexec::__detail
-
-// NOLINTEND(bugprone-reserved-identifier)
-
 #endif // KOKKOS_EXECUTION_GRAPH_THEN_HPP

@@ -96,8 +96,8 @@ template <>
 struct TransformSenderFor<stdexec::when_all_t> {
     template <typename Env, typename... Sndrs>
     auto operator()(const Env&, stdexec::when_all_t, stdexec::__, Sndrs&&... sndrs) const {
-        return stdexec::__make_sexpr<Kokkos::Execution::ExecutionSpaceImpl::when_all_t>(
-            stdexec::__{}, std::forward<Sndrs>(sndrs)...);
+        return stdexec::__sexpr{
+            Kokkos::Execution::ExecutionSpaceImpl::when_all_t{}, stdexec::__{}, std::forward<Sndrs>(sndrs)...};
     }
 };
 
