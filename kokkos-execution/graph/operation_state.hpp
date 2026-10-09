@@ -312,13 +312,4 @@ using op_state_t = typename make_op_state_t<Sndr, Rcvr, Clsrs...>::type;
 #endif
 } // namespace Kokkos::Execution::GraphImpl
 
-// NOLINTBEGIN(bugprone-reserved-identifier)
-namespace stdexec::__detail {
-template <stdexec::sender Sndr, stdexec::receiver Rcvr, typename FirstClosure, typename... RestOfClosures>
-extern __mtype<Kokkos::Execution::GraphImpl::OpState<__demangle_t<Sndr>, Rcvr, FirstClosure, RestOfClosures...>>
-    __demangle_v<Kokkos::Execution::GraphImpl::OpState<Sndr, Rcvr, FirstClosure, RestOfClosures...>>;
-} // namespace stdexec::__detail
-
-// NOLINTEND(bugprone-reserved-identifier)
-
 #endif // KOKKOS_EXECUTION_GRAPH_OPERATION_STATE_HPP

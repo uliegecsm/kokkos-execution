@@ -93,9 +93,8 @@ consteval bool test_sndr_nothrow_transformable() {
         decltype(stdexec::schedule(std::declval<typename ThenTest::scheduler_t>()) | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{}));
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<sndr_then_t>,
-                  Tests::Utils::basic_sender_t<
-                      stdexec::then_t,
+                  sndr_then_t,
+                  stdexec::then_t::__sender<
                       Tests::Utils::Functors::NoOp<false, false, false>,
                       typename ThenTest::schedule_sender_t
                   >
@@ -186,10 +185,10 @@ TEST_F(ThenTest, then_schedule) {
     using sndr_t = decltype(sndr);
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<stdexec::transform_sender_result_t<sndr_t, stdexec::env<>>>,
+                  stdexec::transform_sender_result_t<sndr_t, stdexec::env<>>,
                   Kokkos::Execution::GraphImpl::ThenSender<
                       TEST_EXECUTION_SPACE,
-                      Tests::Utils::basic_sender_t<stdexec::then_t, functor_t, typename ThenTest::schedule_sender_t>,
+                      stdexec::then_t::__sender<functor_t, typename ThenTest::schedule_sender_t>,
                       functor_t
                   >
     >);

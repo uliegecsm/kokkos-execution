@@ -120,15 +120,11 @@ consteval bool test_sndr_nothrow_transformable() {
         decltype(stdexec::just() | stdexec::continues_on(std::declval<typename TEST_CATEGORY(ContinuesOnTest)::scheduler_t>()));
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<continues_on_sndr_t>,
-                  Tests::Utils::basic_sender_t<
+                  continues_on_sndr_t,
+                  stdexec::__sexpr<
                       stdexec::continues_on_t,
                       typename TEST_CATEGORY(ContinuesOnTest)::scheduler_t,
-                      Tests::Utils::basic_sender_t<
-                          stdexec::schedule_from_t,
-                          stdexec::__,
-                          Tests::Utils::basic_sender_t<stdexec::just_t, stdexec::__tuple<>>
-                      >
+                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
                   >
     >);
 
@@ -143,8 +139,8 @@ consteval bool test_sndr_nothrow_transformable() {
         stdexec::schedule(std::declval<typename TEST_CATEGORY(ContinuesOnTest)::scheduler_t>())));
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<schedule_from_sndr_t>,
-                  Tests::Utils::basic_sender_t<
+                  schedule_from_sndr_t,
+                  stdexec::__sexpr<
                       stdexec::schedule_from_t,
                       stdexec::__,
                       typename TEST_CATEGORY(ContinuesOnTest)::schedule_sender_t
@@ -180,23 +176,19 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), then_continues_on_single_thread_context_c
               | stdexec::continues_on(stc.get_scheduler()) | stdexec::continues_on(gctx.get_scheduler())
               | stdexec::then(functor_t{.prev = 4, .value = 3, .data = data.data()});
 
-    using inner_sndr_t = Tests::Utils::basic_sender_t<
+    using inner_sndr_t = stdexec::__sexpr<
         stdexec::continues_on_t,
         typename TEST_CATEGORY(ContinuesOnTest)::scheduler_t,
-        Tests::Utils::basic_sender_t<
+        stdexec::__sexpr<
             stdexec::schedule_from_t,
             stdexec::__,
-            Tests::Utils::basic_sender_t<
+            stdexec::__sexpr<
                 stdexec::continues_on_t,
                 stdexec::run_loop::scheduler,
-                Tests::Utils::basic_sender_t<
+                stdexec::__sexpr<
                     stdexec::schedule_from_t,
                     stdexec::__,
-                    Tests::Utils::basic_sender_t<
-                        stdexec::then_t,
-                        functor_t,
-                        typename TEST_CATEGORY(ContinuesOnTest)::schedule_sender_t
-                    >
+                    stdexec::then_t::__sender<functor_t, typename TEST_CATEGORY(ContinuesOnTest)::schedule_sender_t>
                 >
             >
         >
@@ -205,13 +197,13 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), then_continues_on_single_thread_context_c
     using transform_sender_result_t =
         stdexec::transform_sender_result_t<decltype(sndr), stdexec::env_of_t<sync_wait_rcvr_t>>;
     static_assert(std::same_as<
-                  stdexec::__demangle_t<transform_sender_result_t>,
+                  transform_sender_result_t,
                   Kokkos::Execution::GraphImpl::ThenSender<TEST_EXECUTION_SPACE, inner_sndr_t, functor_t>
     >);
 
     using connect_result_t = stdexec::connect_result_t<decltype(sndr), sync_wait_rcvr_t>;
     static_assert(std::same_as<
-                  stdexec::__demangle_t<connect_result_t>,
+                  connect_result_t,
                   Kokkos::Execution::GraphImpl::OpState<
                       inner_sndr_t,
                       sync_wait_rcvr_t,

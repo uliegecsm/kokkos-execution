@@ -91,14 +91,11 @@ consteval bool test_sndr_nothrow_transformable() {
     using sndr_bulk_t =
         decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, false, false>{}));
 
-    static_assert(std::same_as<
-                  stdexec::__demangle_t<sndr_bulk_t>,
-                  Tests::Utils::basic_sender_t<
-                      stdexec::bulk_t,
-                      stdexec::__data_of<sndr_bulk_t>,
-                      typename BulkTest::schedule_sender_t
-                  >
-    >);
+    static_assert(
+        std::same_as<
+            sndr_bulk_t,
+            stdexec::__sexpr<stdexec::bulk_t, stdexec::__data_of<sndr_bulk_t>, typename BulkTest::schedule_sender_t>
+        >);
 
     static_assert(stdexec::__detail::__has_nothrow_transform_sender<
                   Kokkos::Execution::GraphImpl::Domain,
@@ -187,20 +184,18 @@ TEST_F(BulkTest, bulk_schedule) {
 
     using bulk_data_t = stdexec::__data_of<sndr_t>;
 
-    static_assert(
-        std::same_as<
-            stdexec::__demangle_t<stdexec::transform_sender_result_t<sndr_t, stdexec::env<>>>,
-            Kokkos::Execution::GraphImpl::ParallelForSender<
-                Tests::Utils::basic_sender_t<
-                    stdexec::then_t,
-                    load_check_add_t,
-                    Tests::Utils::basic_sender_t<stdexec::bulk_t, bulk_data_t, typename BulkTest::schedule_sender_t>
-                >,
-                std::string,
-                sum_indices_t,
-                Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-            >
-        >);
+    static_assert(std::same_as<
+                  stdexec::transform_sender_result_t<sndr_t, stdexec::env<>>,
+                  Kokkos::Execution::GraphImpl::ParallelForSender<
+                      stdexec::then_t::__sender<
+                          load_check_add_t,
+                          stdexec::__sexpr<stdexec::bulk_t, bulk_data_t, typename BulkTest::schedule_sender_t>
+                      >,
+                      std::string,
+                      sum_indices_t,
+                      Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+                  >
+    >);
 
     //! The sender environment advertises the default domain, and completes on the @ref Kokkos::Execution::GraphImpl::Domain domain.
     static_assert(std::same_as<stdexec::__domain_of_t<stdexec::env_of_t<sndr_t>>, stdexec::default_domain>);

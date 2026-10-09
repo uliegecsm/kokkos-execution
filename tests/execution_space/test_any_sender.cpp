@@ -75,11 +75,11 @@ TEST_F(AnySenderTest, then) {
     auto continues_on = std::move(chain) | stdexec::continues_on(esc.get_scheduler());
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<decltype(continues_on)>,
-                  Tests::Utils::basic_sender_t<
+                  decltype(continues_on),
+                  stdexec::__sexpr<
                       stdexec::continues_on_t,
                       typename AnySenderTest::scheduler_t,
-                      Tests::Utils::basic_sender_t<stdexec::schedule_from_t, stdexec::__, any_sender_t>
+                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, any_sender_t>
                   >
     >);
 

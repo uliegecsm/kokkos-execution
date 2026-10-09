@@ -262,9 +262,6 @@ struct BECAUSE_THE_EXECUTION_SPACE_TYPE_IS_NOT_HOMOGENEOUS;
 template <size_t Index, typename Sndr>
 struct WITH_SENDER_AT_INDEX { };
 
-template <size_t Index, typename Sndr>
-using WITH_PRETTY_SENDER_AT_INDEX = WITH_SENDER_AT_INDEX<Index, stdexec::__demangle_t<Sndr>>;
-
 template <>
 struct TransformSenderFor<stdexec::when_all_t> {
     template <typename Env, typename... Sndrs>
@@ -289,8 +286,8 @@ struct TransformSenderFor<stdexec::when_all_t> {
                     stdexec::_WHAT_(CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_GRAPH_SCHEDULER),
                     stdexec::_WHY_(BECAUSE_THE_EXECUTION_SPACE_TYPE_IS_NOT_HOMOGENEOUS),
                     stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, stdexec::when_all_t),
-                    WITH_PRETTY_SENDER_AT_INDEX<index, invalid_sndr_t>,
-                    stdexec::_WITH_PRETTY_SENDERS_<Sndrs...>,
+                    WITH_SENDER_AT_INDEX<index, invalid_sndr_t>,
+                    stdexec::_WITH_SENDERS_<Sndrs...>,
                     stdexec::_WITH_ENVIRONMENT_(Env)
                 >{};
             }
@@ -305,14 +302,5 @@ struct TransformSenderFor<stdexec::when_all_t> {
 };
 
 } // namespace Kokkos::Execution::GraphImpl
-
-// NOLINTBEGIN(bugprone-reserved-identifier)
-namespace stdexec::__detail {
-template <typename... Sndrs>
-extern __mtype<Kokkos::Execution::GraphImpl::WhenAllSender<__demangle_t<Sndrs>...>>
-    __demangle_v<Kokkos::Execution::GraphImpl::WhenAllSender<Sndrs...>>;
-} // namespace stdexec::__detail
-
-// NOLINTEND(bugprone-reserved-identifier)
 
 #endif // KOKKOS_EXECUTION_GRAPH_WHEN_ALL_HPP

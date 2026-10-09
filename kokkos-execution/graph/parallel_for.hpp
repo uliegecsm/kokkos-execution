@@ -99,13 +99,4 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
 
 } // namespace Kokkos::Execution::GraphImpl
 
-// NOLINTBEGIN(bugprone-reserved-identifier)
-namespace stdexec::__detail {
-template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-extern __mtype<Kokkos::Execution::GraphImpl::ParallelForSender<__demangle_t<Sndr>, Label, Functor, ExecPolicy>>
-    __demangle_v<Kokkos::Execution::GraphImpl::ParallelForSender<Sndr, Label, Functor, ExecPolicy>>;
-} // namespace stdexec::__detail
-
-// NOLINTEND(bugprone-reserved-identifier)
-
 #endif // KOKKOS_EXECUTION_GRAPH_PARALLEL_FOR_HPP

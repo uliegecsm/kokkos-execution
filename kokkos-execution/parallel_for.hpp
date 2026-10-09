@@ -12,6 +12,9 @@ namespace Impl {
 template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender;
 
+template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+struct ParallelForData;
+
 } // namespace Impl
 
 //! Custom algorithm for the @c Kokkos::parallel_for construct.
@@ -42,9 +45,14 @@ struct parallel_for_t {
     }
 
     template <stdexec::sender Sndr, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-    constexpr auto operator()(Sndr&& sndr, std::string label, ExecPolicy policy, Functor functor) const {
-        return Impl::ParallelForSender<Sndr, std::string, Functor, ExecPolicy>(
-            {std::move(label), std::move(functor), std::move(policy)}, std::forward<Sndr>(sndr));
+    constexpr auto operator()(Sndr&& sndr, std::string label, ExecPolicy policy, Functor functor) const
+        noexcept(stdexec::__nothrow_decay_copyable<Sndr, Functor, ExecPolicy>)
+            -> Impl::ParallelForSender<Sndr, std::string, Functor, ExecPolicy> {
+        return {
+            {parallel_for_t{},
+             Impl::ParallelForData{std::move(label), std::move(functor), std::move(policy)},
+             std::forward<Sndr>(sndr)}
+        };
     }
 };
 
@@ -61,17 +69,22 @@ struct ParallelForData {
     policy_t policy;
 };
 
+//! Deduction guide to store by-value.
+template <typename Label, typename Functor, typename ExecPolicy>
+ParallelForData(Label, Functor, ExecPolicy) -> ParallelForData<Label, Functor, ExecPolicy>;
+
 template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
 struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Label, Functor, ExecPolicy>, Sndr> {
     using sender_concept = stdexec::sender_tag;
 
-    using base_t = stdexec::__tuple<parallel_for_t, ParallelForData<Label, Functor, ExecPolicy>, Sndr>;
+    /// @name Inspired by https://github.com/NVIDIA/stdexec/blob/d76067bd3e765f1718ea1ff886f8c68e63b91a6f/include/stdexec/__detail/__basic_sender.hpp#L321-L
+    ///@{
+    using __tag_t = parallel_for_t;                               // NOLINT(bugprone-reserved-identifier)
+    using __data_t = ParallelForData<Label, Functor, ExecPolicy>; // NOLINT(bugprone-reserved-identifier)
+    using __children_t = stdexec::__mlist<Sndr>;                  // NOLINT(bugprone-reserved-identifier)
+    ///@}
 
-    ParallelForSender(
-        ParallelForData<Label, Functor, ExecPolicy> data,
-        Sndr&& sndr) // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
-        : base_t{parallel_for_t{}, std::move(data), std::forward<Sndr>(sndr)} {
-    }
+    using base_t = stdexec::__tuple<parallel_for_t, __data_t, Sndr>;
 
     KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 

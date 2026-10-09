@@ -20,17 +20,13 @@ template <stdexec::scheduler Schd>
 consteval bool check_continues_on() {
     using sndr_t = decltype(stdexec::just() | stdexec::continues_on(std::declval<Schd>()));
 
-    //! Check the complete "demangled" sender type.
+    //! Check the complete sender type.
     static_assert(std::same_as<
-                  stdexec::__demangle_t<sndr_t>,
-                  basic_sender_t<
+                  sndr_t,
+                  stdexec::__sexpr<
                       stdexec::continues_on_t,
                       Schd,
-                      basic_sender_t<
-                          stdexec::schedule_from_t,
-                          stdexec::__,
-                          basic_sender_t<stdexec::just_t, stdexec::__tup::__tuple<>>
-                      >
+                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
                   >
     >);
 

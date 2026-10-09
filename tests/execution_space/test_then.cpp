@@ -284,9 +284,8 @@ consteval bool test_sndr_nothrow_transformable() {
         decltype(stdexec::schedule(std::declval<typename ThenTest::scheduler_t>()) | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{}));
 
     static_assert(std::same_as<
-                  stdexec::__demangle_t<sndr_then_t>,
-                  Tests::Utils::basic_sender_t<
-                      stdexec::then_t,
+                  sndr_then_t,
+                  stdexec::then_t::__sender<
                       Tests::Utils::Functors::NoOp<false, false, false>,
                       typename ThenTest::schedule_sender_t
                   >
