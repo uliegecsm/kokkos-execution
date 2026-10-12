@@ -16,6 +16,14 @@ PRAGMA_DIAGNOSTIC_POP
 
 namespace Examples::CG {
 
+template <typename MagnitudeType>
+struct SolverSummary {
+    using magnitude_t = MagnitudeType;
+
+    size_t iter_count;
+    magnitude_t res_norm_sq;
+};
+
 template <typename MatrixType, typename RhsViewType, typename SolViewType, typename MagnitudeType>
 stdexec::sender auto
     cg(stdexec::scheduler auto schd,
@@ -77,7 +85,7 @@ stdexec::sender auto
                                 return Kokkos::sqrt(Kokkos::abs(res_res())) < tol || ++iter_count() >= max_iter;
                             }))
                     | stdexec::then([=] {
-                        return std::make_tuple(iter_count(), res_res());
+                        return SolverSummary{iter_count(), res_res()};
                     });
                 });
         });

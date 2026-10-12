@@ -47,7 +47,8 @@ struct deep_copy_t {
     template <typename DstViewType, typename SrcViewType>
     constexpr auto operator()(DstViewType dst, SrcViewType src) const {
         const size_t shape = dst.size();
-        return stdexec::bulk(stdexec::par, shape, DeepCopy{std::move(dst), std::move(src)});
+        return Kokkos::Execution::parallel_for(
+            "parallel_for (deep_copy)", shape, DeepCopy{std::move(dst), std::move(src)});
     }
 
     template <stdexec::sender Sndr, typename DstViewType, typename SrcViewType>
@@ -84,8 +85,8 @@ struct spmv_t {
     constexpr auto
         operator()(AlphaType alpha, AMatrixType mat, XViewType view_x, BetaType beta, YViewType view_y) const {
         const size_t shape = mat.graph.row_map.size() - 1;
-        return stdexec::bulk(
-            stdexec::par, shape, SPMV{alpha, std::move(mat), std::move(view_x), beta, std::move(view_y)});
+        return Kokkos::Execution::parallel_for(
+            "parallel_for (spmv)", shape, SPMV{alpha, std::move(mat), std::move(view_x), beta, std::move(view_y)});
     }
 
     template <
@@ -106,14 +107,12 @@ struct spmv_t {
 
 inline constexpr spmv_t spmv{};
 
-template <typename ResultViewType, typename XViewType, typename YViewType>
+template <typename XViewType, typename YViewType>
 struct Dot {
-    template <std::integral T>
-    KOKKOS_FUNCTION void operator()(const T irow) const {
-        Kokkos::atomic_add(result.data(), view_x(irow) * view_y(irow));
+    KOKKOS_FUNCTION void operator()(const auto irow, typename XViewType::value_type& value) const {
+        value += view_x(irow) * view_y(irow);
     }
 
-    ResultViewType result;
     XViewType view_x;
     YViewType view_y;
 };
@@ -125,8 +124,8 @@ struct dot_t {
         XViewType view_x,
         YViewType view_y) const {
         const size_t shape = view_x.size();
-        return stdexec::then(KOKKOS_LAMBDA() { result() = 0; })
-             | stdexec::bulk(stdexec::par, shape, Dot{result, std::move(view_x), std::move(view_y)});
+        return Kokkos::Execution::parallel_reduce(
+            "parallel_reduce (dot)", shape, Dot{std::move(view_x), std::move(view_y)}, std::move(result));
     }
 
     template <stdexec::sender Sndr, typename ResultViewType, typename XViewType, typename YViewType>
@@ -167,8 +166,10 @@ struct axpby_t {
     constexpr auto
         operator()(AMaybeViewType coeff_a, XViewType view_x, BMaybeViewType coeff_b, YViewType view_y) const {
         const size_t shape = view_x.size();
-        return stdexec::bulk(
-            stdexec::par, shape, Axpby{std::move(coeff_a), std::move(view_x), std::move(coeff_b), std::move(view_y)});
+        return Kokkos::Execution::parallel_for(
+            "parallel_for (axbpy)",
+            shape,
+            Axpby{std::move(coeff_a), std::move(view_x), std::move(coeff_b), std::move(view_y)});
     }
 
     template <
