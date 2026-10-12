@@ -67,18 +67,14 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
 
     template <typename Env, typename Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
-    auto operator()(
-        const Env& env,
-        Kokkos::Execution::parallel_for_t,
-        Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
-        Sndr&& sndr) const
+    auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Data, Sndr>,
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
         if constexpr (graph_completing_sender<Sndr, Env>) {
-            auto& [label, functor, policy] = data;
+            auto&& [label, functor, policy] = std::forward<Data>(data);
 
             const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 

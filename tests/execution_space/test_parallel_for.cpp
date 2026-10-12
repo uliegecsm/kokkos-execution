@@ -8,6 +8,7 @@
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/execution_space_context.hpp"
+#include "tests/utils/functors/counter.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
@@ -390,6 +391,52 @@ TEST_F(ParallelForTest, forwarding_env) {
 
     ASSERT_EQ(value, 42);
     ASSERT_EQ(count, 1);
+}
+
+//! @test Check that connecting uses the least amount of moves and copies.
+TEST_F(ParallelForTest, perfect_forwarding_connect) {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    const context_t esc{exec};
+
+    const Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy(0, 1);
+    counter_t counter;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor = stdexec::connect(
+        stdexec::schedule(esc.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 1);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 8);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto closure_from_xvalue_functor = stdexec::connect(
+        stdexec::schedule(esc.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, std::move(counter)),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 0);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 9);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto closure_from_prvalue_functor = stdexec::connect(
+        stdexec::schedule(esc.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, counter_t{}),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 0);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 9);
 }
 
 } // namespace Tests::ExecutionSpaceImpl
