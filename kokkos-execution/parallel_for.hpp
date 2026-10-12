@@ -84,7 +84,6 @@ struct ParallelForSender : stdexec::__tuple<parallel_for_t, ParallelForData<Labe
 
     /// @name Inspired by https://github.com/NVIDIA/stdexec/blob/d76067bd3e765f1718ea1ff886f8c68e63b91a6f/include/stdexec/__detail/__basic_sender.hpp#L321-L
     ///@{
-    using __tag_t = parallel_for_t;                               // NOLINT(bugprone-reserved-identifier)
     using __data_t = ParallelForData<Label, Functor, ExecPolicy>; // NOLINT(bugprone-reserved-identifier)
     using __children_t = stdexec::__mlist<Sndr>;                  // NOLINT(bugprone-reserved-identifier)
     ///@}

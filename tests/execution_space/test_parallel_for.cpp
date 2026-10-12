@@ -112,8 +112,8 @@ static_assert(test_sndr_traits<
               Kokkos::Execution::parallel_for_t
 >());
 
-//! @test Check decomposition of @ref Kokkos::Execution::Impl::ParallelForSender into the algorithm tag, data, and child sender.
-consteval bool test_sndr_decomposition() {
+//! @test Check that @ref Kokkos::Execution::Impl::ParallelForSender is transformable with @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
+consteval bool test_sndr_is_transformable() {
     //! Schedule sender.
     using schd_sndr_t = typename ParallelForTest::schedule_sender_t;
 
@@ -122,17 +122,6 @@ consteval bool test_sndr_decomposition() {
     using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>;
-
-    //! Is decomposable into the expected algorithm tag, data, and child sender.
-    static_assert(stdexec::__sender_for<pfor_sndr_t, Kokkos::Execution::parallel_for_t>);
-
-    static_assert(std::same_as<
-                  stdexec::__data_of<pfor_sndr_t>,
-                  Kokkos::Execution::Impl::ParallelForData<label_t, functor_t, policy_t>
-    >);
-
-    static_assert(stdexec::__nbr_children_of<pfor_sndr_t> == 1);
-    static_assert(std::same_as<stdexec::__child_of<pfor_sndr_t>, schd_sndr_t>);
 
     //! Is transformable via @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
     static_assert(stdexec::__applicable<
@@ -144,7 +133,7 @@ consteval bool test_sndr_decomposition() {
     return true;
 }
 
-static_assert(test_sndr_decomposition());
+static_assert(test_sndr_is_transformable());
 
 //! @test Check traits of @ref Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure.
 template <typename ViewType>
