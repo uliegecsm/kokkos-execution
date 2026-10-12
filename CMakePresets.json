@@ -12,6 +12,7 @@
                 "deprecated": true
             },
             "cacheVariables": {
+                "KokkosExecution_ENABLE_EXAMPLES": "ON",
                 "KokkosExecution_ENABLE_TESTS": "ON"
             }
         },

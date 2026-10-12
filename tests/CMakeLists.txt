@@ -1,26 +1,6 @@
-# Find kokkos-utils.
-string(
-  JSON
-  KOKKOS_UTILS_VERSION
-  GET
-  "${DEPENDENCIES_JSON}"
-  "github"
-  "kokkos-utils"
-  "version"
-)
-find_package(KokkosUtils ${KOKKOS_UTILS_VERSION} CONFIG REQUIRED)
-
 # Helpers.
 include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
-
-# Mapping from enabled Kokkos devices to execution space type.
-set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_CUDA "Cuda")
-set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_HIP "HIP")
-set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_HPX "Experimental::HPX")
-set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_OPENMP "OpenMP")
-set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_SERIAL "Serial")
-set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_SYCL "SYCL")
-set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_THREADS "Threads")
+include(${CMAKE_SOURCE_DIR}/cmake/modules/kokkos_exec_mapping.cmake)
 
 # Function to add a test (common steps).
 function(add_one_test)
@@ -69,6 +49,9 @@ function(add_one_test)
                                                       --gtest_fail_if_no_test_linked
     )
 
+    # Labels.
+    set_tests_properties(${aot_args_EXECUTABLE_NAME} PROPERTIES LABELS "unittests")
+
     # Ensure that GTest will shuffle the tests.
     set_property(TEST ${aot_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_SHUFFLE=1")
     set_property(TEST ${aot_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_RANDOM_SEED=0")
@@ -89,7 +72,7 @@ endfunction()
 
 # Common test object library.
 add_library(test_common OBJECT)
-target_sources(test_common PRIVATE main.cpp)
+target_sources(test_common PRIVATE utils/init_gtest_and_kokkos.cpp)
 target_link_libraries(test_common PUBLIC GTest::gtest Kokkos::kokkoscore)
 
 # Include subdirectories.
