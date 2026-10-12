@@ -75,7 +75,10 @@ stdexec::sender auto
                             | stdexec::continues_on(hschd)
                             | stdexec::then([=] {
                                 return Kokkos::sqrt(Kokkos::abs(res_res())) < tol || ++iter_count() >= max_iter;
-                            }));
+                            }))
+                    | stdexec::then([=] {
+                        return std::make_tuple(iter_count(), res_res());
+                    });
                 });
         });
     // clang-format on
