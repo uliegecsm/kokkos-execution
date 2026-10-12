@@ -98,3 +98,5 @@ add_subdirectory(graph)
 add_subdirectory(impl)
 add_subdirectory(stdexec)
 add_subdirectory(utils)
+
+add_one_test(NAME parallel_for)
