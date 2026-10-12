@@ -19,6 +19,9 @@
 #if defined(__clang__)
 #    define KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED_COMPILER_SPECIFIC                                       \
         PRAGMA_DIAGNOSTIC_IGNORED("-Wdeprecated-attributes")
+#elif defined(__GNUC__) || defined(__GNUG__)
+#    define KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED_COMPILER_SPECIFIC                                       \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wmaybe-uninitialized")
 #else
 #    define KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED_COMPILER_SPECIFIC
 #endif
