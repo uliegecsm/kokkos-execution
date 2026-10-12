@@ -18,9 +18,10 @@ namespace Examples::CG {
  *                -1  1     2 / size
  * @endverbatim
  */
-template <typename ScalarType, typename OrdinalType, Kokkos::MemorySpace Mem>
+template <typename ScalarType, typename MagnitudeType, typename OrdinalType, Kokkos::MemorySpace Mem>
 struct FEMLaplacian1D {
     using scalar_t = ScalarType;
+    using magnitude_t = MagnitudeType;
 
     using ordinal_t = OrdinalType;
 
@@ -99,7 +100,7 @@ struct FEMLaplacian1D {
         };
     }
 
-    template <Kokkos::ExecutionSpace Exec, typename MagnitudeType>
+    template <Kokkos::ExecutionSpace Exec>
     static auto check(const Exec& exec, const vector_t& sol, const MagnitudeType tol) {
         scalar_t squared_error = 0;
         Kokkos::parallel_reduce(
