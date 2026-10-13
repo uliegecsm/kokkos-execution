@@ -1,76 +1,50 @@
-commit 87a3f57273845f7933d02e11e0a5b438e48fa2d9
-Author: Maarten Arnst <maarten.arnst@uliege.be>
-Date:   Tue Sep 1 18:52:35 2026 +0200
+From 818d1a194ffe912473b1e0c44f332b4b3b217c6c Mon Sep 17 00:00:00 2001
+From: Maarten Arnst <maarten.arnst@uliege.be>
+Date: Mon, 12 Oct 2026 21:30:29 +0200
+Subject: [PATCH] stdexec icpx ice when all patch
 
-    stdexec icpx ice when all patch
-    
-    Signed-off-by: Maarten Arnst <maarten.arnst@uliege.be>
+---
+ include/stdexec/__detail/__when_all.hpp | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
 
 diff --git a/include/stdexec/__detail/__when_all.hpp b/include/stdexec/__detail/__when_all.hpp
-index 014bed23..746035fa 100644
+index 7d7770e7..9fc0794f 100644
 --- a/include/stdexec/__detail/__when_all.hpp
 +++ b/include/stdexec/__detail/__when_all.hpp
-@@ -616,35 +616,35 @@ namespace STDEXEC
-         {
-           __on_stop_.reset();
-         }
--        // All child operations have completed and arrived at the barrier.
--        switch (__state_.load(__std::memory_order_relaxed))
-+        const auto value = __state_.load(__std::memory_order_relaxed);
-+        if(value == __stopped) __complete_stopped();
-+        if(value == __started) __complete_started();
-+        if(value == __error)   __complete_error();
-+      }
-+
-+      constexpr void __complete_stopped() noexcept {
-+        if constexpr (_SendsStopped)
-         {
--        case __stopped:
--          if constexpr (_SendsStopped)
--          {
--            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
--            break;
--          }
--          // This is reachable because the stop callback sets __stopped whether
--          // or not any child can send set_stopped, therefore we handle this the
--          // same as __started
--          [[fallthrough]];
--        case __started:
--          if constexpr (!__std::same_as<_ValuesTuple, __ignore>)
--          {
--            // All child operations completed successfully:
--            __when_all::__set_values(__rcvr_, __values_);
--          }
--          break;
--        case __error:
--          if constexpr (!__same_as<_ErrorsVariant, __variant<>>)
--          {
--            // One or more child operations completed with an error:
--            STDEXEC::__visit(__mk_completion_fn(set_error, __rcvr_),
--                             static_cast<_ErrorsVariant&&>(__errors_));
--          }
--          break;
--        default:;
-+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-+        } else {
-+          __complete_started();
-+        }  
-+      }    
-+
-+      constexpr void __complete_started() noexcept {
-+        if constexpr (!__std::same_as<_ValuesTuple, __ignore>)
-+        {
-+          // All child operations completed successfully:
-+          __when_all::__set_values(__rcvr_, __values_);
-+        }
-+      }
-+
-+      constexpr void __complete_error() noexcept {
-+        if constexpr (!__same_as<_ErrorsVariant, __variant<>>)
-+        {
-+          // One or more child operations completed with an error:
-+          STDEXEC::__visit(__mk_completion_fn(set_error, __rcvr_),
-+                           static_cast<_ErrorsVariant&&>(__errors_));
-         }
-       }
+@@ -517,15 +517,28 @@ namespace STDEXEC
+       using __f = __completions<__env_t<_Env, _Senders...>>::template __f<_Senders...>;
+     };
  
++    template <class _Receiver>
++    struct __set_values_fn
++    {
++      _Receiver& __rcvr_;
++
++      template <class... _OptTuples>
++      STDEXEC_ATTRIBUTE(host, device)
++      constexpr void operator()(_OptTuples&&... __opt_vals) const noexcept
++      {
++        STDEXEC::__cat_apply(
++          __mk_completion_fn(set_value, __rcvr_),
++          *static_cast<_OptTuples&&>(__opt_vals)...);
++      }
++    };
++
+     template <class _Receiver, class _ValuesTuple>
+-    constexpr void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept
++    constexpr void __set_values(
++      _Receiver& __rcvr,
++      _ValuesTuple& __values) noexcept
+     {
+       STDEXEC::__apply(
+-        [&]<class... OptTuples>(OptTuples&&... __opt_vals) noexcept -> void
+-        {
+-          STDEXEC::__cat_apply(__mk_completion_fn(set_value, __rcvr),
+-                               *static_cast<OptTuples&&>(__opt_vals)...);
+-        },
++        __set_values_fn<_Receiver>{__rcvr},
+         static_cast<_ValuesTuple&&>(__values));
+     }
+ 
+-- 
+2.50.1 (Apple Git-155)
