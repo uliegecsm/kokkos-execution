@@ -1,4 +1,4 @@
-FROM ghcr.io/uliegecsm/kokkos-execution/kokkos-execution:clang-22-OpenMP-Release
+FROM ghcr.io/uliegecsm/kokkos-execution/kokkos-execution:clang-23-OpenMP-Release
 
 RUN apt-helpers install-packages --update --clean --packages gpg gnupg2
 RUN pip install pre-commit
