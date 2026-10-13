@@ -76,7 +76,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
                  Sndr&&
         >) {
         if constexpr (execution_space_completing_sender<Sndr, Env>) {
-            auto [label, functor, policy] = std::forward<Data>(data);
+            auto&& [label, functor, policy] = std::forward<Data>(data);
 
             const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
@@ -90,10 +90,10 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
                 "type.");
 
             return trnsfrmd_sndr_t<Env, Data, Sndr>{
-                {{std::move(label),
-                  std::move(functor),
+                {{stdexec::__forward_like<Data>(label),
+                  stdexec::__forward_like<Data>(functor),
                   typename std::remove_cvref_t<Data>::policy_t(
-                      Kokkos::Impl::PolicyUpdate{}, std::move(policy), schd.state->exec)}},
+                      Kokkos::Impl::PolicyUpdate{}, stdexec::__forward_like<Data>(policy), schd.state->exec)}},
                 std::forward<Sndr>(sndr)};
         } else {
             return no_execution_space_scheduler_in_env<parallel_for_t, Sndr, Env>();
