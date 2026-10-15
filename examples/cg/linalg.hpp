@@ -7,26 +7,26 @@
 
 namespace Examples::CG {
 
-template <typename OrdinalType, Kokkos::MemorySpace Mem>
+template <typename OrdinalType, Kokkos::ExecutionSpace Exec>
 struct CrsGraph {
     using ordinal_t = OrdinalType;
 
-    using row_map_t = Kokkos::View<const size_t*, Mem>;
-    using entries_t = Kokkos::View<ordinal_t*, Mem>;
+    using row_map_t = Kokkos::View<const size_t*, Exec>;
+    using entries_t = Kokkos::View<ordinal_t*, Exec>;
 
     row_map_t row_map;
     entries_t entries;
 };
 
-template <typename ScalarType, typename OrdinalType, Kokkos::MemorySpace Mem>
+template <typename ScalarType, typename OrdinalType, Kokkos::ExecutionSpace Exec>
 struct CrsMatrix {
     using scalar_t = ScalarType;
     using ordinal_t = OrdinalType;
 
-    using graph_t = CrsGraph<ordinal_t, Mem>;
-    using values_t = Kokkos::View<scalar_t*, Mem>;
+    using graph_t = CrsGraph<ordinal_t, Exec>;
+    using values_t = Kokkos::View<scalar_t*, Exec>;
 
-    using const_t = CrsMatrix<const scalar_t, ordinal_t, Mem>;
+    using const_t = CrsMatrix<const scalar_t, ordinal_t, Exec>;
 
     graph_t graph;
     values_t values;
@@ -106,14 +106,12 @@ struct spmv_t {
 
 inline constexpr spmv_t spmv{};
 
-template <typename ResultViewType, typename XViewType, typename YViewType>
+template <typename XViewType, typename YViewType>
 struct Dot {
-    template <std::integral T>
-    KOKKOS_FUNCTION void operator()(const T irow) const {
-        Kokkos::atomic_add(result.data(), view_x(irow) * view_y(irow));
+    KOKKOS_FUNCTION void operator()(const typename XViewType::execution_space::index_type irow, typename XViewType::value_type& value) const {
+        value += view_x(irow) * view_y(irow);
     }
 
-    ResultViewType result;
     XViewType view_x;
     YViewType view_y;
 };
@@ -125,8 +123,7 @@ struct dot_t {
         XViewType view_x,
         YViewType view_y) const {
         const size_t shape = view_x.size();
-        return stdexec::then(KOKKOS_LAMBDA() { result() = 0; })
-             | stdexec::bulk(stdexec::par, shape, Dot{result, std::move(view_x), std::move(view_y)});
+        return Kokkos::Execution::parallel_reduce(Kokkos::RangePolicy<typename XViewType::execution_space>(0, shape), Dot{std::move(view_x), std::move(view_y)}, std::move(result));
     }
 
     template <stdexec::sender Sndr, typename ResultViewType, typename XViewType, typename YViewType>

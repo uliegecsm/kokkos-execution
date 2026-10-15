@@ -18,17 +18,16 @@ namespace Examples::CG {
  *                -1  1     2 / size
  * @endverbatim
  */
-template <typename ScalarType, typename MagnitudeType, typename OrdinalType, Kokkos::MemorySpace Mem>
+template <typename ScalarType, typename MagnitudeType, typename OrdinalType, Kokkos::ExecutionSpace Exec>
 struct FEMLaplacian1D {
     using scalar_t = ScalarType;
     using magnitude_t = MagnitudeType;
 
     using ordinal_t = OrdinalType;
 
-    using vector_t = Kokkos::View<scalar_t*, Mem>;
-    using matrix_t = CrsMatrix<scalar_t, ordinal_t, Mem>;
+    using vector_t = Kokkos::View<scalar_t*, Exec>;
+    using matrix_t = CrsMatrix<scalar_t, ordinal_t, Exec>;
 
-    template <Kokkos::ExecutionSpace Exec>
     static FEMLaplacian1D create(const Exec& exec, const size_t size) {
         if (size < 3) {
             throw std::invalid_argument("FEMLaplacian1D::create: size must be at least 3.");
@@ -100,7 +99,6 @@ struct FEMLaplacian1D {
         };
     }
 
-    template <Kokkos::ExecutionSpace Exec>
     static auto check(const Exec& exec, const vector_t& sol, const MagnitudeType tol) {
         scalar_t squared_error = 0;
         Kokkos::parallel_reduce(

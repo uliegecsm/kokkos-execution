@@ -19,14 +19,13 @@ struct LinearProblem {
     using scalar_t = double;
     using magnitude_t = double;
     using ordinal_t = int;
-    using memory_space = typename Exec::memory_space;
 
-    using vector_t = Kokkos::View<scalar_t*, memory_space>;
-    using matrix_t = CrsMatrix<scalar_t, ordinal_t, memory_space>;
+    using vector_t = Kokkos::View<scalar_t*, Exec>;
+    using matrix_t = CrsMatrix<scalar_t, ordinal_t, Exec>;
 
    public:
     explicit LinearProblem(const Exec& exec, const size_t size = 10) {
-        auto [mat_, rhs_, sol_] = FEMLaplacian1D<scalar_t, magnitude_t, ordinal_t, memory_space>::create(exec, size);
+        auto [mat_, rhs_, sol_] = FEMLaplacian1D<scalar_t, magnitude_t, ordinal_t, Exec>::create(exec, size);
         this->mat = std::move(mat_);
         this->rhs = std::move(rhs_);
         this->sol = std::move(sol_);
@@ -47,7 +46,7 @@ struct LinearProblem {
 
     bool check(const Exec& exec) const {
         //! Check the solution.
-        return FEMLaplacian1D<scalar_t, magnitude_t, ordinal_t, memory_space>::check(exec, sol, /*error tol=*/1e-14);
+        return FEMLaplacian1D<scalar_t, magnitude_t, ordinal_t, Exec>::check(exec, sol, /*error tol=*/1e-14);
     }
 
    protected:
@@ -82,6 +81,7 @@ int main(int argc, char* argv[]) {
             Kokkos::Impl::type_list<
                 Kokkos::utils::callbacks::BeginFenceEvent,
                 Kokkos::utils::callbacks::BeginParallelForEvent,
+                Kokkos::utils::callbacks::BeginParallelReduceEvent,
                 Kokkos::utils::callbacks::CreateProfileSectionEvent,
                 Kokkos::utils::callbacks::StartProfileSectionEvent,
                 Kokkos::utils::callbacks::StopProfileSectionEvent,
