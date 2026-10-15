@@ -93,12 +93,10 @@ TEST_F(ForkJoinTest, continues_on) {
 
     const context_t esc{exec};
 
-    auto sndr =
-        stdexec::just() | stdexec::continues_on(esc.get_scheduler())
-        | experimental::execution::fork_join(
-            stdexec::continues_on(esc.get_scheduler())
-            | stdexec::then(
-                Tests::Utils::Functors::LoadCheckAdd<int, on_device>{.prev = 0, .value = 3, .data = data.data()}));
+    auto sndr = stdexec::just() | stdexec::continues_on(esc.get_scheduler())
+              | experimental::execution::fork_join(
+                    stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data),
+                    stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data));
 
     static_assert(stdexec::__sender_for<decltype(sndr), experimental::execution::fork_join_t>);
 
@@ -112,15 +110,20 @@ TEST_F(ForkJoinTest, continues_on) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(3)));
         } else {
             return testing::ElementsAre(
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
 
-    ASSERT_EQ(data(), 3);
+    ASSERT_EQ(data(), 2);
 }
 
 /**
@@ -133,12 +136,12 @@ TEST_F(ForkJoinTest, continues_on_bulk) {
 
     const context_t esc{exec};
 
-    auto sndr =
-        stdexec::just() | stdexec::continues_on(esc.get_scheduler()) | BULK_SUM_INDICES(2, data)
-        | experimental::execution::fork_join(
-            stdexec::continues_on(esc.get_scheduler())
-            | stdexec::then(
-                Tests::Utils::Functors::LoadCheckAdd<int, on_device>{.prev = 1, .value = 2, .data = data.data()}));
+    auto sndr = stdexec::just() | stdexec::continues_on(esc.get_scheduler()) | BULK_SUM_INDICES(2, data)
+              | experimental::execution::fork_join(
+                    stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data),
+                    stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT_ATOMIC(Device, data));
+
+    static_assert(stdexec::__sender_for<decltype(sndr), experimental::execution::fork_join_t>);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
@@ -152,10 +155,15 @@ TEST_F(ForkJoinTest, continues_on_bulk) {
                 MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
-                MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)));
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_RECORD_EVENT(exec),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
+                MATCHER_FOR_WAIT_EVENT(recorded_events.at(6)));
         } else {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
+                MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
+                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
