@@ -83,3 +83,4 @@ add_subdirectory(stdexec)
 add_subdirectory(utils)
 
 add_one_test(NAME parallel_for)
+add_one_test(NAME parallel_reduce)
