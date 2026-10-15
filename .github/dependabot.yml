@@ -11,3 +11,7 @@ updates:
       - dependency-name: "external/stdexec"
     schedule:
       interval: "daily"
+    cooldown:
+      # Disable the default 3-days cooldown to get daily updates.
+      # See also https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown-.
+      default-days: 0
