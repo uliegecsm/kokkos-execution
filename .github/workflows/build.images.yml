@@ -225,7 +225,7 @@ jobs:
             --kokkos-backends=${{ join(matrix.kokkos_backends, ',') }} \
             --dependencies=dependencies.json \
             --cxxstd=${{ matrix.cxxstd || '23' }} \
-            --cxxmodules=${{ matrix.cxxmodules || OFF}} \
+            --cxxmodules=${{ matrix.cxxmodules || 'OFF' }} \
             --input=docker/dockerfile \
             --compiler-family=${{ matrix.compiler.family }} \
             --output=docker/dockerfile.backend
