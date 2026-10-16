@@ -30,3 +30,7 @@ endif()
 if(NOT TARGET Kokkos::Execution)
   add_library(Kokkos::Execution ALIAS Kokkos::kokkosexecution)
 endif()
+
+if(Kokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES AND NOT TARGET Kokkos::Execution::mdspan)
+  add_library(Kokkos::Execution::mdspan ALIAS Kokkos::kokkosexecutionmdspan)
+endif()

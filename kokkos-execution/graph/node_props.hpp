@@ -1,7 +1,13 @@
 #ifndef KOKKOS_EXECUTION_GRAPH_NODE_PROPS_HPP
 #define KOKKOS_EXECUTION_GRAPH_NODE_PROPS_HPP
 
-#include "Kokkos_Core.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+import kokkos.graph_impl;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #include "kokkos-execution/impl/label.hpp"
 #include "kokkos-execution/impl/properties.hpp"
@@ -55,9 +61,8 @@ constexpr auto get_properties(PropsContainer&& props) { // NOLINT(cppcoreguideli
     if constexpr (std::is_lvalue_reference_v<PropsContainer>) {
         return std::tie(Kokkos::Impl::get_property<Props>(props)...);
     } else {
-
         return std::tuple<Props...>{
-            Kokkos::Impl::forward_like<PropsContainer>(Kokkos::Impl::get_property<Props>(props))...};
+            stdexec::__forward_like<PropsContainer>(Kokkos::Impl::get_property<Props>(props))...};
     }
 }
 

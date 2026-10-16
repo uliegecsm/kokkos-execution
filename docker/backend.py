@@ -6,11 +6,23 @@ import pathlib
 import typeguard
 
 @typeguard.typechecked
+def on_or_off(value: str) -> bool:
+    """
+    Accept either `ON` or `OFF`.
+    """
+    match value:
+        case 'ON': return True
+        case 'OFF': return False
+        case _:
+            raise ValueError(f'Expecting ON or OFF but got \'{value}\'')
+
+@typeguard.typechecked
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--kokkos-backends', type=str, required=True)
     parser.add_argument('--compiler-family', type=str, required=True)
     parser.add_argument('--dependencies', type=pathlib.Path, required=True)
+    parser.add_argument('--cxxmodules', type=on_or_off, required=True)
     parser.add_argument('--cxxstd', type=int, required=True)
     parser.add_argument('--input', type=pathlib.Path, required=True)
     parser.add_argument('--output', type=pathlib.Path, required=True)
@@ -75,11 +87,13 @@ ENV HPX_ROOT=/opt/hpx-${{HPX_REF}}
 """
 
 @typeguard.typechecked
-def main(*, dependencies: pathlib.Path, cxxstd: int, kokkos_backends: str, input: pathlib.Path, output: pathlib.Path, compiler_family: str) -> None:
+def main(*, dependencies: pathlib.Path, cxxstd: int, cxxmodules: bool, kokkos_backends: str, input: pathlib.Path, output: pathlib.Path, compiler_family: str) -> None:
     with open(dependencies, 'r') as f:
         deps = json.load(f)
 
     content: list[str] = []
+
+    kokkos_cmake_configure: str = '-GNinja -DKokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES=ON' if cxxmodules else ''
 
     for x in kokkos_backends.split(','):
         match x:
@@ -88,7 +102,9 @@ def main(*, dependencies: pathlib.Path, cxxstd: int, kokkos_backends: str, input
             case _:
                 logging.info(f'There is no requirement yet for Kokkos backend {x}.')
 
-    output.write_text(input.read_text().replace('REPLACE_REQUIREMENTS_BACKEND', '\n'.join(content)))
+    output.write_text(input.read_text().replace(
+        'REPLACE_REQUIREMENTS_BACKEND', '\n'.join(content)).replace(
+        'REPLACE_KOKKOS_CMAKE_CONFIGURE', kokkos_cmake_configure))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

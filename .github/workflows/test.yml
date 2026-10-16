@@ -65,7 +65,7 @@ jobs:
       - run: cmake -S . --preset=${{ matrix.compiler.family }} -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd || '23' }} -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }}
       - run: cmake --build --preset=${{ matrix.compiler.family }} -j4
       - run: ctest --preset=${{ matrix.compiler.family }}
-      - run: bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}
+      - run: bash tests/install_test.sh ${{ matrix.compiler.family }} OFF ${{ matrix.compiler.family }}
 
   build-and-test:
     needs: [build-images, format, build-and-test-smoke]
@@ -95,6 +95,10 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, extra_type_checking: true}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "20", cmake_build_type: Debug}
+          - kokkos_backends: [OpenMP]
+            compiler       : {family: clang, version: 23}
+            cxxstd         : 26
+            cxxmodules     : ON
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
@@ -143,7 +147,7 @@ jobs:
             runs-on: "['ubuntu-26.04-arm']"
             tag_suffix: -arm64
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.tag_suffix }}
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules == 'ON' && '-cxxmodules' || '' }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     env: ${{ matrix.env || fromJSON('{}') }}
@@ -185,6 +189,7 @@ jobs:
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
             -LA \
+            ${{ matrix.cxxmodules == 'ON' && '-GNinja' || '' }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type || 'Release' }} \
             -DKokkosExecution_ENABLE_EXTRA_TYPE_CHECKING=${{ matrix.extra_type_checking && 'ON' || 'OFF' }} \
@@ -207,7 +212,10 @@ jobs:
           path: |
             build-with-${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}/Testing/Temporary/LastTest.log
       - run: |
-          bash tests/install_test.sh ${{ matrix.compiler.family }} ${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
+          bash tests/install_test.sh \
+            ${{ matrix.compiler.family }} \
+            ${{ matrix.cxxmodules || 'OFF' }} \
+            ${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }}
 
   documentation:
     needs: [build-images, format]
