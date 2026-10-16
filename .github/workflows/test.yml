@@ -88,6 +88,10 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, extra_type_checking: true}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "20", cmake_build_type: Debug}
+          - kokkos_backends: [OpenMP]
+            compiler       : {family: clang, version: 23}
+            cxxstd         : 26
+            cxxmodules     : ON
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
@@ -102,12 +106,6 @@ jobs:
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'volta70', 'gpu:0']"
             tag_suffix     : -volta70
             cxxstd         : 20
-          - kokkos_backends: [OpenMP, Cuda]
-            compiler       : {family: clang, version: 23}
-            runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'blackwell120', 'gpu:0']"
-            tag_suffix     : -blackwell120
-            cxxstd         : 26
-            cxxmodules     : ON
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang

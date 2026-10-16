@@ -132,6 +132,13 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 16}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release, cxxstd: "26", python_version: 3.14}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug, cxxstd: "20"}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release}
+          - kokkos_backends: [OpenMP]
+            compiler       : {family: clang, version: 23}
+            base_image     : ubuntu:26.04
+            platforms      : linux/amd64
+            cmake_build_type: Release
+            cxxstd         : 26
+            cxxmodules     : ON
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
@@ -153,14 +160,6 @@ jobs:
             kokkos_archs   : [VOLTA70]
             python_version : 3.12
             cxxstd         : 20
-          - kokkos_backends: [OpenMP, Cuda]
-            compiler       : {family: clang, version: 23}
-            base_image     : nvcr.io/nvidia/cuda:13.4.1-devel-ubuntu26.04
-            platforms      : linux/amd64
-            kokkos_archs   : [BLACKWELL120]
-            cmake_build_type: Release
-            cxxstd         : 26
-            cxxmodules     : ON
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
