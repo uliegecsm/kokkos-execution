@@ -154,6 +154,14 @@ jobs:
             python_version : 3.12
             cxxstd         : 20
           - kokkos_backends: [OpenMP, Cuda]
+            compiler       : {family: clang, version: 23}
+            base_image     : nvcr.io/nvidia/cuda:13.4.1-devel-ubuntu26.04
+            platforms      : linux/amd64
+            kokkos_archs   : [BLACKWELL120]
+            cmake_build_type: Release
+            cxxstd         : 26
+            cxxmodules     : true
+          - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
               version: 23
@@ -217,6 +225,7 @@ jobs:
             --kokkos-backends=${{ join(matrix.kokkos_backends, ',') }} \
             --dependencies=dependencies.json \
             --cxxstd=${{ matrix.cxxstd || '23' }} \
+            --cxxmodules=${{ matrix.cxxmodules || false}} \
             --input=docker/dockerfile \
             --compiler-family=${{ matrix.compiler.family }} \
             --output=docker/dockerfile.backend
@@ -238,7 +247,7 @@ jobs:
 
       - id : compute-tag
         run: |
-          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
+          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules || '' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-buildx-action@v4

@@ -1,7 +1,11 @@
 #ifndef KOKKOS_EXECUTION_GRAPH_EVENTS_HPP
 #define KOKKOS_EXECUTION_GRAPH_EVENTS_HPP
 
-#include "Kokkos_Core.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 #include "Kokkos_Graph.hpp"
 
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)

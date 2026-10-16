@@ -1,7 +1,11 @@
 #ifndef KOKKOS_EXECUTION_TESTS_UTILS_ATOMIC_HPP
 #define KOKKOS_EXECUTION_TESTS_UTILS_ATOMIC_HPP
 
-#include "Kokkos_Core.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #if defined(KOKKOS_ENABLE_CUDA)
 #    include <cuda/atomic>
