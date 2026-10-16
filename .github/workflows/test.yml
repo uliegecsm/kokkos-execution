@@ -107,7 +107,7 @@ jobs:
             runs-on        : "['self-hosted', 'linux', 'docker', 'amd64', 'blackwell120', 'gpu:0']"
             tag_suffix     : -blackwell120
             cxxstd         : 26
-            cxxmodules     : true
+            cxxmodules     : ON
           - kokkos_backends: [OpenMP, Cuda]
             compiler:
               family: clang
@@ -142,7 +142,7 @@ jobs:
             runs-on: "['ubuntu-26.04-arm']"
             tag_suffix: -arm64
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules }}${{ matrix.tag_suffix }}
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules == 'ON' && 'cxxmodules' || '' }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     env: ${{ matrix.env || fromJSON('{}') }}
