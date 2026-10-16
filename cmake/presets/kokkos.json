@@ -10,6 +10,7 @@
                 "CMAKE_CXX_EXTENSIONS": "OFF",
                 "BUILD_SHARED_LIBS": "ON",
                 "CMAKE_C_COMPILER": "should-not-be-needed",
+                "Kokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES": "ON",
                 "Kokkos_ENABLE_SERIAL": "ON",
                 "Kokkos_ENABLE_TESTS": "OFF"
             }
