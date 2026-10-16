@@ -42,6 +42,13 @@ function(add_one_example)
       target_link_libraries(${aoe_args_EXECUTABLE_NAME} PRIVATE ${aoe_args_ADDITIONAL_LINK_LIBRARIES})
     endif()
 
+    # Even though the Kokkos::kokkoscore target modules may probably be inherited transitively through
+    # Kokkos::Execution, it doesn't for now. See also
+    # https://discourse.cmake.org/t/issues-with-transitive-usage-of-c-modules/15586.
+    if(Kokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES)
+      target_link_libraries(${aoe_args_EXECUTABLE_NAME} PRIVATE Kokkos::kokkoscore)
+    endif()
+
     add_test(NAME ${aoe_args_EXECUTABLE_NAME} COMMAND $<TARGET_FILE:${aoe_args_EXECUTABLE_NAME}>)
 
     # Labels.

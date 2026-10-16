@@ -1,7 +1,12 @@
 #ifndef KOKKOS_EXECUTION_IMPL_DEPENDENCY_HPP
 #define KOKKOS_EXECUTION_IMPL_DEPENDENCY_HPP
 
-#include "Kokkos_Core.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/event.hpp"

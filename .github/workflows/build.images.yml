@@ -102,7 +102,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: true #${{ github.ref == 'refs/heads/main' }}
           file: docker/dockerfile.builder
           tags: ${{ needs.set-vars.outputs.CI_BUILDER }}
           cache-from: type=registry,ref=${{ needs.set-vars.outputs.CI_BUILDER }}
@@ -132,6 +132,13 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 16}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release, cxxstd: "26", python_version: 3.14}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Debug, cxxstd: "20"}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, base_image: ubuntu:26.04, platforms: linux/amd64, cmake_build_type: Release}
+          - kokkos_backends: [OpenMP]
+            compiler       : {family: clang, version: 23}
+            base_image     : ubuntu:26.04
+            platforms      : linux/amd64
+            cmake_build_type: Release
+            cxxstd         : 26
+            cxxmodules     : ON
           - kokkos_backends: [HPX]
             compiler:
               family: gnu
@@ -217,6 +224,7 @@ jobs:
             --kokkos-backends=${{ join(matrix.kokkos_backends, ',') }} \
             --dependencies=dependencies.json \
             --cxxstd=${{ matrix.cxxstd || '23' }} \
+            --cxxmodules=${{ matrix.cxxmodules || 'OFF' }} \
             --input=docker/dockerfile \
             --compiler-family=${{ matrix.compiler.family }} \
             --output=docker/dockerfile.backend
@@ -238,7 +246,7 @@ jobs:
 
       - id : compute-tag
         run: |
-          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
+          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules == 'ON' && '-cxxmodules' || '' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-buildx-action@v4
@@ -247,7 +255,7 @@ jobs:
         with:
             context: .
             platforms: ${{ matrix.platforms }}
-            push: ${{ github.ref == 'refs/heads/main' }}
+            push: true #${{ github.ref == 'refs/heads/main' }}
             file: docker/dockerfile.backend
             tags: ${{ steps.compute-tag.outputs.tag }}
             cache-from: type=registry,ref=${{ steps.compute-tag.outputs.tag }}

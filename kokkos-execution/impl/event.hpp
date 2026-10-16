@@ -4,7 +4,12 @@
 #include <concepts>
 #include <optional>
 
-#include "Kokkos_Core.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
 #    include "kokkos-utils/callbacks/Manager.hpp"

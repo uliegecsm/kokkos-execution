@@ -3,7 +3,13 @@
 
 #include <type_traits>
 
-#include "Kokkos_Core.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+import kokkos.mdspan;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 namespace Kokkos::Execution::Impl {
 
