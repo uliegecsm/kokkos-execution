@@ -3,7 +3,11 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#include "Kokkos_Core.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #include "kokkos-execution/execution_space/bulk.hpp"
 #include "kokkos-execution/execution_space/continues_on.hpp"

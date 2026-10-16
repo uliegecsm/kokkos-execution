@@ -3,7 +3,11 @@
 
 #include "gtest/gtest.h"
 
-#include "Kokkos_Core.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #include "kokkos-utils/tests/scoped/ExecutionSpace.hpp"
 

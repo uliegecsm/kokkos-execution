@@ -1,7 +1,11 @@
 #ifndef KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_LOAD_CHECK_ADD_HPP
 #define KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_LOAD_CHECK_ADD_HPP
 
-#include "Kokkos_Core.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 namespace Tests::Utils::Functors {
 
