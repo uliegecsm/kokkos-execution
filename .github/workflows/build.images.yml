@@ -246,7 +246,7 @@ jobs:
 
       - id : compute-tag
         run: |
-          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules == 'ON' && 'cxxmodules' || '' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
+          TAG=${{ needs.set-vars.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules == 'ON' && '-cxxmodules' || '' }}${{ steps.compute-tag-suffix.outputs.TAG_SUFFIX }}
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-buildx-action@v4

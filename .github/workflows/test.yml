@@ -140,7 +140,7 @@ jobs:
             runs-on: "['ubuntu-26.04-arm']"
             tag_suffix: -arm64
     container:
-      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules == 'ON' && 'cxxmodules' || '' }}${{ matrix.tag_suffix }}
+      image: ${{ needs.build-images.outputs.CI_IMAGE }}:${{ matrix.compiler.family }}-${{ matrix.compiler.version }}-${{ matrix.kokkos_backends && format('{0}-', join(matrix.kokkos_backends, '-')) || '' }}${{ matrix.cmake_build_type || 'Release' }}${{ matrix.cxxmodules == 'ON' && '-cxxmodules' || '' }}${{ matrix.tag_suffix }}
       # The 'options' field cannot be empty. Provide '--annotation' to ensure that if 'docker_run_args' is empty, the workflow is still valid.
       options: "--annotation ref=${{ github.ref }} ${{ matrix.docker_run_args }}"
     env: ${{ matrix.env || fromJSON('{}') }}
@@ -181,6 +181,8 @@ jobs:
           } >> "$GITHUB_ENV"
       - run: |
           cmake -S . --preset=${{ matrix.compiler.family }}-${{ join(matrix.kokkos_backends, '-') }} \
+            -LA \
+            ${{ matrix.cxxmodules == 'ON' && '-GNinja' || '' }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type || 'Release' }} \
             -DKokkosExecution_ENABLE_EXTRA_TYPE_CHECKING=${{ matrix.extra_type_checking && 'ON' || 'OFF' }} \
