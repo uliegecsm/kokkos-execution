@@ -9,6 +9,7 @@ git
 
 # Builders.
 make
+ninja-build
 
 # Documentation.
 texlive-base
