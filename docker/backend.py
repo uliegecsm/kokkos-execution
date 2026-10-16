@@ -6,12 +6,23 @@ import pathlib
 import typeguard
 
 @typeguard.typechecked
+def on_or_off(value: str) -> bool:
+    """
+    Accept either `ON` or `OFF`.
+    """
+    match value:
+        case 'ON': return True
+        case 'OFF': return False
+        case _:
+            raise ValueError(f'Expecting ON or OFF but got \'{value}\'')
+
+@typeguard.typechecked
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--kokkos-backends', type=str, required=True)
     parser.add_argument('--compiler-family', type=str, required=True)
     parser.add_argument('--dependencies', type=pathlib.Path, required=True)
-    parser.add_argument('--cxxmodules', type=bool, required=True)
+    parser.add_argument('--cxxmodules', type=on_or_off, required=True)
     parser.add_argument('--cxxstd', type=int, required=True)
     parser.add_argument('--input', type=pathlib.Path, required=True)
     parser.add_argument('--output', type=pathlib.Path, required=True)
