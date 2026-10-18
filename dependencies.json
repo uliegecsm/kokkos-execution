@@ -10,8 +10,8 @@
             "username": "kokkos"
         },
         "kokkos-utils": {
-            "sha": "8b9277ff0ff01106b5f943ac040281b4e556575b",
-            "version": "0.0.5"
+            "sha": "13e7133fc77580e63d9cbdb600bed4ec511ff598",
+            "version": "0.0.6"
         }
     }
 }
