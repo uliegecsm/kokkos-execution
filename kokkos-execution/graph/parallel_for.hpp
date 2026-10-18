@@ -62,27 +62,32 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
         Sndr,
         typename std::remove_cvref_t<Data>::label_t,
         typename std::remove_cvref_t<Data>::functor_t,
-        typename std::remove_cvref_t<Data>::policy_t
+        decltype(std::declval<typename std::remove_cvref_t<Data>>().policy(std::declval<Impl::exec_of_t<Sndr, Env>>()))
     >;
 
     template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && graph_completing_sender<Sndr, Env>)
-    auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const
+    auto operator()(
+        const Env& env,
+        Kokkos::Execution::parallel_for_t,
+        Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
+        Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Data, Sndr>,
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
-        auto&& [label, functor, policy] = std::forward<Data>(data);
-
         const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+
+        auto policy = data.policy(Impl::exec_of_t<Sndr, Env>{});
 
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
             .clsr =
                 {.node_props = Kokkos::Experimental::node_props(
-                     stdexec::__forward_like<Data>(label), Kokkos::Experimental::get_device_handle(schd.state->exec)),
-                       .functor = stdexec::__forward_like<Data>(functor),
-                       .policy = stdexec::__forward_like<Data>(policy)},
+                     stdexec::__forward_like<Data>(data.label),
+                       Kokkos::Experimental::get_device_handle(schd.state->exec)),
+                       .functor = stdexec::__forward_like<Data>(data.functor),
+                       .policy = std::move(policy)},
             .sndr = std::forward<Sndr>(sndr)
         };
     }

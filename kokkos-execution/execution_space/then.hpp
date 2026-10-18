@@ -42,10 +42,11 @@ struct TransformSenderFor<stdexec::then_t> {
         const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
         return trnsfrmd_sndr_t<Env, Functor, Sndr>{
-            {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
-              ThenWrapper<Functor>{std::forward<Functor>(functor)},
-              policy_t<Sndr, Env>(schd.state->exec, 0, 1)}},
-            std::forward<Sndr>(sndr)};
+            {.label = Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
+             .functor = ThenWrapper<Functor>{std::forward<Functor>(functor)},
+             .policy = policy_t<Sndr, Env>(schd.state->exec, 0, 1)},
+            std::forward<Sndr>(sndr)
+        };
     }
 
     template <typename Env, typename Functor, typename Sndr>

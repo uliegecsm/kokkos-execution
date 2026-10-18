@@ -138,6 +138,7 @@ target_sources(
             kokkos-execution/impl/env.hpp
             kokkos-execution/impl/get_exec.hpp
             kokkos-execution/impl/event.hpp
+            kokkos-execution/impl/extents.hpp
             kokkos-execution/impl/HIP/dependency.hpp
             kokkos-execution/impl/HIP/event.hpp
             kokkos-execution/impl/HPX/dependency.hpp

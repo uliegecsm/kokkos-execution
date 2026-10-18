@@ -96,9 +96,8 @@ TEST_F(OpStateTest, construct_query_and_start) {
 
     const context_t esc{exec};
 
-    Kokkos::Execution::Impl::ParallelForData pfor_data{
+    Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure clsr{
         "hello from pfor", Tests::Utils::Functors::SumIndices{.data = witness}, Kokkos::RangePolicy(exec, 2, size)};
-    Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure clsr{.data = std::move(pfor_data)};
 
     auto op_state = Kokkos::Execution::ExecutionSpaceImpl::OpState{
         stdexec::schedule(esc.get_scheduler()), Tests::Utils::SinkReceiver{}, std::move(clsr)};

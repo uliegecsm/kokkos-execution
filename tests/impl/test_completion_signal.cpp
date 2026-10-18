@@ -109,7 +109,7 @@ static_assert(test_completion_signal_traits());
 TEST_F(CompletionSignalTest, inline_fence_exec_policy) {
     auto op_state = stdexec::connect(
         stdexec::schedule(esc.get_scheduler())
-            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
+            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy_or_extents, pfor_data.functor),
         Tests::Utils::SinkReceiver{});
 
     static_assert(std::same_as<
@@ -178,7 +178,7 @@ TEST_F(CompletionSignalTest, schedule_wait_event_policy) {
 
     auto op_state = stdexec::connect(
         stdexec::schedule(esc_A.get_scheduler())
-            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
+            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy_or_extents, pfor_data.functor),
         Receiver<TEST_EXECUTION_SPACE, false, false>{&esc_B.m_state, &loop});
 
     const auto recorded_events_before_run = recorder_listener_t::record([&]() { op_state.start(); });
@@ -200,7 +200,7 @@ TEST_F(CompletionSignalTest, order_on_exec_policy) {
 
     auto op_state = stdexec::connect(
         stdexec::schedule(esc.get_scheduler())
-            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
+            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy_or_extents, pfor_data.functor),
         Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>{
             .state = std::addressof(esc.m_state),
             .runloop_state = std::addressof(runloop_state),
@@ -230,7 +230,7 @@ TEST_F(CompletionSignalTest, depend_on_event_policy) {
 
     auto op_state = stdexec::connect(
         stdexec::schedule(esc_A.get_scheduler())
-            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy, pfor_data.functor),
+            | Kokkos::Execution::parallel_for(pfor_data.label, pfor_data.policy_or_extents, pfor_data.functor),
         Receiver<TEST_EXECUTION_SPACE, false, true>{&esc_B.m_state, &loop});
 
     static_assert(Kokkos::Execution::Impl::supports_submitted<Receiver<TEST_EXECUTION_SPACE, false, true>>);
