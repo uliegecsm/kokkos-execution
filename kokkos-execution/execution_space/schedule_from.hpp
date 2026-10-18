@@ -8,6 +8,7 @@
 #include "kokkos-execution/execution_space/env.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
+#include "kokkos-execution/impl/dependency.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/receiver.hpp"
@@ -20,6 +21,14 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
 struct ScheduleFromReceiver : public Impl::Receiver<ParentOp, Env> {
     using exec_env_policy_t = typename ParentOp::exec_env_policy_t;
+
+    using Impl::Receiver<ParentOp, Env>::submitted;
+
+    template <Kokkos::ExecutionSpace... Execs>
+    requires(sizeof...(Execs) > 0)
+    void submitted(Impl::OptionalConstEventRef<Execs>... deps) && noexcept {
+        this->parent_op->submit(deps...);
+    }
 
     [[nodiscard]]
     constexpr auto get_env() const noexcept -> extend_env_with_exec_t<exec_env_policy_t, Env> {
@@ -78,9 +87,10 @@ struct ScheduleFromOpState
     }
 
     //! Stay in the @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
-    void submit() noexcept requires std::same_as<completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>
+    template <typename... Args>
+    void submit(Args&&... args) noexcept requires Impl::submitted_policy<completion_signal_policy_t>
     {
-        std::move(this->rcvr).submitted();
+        std::move(this->rcvr).submitted(std::forward<Args>(args)...);
     }
 
     //! Transition to another domain.
@@ -90,6 +100,19 @@ struct ScheduleFromOpState
             this->query(Impl::get_exec)
                 .get()
                 .fence(std::string(Impl::dispatch_label<Impl::exec_of_t<decltype(*this)>, ": schedule_from">()));
+        } catch (...) {
+            stdexec::set_error(std::move(this->rcvr), std::current_exception());
+            return;
+        }
+        stdexec::set_value(std::move(this->rcvr));
+    }
+
+    template <Kokkos::ExecutionSpace... Execs>
+    void submit(Impl::OptionalConstEventRef<Execs>... deps) noexcept
+        requires(sizeof...(Execs) > 0) && std::same_as<completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>
+    {
+        try {
+            Impl::wait_on(deps...);
         } catch (...) {
             stdexec::set_error(std::move(this->rcvr), std::current_exception());
             return;
