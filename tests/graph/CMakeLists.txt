@@ -9,3 +9,12 @@ add_one_test(NAME scheduler)
 add_one_test(NAME sync_wait)
 add_one_test(NAME then)
 add_one_test(NAME when_all)
+add_one_test(NAME when_all.failure)
+
+foreach(DEVICE IN LISTS Kokkos_DEVICES)
+  set(target_name tests_graph_when_all.failure.${DEVICE})
+  add_build_failure_test(
+    ${target_name}.compiler ${target_name}
+    "CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_GRAPH_SCHEDULER.*BECAUSE_THERE_IS_NO_GRAPH_SCHEDULER_IN_THE_ENVIRONMENT"
+  )
+endforeach()

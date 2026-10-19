@@ -68,36 +68,37 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     >;
 
     template <typename Env, typename Data, typename Sndr>
-    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
+    requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
     auto operator()(const Env& env, Kokkos::Execution::parallel_for_t, Data&& data, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Data, Sndr>,
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
-        if constexpr (execution_space_completing_sender<Sndr, Env>) {
-            auto&& [label, functor, policy] = std::forward<Data>(data);
+        auto&& [label, functor, policy] = std::forward<Data>(data);
 
-            const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-            //! Only the execution space instance, not its type, can be bound lately.
-            static_assert(
-                std::same_as<
-                    typename decltype(schd)::execution_space,
-                    typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t::execution_space
-                >,
-                "The policy's execution space type must be the same as the completion scheduler's execution space "
-                "type.");
+        //! Only the execution space instance, not its type, can be bound lately.
+        static_assert(
+            std::same_as<
+                typename decltype(schd)::execution_space,
+                typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t::execution_space
+            >,
+            "The policy's execution space type must be the same as the completion scheduler's execution space type.");
 
-            return trnsfrmd_sndr_t<Env, Data, Sndr>{
-                {{stdexec::__forward_like<Data>(label),
-                  stdexec::__forward_like<Data>(functor),
-                  typename std::remove_cvref_t<Data>::policy_t(
-                      Kokkos::Impl::PolicyUpdate{}, stdexec::__forward_like<Data>(policy), schd.state->exec)}},
-                std::forward<Sndr>(sndr)};
-        } else {
-            return no_execution_space_scheduler_in_env<parallel_for_t, Sndr, Env>();
-        }
+        return trnsfrmd_sndr_t<Env, Data, Sndr>{
+            {{stdexec::__forward_like<Data>(label),
+              stdexec::__forward_like<Data>(functor),
+              typename std::remove_cvref_t<Data>::policy_t(
+                  Kokkos::Impl::PolicyUpdate{}, stdexec::__forward_like<Data>(policy), schd.state->exec)}},
+            std::forward<Sndr>(sndr)};
+    }
+
+    template <typename Env, typename Data, typename Sndr>
+    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
+    auto operator()(const Env&, Kokkos::Execution::parallel_for_t, Data&&, Sndr&&) const noexcept {
+        return no_execution_space_scheduler_in_env<parallel_for_t, Sndr, Env>();
     }
 };
 
