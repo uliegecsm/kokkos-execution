@@ -147,7 +147,7 @@ TEST_F(ParallelForTest, parallel_for_schedule) {
     auto sndr = stdexec::schedule(gctx.get_scheduler())
               | Kokkos::Execution::parallel_for(
                     std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+                    size,
                     Tests::Utils::Functors::SumIndices{.data = data});
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));

@@ -278,26 +278,17 @@ auto closure_object_creation_overloads(
     const size_t size,
     const ViewType& target,
     const Kokkos::Execution::ExecutionSpaceContext<Exec>& esc) -> stdexec::sender auto {
-    auto chain = stdexec::schedule(esc.get_scheduler())
-               | Kokkos::Execution::parallel_reduce(
-                     "passing label, execution policy, functor and target",
-                     Kokkos::RangePolicy<Exec>(0, size),
-                     Tests::Utils::Functors::ReduceIndices{},
-                     target)
-               | Kokkos::Execution::parallel_reduce(
-                     Kokkos::RangePolicy<Exec>(0, size), Tests::Utils::Functors::ReduceIndices{}, target);
-
-    if constexpr (std::same_as<Exec, Kokkos::DefaultExecutionSpace>) {
-        return std::move(chain)
-             | Kokkos::Execution::parallel_reduce(
-                   "passing label, work count, functor and target",
-                   size,
-                   Tests::Utils::Functors::ReduceIndices{},
-                   target)
-             | Kokkos::Execution::parallel_reduce(size, Tests::Utils::Functors::ReduceIndices{}, target);
-    } else {
-        return chain;
-    }
+    return stdexec::schedule(esc.get_scheduler())
+         | Kokkos::Execution::parallel_reduce(
+               "passing label, execution policy, functor and target",
+               Kokkos::RangePolicy<Exec>(0, size),
+               Tests::Utils::Functors::ReduceIndices{},
+               target)
+         | Kokkos::Execution::parallel_reduce(
+               Kokkos::RangePolicy<Exec>(0, size), Tests::Utils::Functors::ReduceIndices{}, target)
+         | Kokkos::Execution::parallel_reduce(
+               "passing label, work count, functor and target", size, Tests::Utils::Functors::ReduceIndices{}, target)
+         | Kokkos::Execution::parallel_reduce(size, Tests::Utils::Functors::ReduceIndices{}, target);
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_reduce closure object creation overloads.
@@ -308,10 +299,6 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), closure_object_creation_overloads) {
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         closure_object_creation_overloads(size, target, context_t{exec}));
-
-    unsigned short int ievent = 0;
-
-    ASSERT_GE(recorded_events.size(), 3);
 
     using functor_t = Tests::Utils::Functors::ReduceIndices;
     using reducer_t = Kokkos::Impl::CombinedFunctorReducer<
@@ -327,21 +314,12 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), closure_object_creation_overloads) {
 
     ASSERT_THAT(
         recorded_events,
-        ElementAt<variant_t>(
-            ievent++, MATCHER_FOR_BEGIN_PRED(exec, "passing label, execution policy, functor and target")));
-    ASSERT_THAT(
-        recorded_events,
-        ElementAt<variant_t>(ievent++, MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name())));
-
-    if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::DefaultExecutionSpace>) {
-        ASSERT_THAT(
-            recorded_events.at(ievent++),
-            MATCHER_FOR_BEGIN_PRED(exec, "passing label, work count, functor and target"));
-        ASSERT_THAT(
-            recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()));
-    }
-
-    ASSERT_THAT(recorded_events.at(ievent), MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PRED(exec, "passing label, execution policy, functor and target"),
+            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
+            MATCHER_FOR_BEGIN_PRED(exec, "passing label, work count, functor and target"),
+            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(target(), size / 2 * (size - 1));
 }

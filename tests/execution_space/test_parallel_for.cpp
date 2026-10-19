@@ -199,22 +199,16 @@ auto closure_object_creation_overloads(
     const size_t size,
     const ViewType& witness,
     const Kokkos::Execution::ExecutionSpaceContext<Exec>& esc) -> stdexec::sender auto {
-    auto chain = stdexec::schedule(esc.get_scheduler())
-               | Kokkos::Execution::parallel_for(
-                     "passing label, execution policy and functor",
-                     Kokkos::RangePolicy<Exec>(0, size),
-                     Tests::Utils::Functors::SumIndices{.data = witness})
-               | Kokkos::Execution::parallel_for(
-                     Kokkos::RangePolicy<Exec>(0, size), Tests::Utils::Functors::SumIndices{.data = witness});
-
-    if constexpr (std::same_as<Exec, Kokkos::DefaultExecutionSpace>) {
-        return std::move(chain)
-             | Kokkos::Execution::parallel_for(
-                   "passing label, work count and functor", size, Tests::Utils::Functors::SumIndices{.data = witness})
-             | Kokkos::Execution::parallel_for(size, Tests::Utils::Functors::SumIndices{.data = witness});
-    } else {
-        return chain;
-    }
+    return stdexec::schedule(esc.get_scheduler())
+         | Kokkos::Execution::parallel_for(
+               "passing label, execution policy and functor",
+               Kokkos::RangePolicy<Exec>(0, size),
+               Tests::Utils::Functors::SumIndices{.data = witness})
+         | Kokkos::Execution::parallel_for(
+               Kokkos::RangePolicy<Exec>(0, size), Tests::Utils::Functors::SumIndices{.data = witness})
+         | Kokkos::Execution::parallel_for(
+               "passing label, work count and functor", size, Tests::Utils::Functors::SumIndices{.data = witness})
+         | Kokkos::Execution::parallel_for(size, Tests::Utils::Functors::SumIndices{.data = witness});
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for closure object creation overloads.
@@ -226,29 +220,18 @@ TEST_F(ParallelForTest, closure_object_creation_overloads) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         closure_object_creation_overloads(size, witness, context_t{exec}));
 
-    unsigned short int ievent = 0;
-
-    ASSERT_GE(recorded_events.size(), 3);
-
     using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
 
     ASSERT_THAT(
         recorded_events,
-        ElementAt<variant_t>(ievent++, MATCHER_FOR_BEGIN_PFOR(exec, "passing label, execution policy and functor")));
-    ASSERT_THAT(
-        recorded_events,
-        ElementAt<variant_t>(ievent++, MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name())));
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, "passing label, execution policy and functor"),
+            MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()),
+            MATCHER_FOR_BEGIN_PFOR(exec, "passing label, work count and functor"),
+            MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
-    if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::DefaultExecutionSpace>) {
-        ASSERT_THAT(
-            recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, "passing label, work count and functor"));
-        ASSERT_THAT(
-            recorded_events.at(ievent++), MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()));
-    }
-
-    ASSERT_THAT(recorded_events.at(ievent), MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")));
-
-    ASSERT_EQ(witness(), ievent * size / 2 * (size - 1));
+    ASSERT_EQ(witness(), 4 * size / 2 * (size - 1));
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for with two consecutive parallel regions and check there is no fence in between.
