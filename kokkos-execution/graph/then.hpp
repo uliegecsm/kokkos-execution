@@ -70,27 +70,29 @@ struct TransformSenderFor<stdexec::then_t> {
     using trnsfrmd_sndr_t = ThenSender<Impl::exec_of_t<Sndr, Env>, Sndr, Functor>;
 
     template <typename Env, typename Functor, typename Sndr>
-    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
+    requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && graph_completing_sender<Sndr, Env>)
     auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Functor, Sndr>,
                  typename trnsfrmd_sndr_t<Env, Functor, Sndr>::closure_t,
                  Sndr&&
         >) {
-        if constexpr (graph_completing_sender<Sndr, Env>) {
-            const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-            return trnsfrmd_sndr_t<Env, Functor, Sndr>{
-                .clsr =
-                    {.node_props = Kokkos::Experimental::node_props(
-                         std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">()),
-                           Kokkos::Experimental::get_device_handle(schd.state->exec)),
-                           .functor = std::forward<Functor>(functor)},
-                .sndr = std::forward<Sndr>(sndr)
-            };
-        } else {
-            return no_graph_scheduler_in_env<stdexec::then_t, Sndr, Env>();
-        }
+        return trnsfrmd_sndr_t<Env, Functor, Sndr>{
+            .clsr =
+                {.node_props = Kokkos::Experimental::node_props(
+                     std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">()),
+                       Kokkos::Experimental::get_device_handle(schd.state->exec)),
+                       .functor = std::forward<Functor>(functor)},
+            .sndr = std::forward<Sndr>(sndr)
+        };
+    }
+
+    template <typename Env, typename Functor, typename Sndr>
+    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
+    auto operator()(const Env&, stdexec::then_t, Functor&&, Sndr&&) const noexcept {
+        return no_graph_scheduler_in_env<stdexec::then_t, Sndr, Env>();
     }
 };
 

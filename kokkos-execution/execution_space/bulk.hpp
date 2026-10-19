@@ -23,27 +23,29 @@ struct TransformSenderFor<stdexec::bulk_t> {
     >;
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
-    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
+    requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
     auto operator()(const Env& env, stdexec::bulk_t, Data&& data, Sndr&& sndr) const
         noexcept(std::is_nothrow_constructible_v<
                  trnsfrmd_sndr_t<Env, Data, Sndr>,
                  typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
                  Sndr&&
         >) {
-        if constexpr (execution_space_completing_sender<Sndr, Env>) {
-            auto&& [parallel_policy, shape, functor] = std::forward<Data>(data);
+        auto&& [parallel_policy, shape, functor] = std::forward<Data>(data);
 
-            const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
-            return trnsfrmd_sndr_t<Env, Data, Sndr>{
-                {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),
-                  stdexec::__forward_like<Data>(functor),
-                  Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>(
-                      schd.state->exec, 0, stdexec::__forward_like<Data>(shape))}},
-                std::forward<Sndr>(sndr)};
-        } else {
-            return no_execution_space_scheduler_in_env<stdexec::bulk_t, Sndr, Env>();
-        }
+        return trnsfrmd_sndr_t<Env, Data, Sndr>{
+            {{Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),
+              stdexec::__forward_like<Data>(functor),
+              Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>(
+                  schd.state->exec, 0, stdexec::__forward_like<Data>(shape))}},
+            std::forward<Sndr>(sndr)};
+    }
+
+    template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
+    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
+    auto operator()(const Env&, stdexec::bulk_t, Data&&, Sndr&&) const noexcept {
+        return no_execution_space_scheduler_in_env<stdexec::bulk_t, Sndr, Env>();
     }
 };
 
