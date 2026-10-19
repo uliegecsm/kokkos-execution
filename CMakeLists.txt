@@ -147,6 +147,7 @@ target_sources(
             kokkos-execution/impl/make_op_state.hpp
             kokkos-execution/impl/optional_ref.hpp
             kokkos-execution/impl/optional_storage.hpp
+            kokkos-execution/impl/policy.hpp
             kokkos-execution/impl/queryable.hpp
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp

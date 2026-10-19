@@ -97,22 +97,6 @@ struct ParallelReduceData {
     using policy_or_extents_t = ExecPolicyOrExtents;
     using reducer_t = Reducer;
 
-    static constexpr bool has_execution_policy = Kokkos::ExecutionPolicy<policy_or_extents_t>;
-    static constexpr bool has_extents = Impl::extents<policy_or_extents_t>;
-
-    template <Kokkos::ExecutionSpace Exec>
-    auto policy(const Exec& exec) const {
-        if constexpr (has_execution_policy) {
-            static_assert(
-                std::same_as<Exec, typename policy_or_extents_t::execution_space>,
-                "Only the execution space instance, not its type, can be bound late.");
-            return policy_or_extents_t(Kokkos::Impl::PolicyUpdate{}, policy_or_extents, exec);
-        } else {
-            static_assert(policy_or_extents_t::rank() == 1);
-            return Kokkos::RangePolicy(exec, 0, policy_or_extents.extent(0));
-        }
-    }
-
     label_t label;
     functor_t functor;
     policy_or_extents_t policy_or_extents;
