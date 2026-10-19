@@ -28,15 +28,14 @@ struct ParallelForClosure {
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
         const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
-        auto node = predecessor.then_parallel_for(
-            std::move(node_props), std::forward<ExecPolicy>(policy), std::forward<Functor>(functor));
+        auto node = predecessor.then_parallel_for(std::move(node_props), std::move(policy), std::move(functor));
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("parallel_for", node, predecessor)
         graph_add_node_event(predecessor, node, device_handle);
         return node;
     }
 
     node_props_t node_props;
-    Functor functor; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    Functor functor;
     ExecPolicy policy;
 };
 

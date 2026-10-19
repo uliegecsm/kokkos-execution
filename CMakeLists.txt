@@ -119,6 +119,7 @@ target_sources(
             kokkos-execution/graph/graph_fwd.hpp
             kokkos-execution/graph/operation_state.hpp
             kokkos-execution/graph/parallel_for.hpp
+            kokkos-execution/graph/parallel_reduce.hpp
             kokkos-execution/graph/schedule_from.hpp
             kokkos-execution/graph/sender_concepts.hpp
             kokkos-execution/graph/sync_wait.hpp
