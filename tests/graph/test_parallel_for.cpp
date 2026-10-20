@@ -7,6 +7,7 @@
 
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/check_node_type.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
@@ -212,6 +213,42 @@ TEST_F(ParallelForTest, parallel_for_starts_on) {
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
 
     ASSERT_EQ(data(), size / 2 * (size - 1));
+}
+
+//! @test Check that @ref Kokkos::Execution::parallel_for correctly maps @c Kokkos::range_slice to @c Kokkos::RangePolicy.
+TEST_F(ParallelForTest, with_range_slice) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t gctx{exec};
+
+    using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
+
+    using expt_node_t = Kokkos::Experimental::GraphNodeRef<
+        TEST_EXECUTION_SPACE,
+        Kokkos::Impl::GraphNodeKernelImpl<
+            TEST_EXECUTION_SPACE,
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::Impl::IsGraphKernelTag>,
+            functor_t,
+            Kokkos::ParallelForTag
+        >,
+        Kokkos::Experimental::GraphNodeRef<TEST_EXECUTION_SPACE, Kokkos::Experimental::GraphNodeRootTag>
+    >;
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        stdexec::schedule(gctx.get_scheduler())
+        | Kokkos::Execution::parallel_for(Kokkos::range_slice<size_t, size_t>{3, 5}, functor_t{.data = data})
+        | Tests::Utils::check_node_type<expt_node_t>());
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(data(), 3 + 4);
 }
 
 /**

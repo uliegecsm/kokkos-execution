@@ -6,7 +6,7 @@
 #include "kokkos-execution/graph/operation_state.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
-#include "kokkos-execution/impl/policy.hpp"
+#include "kokkos-execution/impl/make_policy.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
@@ -63,7 +63,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
         Sndr,
         typename std::remove_cvref_t<Data>::label_t,
         typename std::remove_cvref_t<Data>::functor_t,
-        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_extents_t>
+        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>
     >;
 
     template <typename Env, typename Data, typename Sndr>
@@ -87,7 +87,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
                        Kokkos::Experimental::get_device_handle(schd.state->exec)),
                        .functor = stdexec::__forward_like<Data>(data.functor),
                        .policy = Impl::make_policy(
-                     Impl::exec_of_t<Sndr, Env>{}, stdexec::__forward_like<Data>(data.policy_or_extents))},
+                     Impl::exec_of_t<Sndr, Env>{}, stdexec::__forward_like<Data>(data.policy_or_iter_space))},
             .sndr = std::forward<Sndr>(sndr)
         };
     }
