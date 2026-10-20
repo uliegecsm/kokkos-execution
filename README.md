@@ -1,5 +1,6 @@
+[![Documentation](https://img.shields.io/badge/docs-Doxygen-blueviolet)](https://uliegecsm.github.io/kokkos-execution/)
 [![Run tests](https://github.com/uliegecsm/kokkos-execution/actions/workflows/test.yml/badge.svg)](https://github.com/uliegecsm/kokkos-execution/actions/workflows/test.yml)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/uliegecsm/kokkos-execution/.pre-commit-config.yaml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/uliegecsm/kokkos-execution/blob/HEAD/.pre-commit-config.yaml)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 # kokkos-execution
