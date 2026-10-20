@@ -34,4 +34,5 @@ set(DOXYGEN_INCLUDE_PATH
 
 doxygen_add_docs(
   docs ${HOMEPAGE_MD} ${CMAKE_SOURCE_DIR}/examples ${CMAKE_SOURCE_DIR}/kokkos-execution ${CMAKE_SOURCE_DIR}/tests
+  ${CMAKE_SOURCE_DIR}/CONTRIBUTING.md
 )
