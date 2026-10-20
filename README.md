@@ -1,4 +1,5 @@
 [![Run tests](https://github.com/uliegecsm/kokkos-execution/actions/workflows/test.yml/badge.svg)](https://github.com/uliegecsm/kokkos-execution/actions/workflows/test.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/uliegecsm/kokkos-execution/.pre-commit-config.yaml)
 
 # kokkos-execution
 
