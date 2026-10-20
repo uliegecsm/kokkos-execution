@@ -99,7 +99,7 @@ TEST(WhenAll, single_branch) {
  * schedule(esc) | then -- when_all
  * @endverbatim
  *
- * @note After the implementation of P4269R0 in https://github.com/NVIDIA/stdexec/pull/2124,
+ * @note After the implementation of @cite P4269R1 in https://github.com/NVIDIA/stdexec/pull/2124,
  *       @c when_all(sndr) with a single sender is expression-equivalent to @c auto(sndr). Hence, the sender
  *       returned by @c when_all(sndr) may have a completion scheduler. Notably, for an execution space completing
  *       sender @c sndr, @c when_all(sndr) returns an execution space completing sender.
@@ -117,6 +117,8 @@ TEST_F(WhenAllTest, single_branch) {
     >);
 
     static_assert(std::same_as<stdexec::tag_of_t<decltype(sndr)>, stdexec::then_t>);
+
+    //! It has a completion scheduler.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<decltype(sndr)>);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
