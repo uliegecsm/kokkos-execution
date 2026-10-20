@@ -35,14 +35,19 @@ concept graph_operation_state_for = stdexec::operation_state<OpState> && Kokkos:
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 struct RemainsOnGraphFor : public std::false_type { };
 
+template <typename OpState, typename Exec>
+concept remains_on_graph_for = stdexec::operation_state<OpState> && Kokkos::ExecutionSpace<Exec>
+                            && RemainsOnGraphFor<OpState, Exec>::value;
+
 /**
  * Determine whether the operation state resulting from the connection of @p Sndr and @p Rcvr
  * contains only operations that map to @ref Kokkos::Execution::GraphImpl::Domain operation states that create a graph node
  * and whose execution space type is @p Exec.
  */
 template <typename Exec, typename Sndr, typename Rcvr>
-concept remains_on_graph_for = Kokkos::ExecutionSpace<Exec> && stdexec::sender<Sndr> && stdexec::receiver<Rcvr>
-                            && RemainsOnGraphFor<stdexec::connect_result_t<Sndr, Rcvr>, Exec>::value;
+concept connect_result_remains_on_graph_for = Kokkos::ExecutionSpace<Exec> && stdexec::sender<Sndr>
+                                           && stdexec::receiver<Rcvr>
+                                           && remains_on_graph_for<stdexec::connect_result_t<Sndr, Rcvr>, Exec>;
 
 } // namespace Kokkos::Execution::GraphImpl
 
