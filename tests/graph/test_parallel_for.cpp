@@ -48,7 +48,6 @@ class ParallelForTest
         Kokkos::Execution::GraphImpl::GraphInstantiateEvent,
         Kokkos::Execution::GraphImpl::GraphSubmitEvent
     >;
-    using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
 /**

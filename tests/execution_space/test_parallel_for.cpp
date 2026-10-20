@@ -43,7 +43,6 @@ class ParallelForTest
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
-    using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
 /**
