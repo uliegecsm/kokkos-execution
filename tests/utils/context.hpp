@@ -30,6 +30,7 @@ struct ContextTest
 
     using value_t = int;
     using view_s_t = Kokkos::View<value_t, Kokkos::SharedSpace>;
+    using view_um_s_t = Kokkos::View<value_t, Kokkos::SharedSpace, Kokkos::MemoryUnmanaged>;
 
     static constexpr bool on_device = Tests::Utils::on_device<Exec>();
 

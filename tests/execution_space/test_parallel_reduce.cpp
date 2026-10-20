@@ -171,16 +171,23 @@ static_assert(Tests::Utils::check_continues_on_after_just_stopped<
               typename TEST_CATEGORY(ParallelReduceTest)::view_s_t
 >());
 
-//! @test Check @ref Kokkos::Execution::parallel_reduce with a range policy and a rank-0 @c Kokkos::View as reduction target.
-TEST_F(TEST_CATEGORY(ParallelReduceTest), range_policy_into_rank_0_view) {
-    const view_s_t target(Kokkos::view_alloc(exec, "data - shared space"));
+template <typename ViewType>
+struct ParallelReduceManagedAndUnManagedTest : public TEST_CATEGORY(ParallelReduceTest) { };
 
-    const context_t esc{exec};
+TYPED_TEST_SUITE_P(ParallelReduceManagedAndUnManagedTest);
+
+//! @test Check @ref Kokkos::Execution::parallel_reduce with a range policy and a rank-0 @c Kokkos::View as reduction target.
+TYPED_TEST_P(ParallelReduceManagedAndUnManagedTest, range_policy_into_rank_0_view) {
+    const typename TestFixture::view_s_t target_storage(Kokkos::view_alloc(this->exec, "data - shared space"));
+
+    const TypeParam target(target_storage); // NOLINT(performance-unnecessary-copy-initialization)
+
+    const typename TestFixture::context_t esc{this->exec};
 
     constexpr size_t size = 10;
 
     ASSERT_THAT(
-        Tests::Utils::record_sync_wait<recorder_listener_t>(
+        Tests::Utils::record_sync_wait<typename TestFixture::recorder_listener_t>(
             stdexec::schedule(esc.get_scheduler())
             | Kokkos::Execution::parallel_reduce(
                 "hello from pred",
@@ -188,11 +195,23 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), range_policy_into_rank_0_view) {
                 Tests::Utils::Functors::ReduceIndices{},
                 target)),
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PRED(exec, "hello from pred"),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+            MATCHER_FOR_BEGIN_PRED(this->exec, "hello from pred"),
+            MATCHER_FOR_BEGIN_FENCE(this->exec, dispatch_label(this->exec, "sync_wait"))));
 
     ASSERT_EQ(target(), size / 2 * (size - 1));
 }
+
+REGISTER_TYPED_TEST_SUITE_P(ParallelReduceManagedAndUnManagedTest, range_policy_into_rank_0_view);
+
+using pred_managed_and_unmanaged_types_t = ::testing::Types<
+    typename TEST_CATEGORY(ParallelReduceTest)::view_s_t,
+    typename TEST_CATEGORY(ParallelReduceTest)::view_um_s_t
+>;
+
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    ParallelReduceManagedAndUnManagedTestInstantiation,
+    ParallelReduceManagedAndUnManagedTest,
+    pred_managed_and_unmanaged_types_t);
 
 template <typename DataType>
 struct MaxLocFunctor {
