@@ -43,7 +43,6 @@ class ParallelForTest
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
-    using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
 /**
@@ -208,7 +207,9 @@ auto closure_object_creation_overloads(
                Kokkos::RangePolicy<Exec>(0, size), Tests::Utils::Functors::SumIndices{.data = witness})
          | Kokkos::Execution::parallel_for(
                "passing label, work count and functor", size, Tests::Utils::Functors::SumIndices{.data = witness})
-         | Kokkos::Execution::parallel_for(size, Tests::Utils::Functors::SumIndices{.data = witness});
+         | Kokkos::Execution::parallel_for(size, Tests::Utils::Functors::SumIndices{.data = witness})
+         | Kokkos::Execution::parallel_for(
+               Kokkos::range_slice<size_t, size_t>{4, 6}, Tests::Utils::Functors::SumIndices{.data = witness});
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for closure object creation overloads.
@@ -229,9 +230,10 @@ TEST_F(ParallelForTest, closure_object_creation_overloads) {
             MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()),
             MATCHER_FOR_BEGIN_PFOR(exec, "passing label, work count and functor"),
             MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()),
+            MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Impl::TypeInfo<functor_t>::name()),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
-    ASSERT_EQ(witness(), 4 * size / 2 * (size - 1));
+    ASSERT_EQ(witness(), 4 * size / 2 * (size - 1) + (4 + 5));
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for with two consecutive parallel regions and check there is no fence in between.

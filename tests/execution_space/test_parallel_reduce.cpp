@@ -45,7 +45,6 @@ class TEST_CATEGORY(ParallelReduceTest)
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
-    using variant_t = typename recorder_listener_t::event_variant_t;
 };
 
 /**
@@ -307,7 +306,9 @@ auto closure_object_creation_overloads(
                Kokkos::RangePolicy<Exec>(0, size), Tests::Utils::Functors::ReduceIndices{}, target)
          | Kokkos::Execution::parallel_reduce(
                "passing label, work count, functor and target", size, Tests::Utils::Functors::ReduceIndices{}, target)
-         | Kokkos::Execution::parallel_reduce(size, Tests::Utils::Functors::ReduceIndices{}, target);
+         | Kokkos::Execution::parallel_reduce(size, Tests::Utils::Functors::ReduceIndices{}, target)
+         | Kokkos::Execution::parallel_reduce(
+               Kokkos::range_slice<size_t, size_t>{4, 6}, Tests::Utils::Functors::ReduceIndices{}, target);
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_reduce closure object creation overloads.
@@ -338,9 +339,10 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), closure_object_creation_overloads) {
             MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
             MATCHER_FOR_BEGIN_PRED(exec, "passing label, work count, functor and target"),
             MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
+            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
-    ASSERT_EQ(target(), size / 2 * (size - 1));
+    ASSERT_EQ(target(), 4 + 5);
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_reduce with two consecutive parallel regions and check there is no fence in between.

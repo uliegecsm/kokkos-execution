@@ -1,14 +1,13 @@
-#ifndef KOKKOS_EXECUTION_IMPL_POLICY_HPP
-#define KOKKOS_EXECUTION_IMPL_POLICY_HPP
+#ifndef KOKKOS_EXECUTION_IMPL_MAKE_POLICY_HPP
+#define KOKKOS_EXECUTION_IMPL_MAKE_POLICY_HPP
 
-#include "kokkos-execution/impl/extents.hpp"
+#include "kokkos-execution/impl/iteration_space.hpp"
 
 namespace Kokkos::Execution::Impl {
 
-template <Kokkos::ExecutionSpace Exec, extents Extents>
-requires(Extents::rank() == 1)
-auto make_policy(const Exec& exec, const Extents& extents) -> Kokkos::RangePolicy<Exec> {
-    return {exec, 0, extents.extent(0)};
+template <Kokkos::ExecutionSpace Exec, range_slice_with_default_stride RangeSlice>
+auto make_policy(const Exec& exec, const RangeSlice& rgsl) -> Kokkos::RangePolicy<Exec> {
+    return {exec, rgsl.first, rgsl.last};
 }
 
 template <Kokkos::ExecutionSpace Exec, typename ExecPolicy>
@@ -25,4 +24,4 @@ using make_policy_t = decltype(make_policy(std::declval<const Exec&>(), std::dec
 
 } // namespace Kokkos::Execution::Impl
 
-#endif // KOKKOS_EXECUTION_IMPL_POLICY_HPP
+#endif // KOKKOS_EXECUTION_IMPL_MAKE_POLICY_HPP

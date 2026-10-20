@@ -8,7 +8,7 @@
 #include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
-#include "kokkos-execution/impl/policy.hpp"
+#include "kokkos-execution/impl/make_policy.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/parallel_reduce.hpp"
 
@@ -75,7 +75,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
         Sndr,
         typename std::remove_cvref_t<Data>::label_t,
         typename std::remove_cvref_t<Data>::functor_t,
-        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_extents_t>,
+        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>,
         typename std::remove_cvref_t<Data>::reducer_t
     >;
 
@@ -96,7 +96,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
             {.label = stdexec::__forward_like<Data>(data.label),
              .functor = stdexec::__forward_like<Data>(data.functor),
-             .policy = Impl::make_policy(schd.state->exec, stdexec::__forward_like<Data>(data.policy_or_extents)),
+             .policy = Impl::make_policy(schd.state->exec, stdexec::__forward_like<Data>(data.policy_or_iter_space)),
              .reducer = stdexec::__forward_like<Data>(data.reducer)},
             std::forward<Sndr>(sndr)
         };
