@@ -6,6 +6,7 @@
 #include "kokkos-execution/execution_space.hpp"
 
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/category.hpp"
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/counter.hpp"
@@ -32,7 +33,7 @@ namespace Tests::ExecutionSpaceImpl {
 
 using namespace Kokkos::utils::callbacks;
 
-class ParallelForTest
+class TEST_CATEGORY(ParallelForTest)
     : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
@@ -52,11 +53,11 @@ class ParallelForTest
 template <template <typename...> class SndrAdptr, bool IsDispatchingSender, typename... Args>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
-    using schd_sndr_t = typename ParallelForTest::schedule_sender_t;
+    using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
 
     //! Parallel for sender.
     using label_t = std::string;
-    using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
+    using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_sndr_t = SndrAdptr<Args..., schd_sndr_t, label_t, functor_t, policy_t>;
 
@@ -115,11 +116,11 @@ static_assert(test_sndr_traits<
 //! @test Check that @ref Kokkos::Execution::Impl::ParallelForSender is transformable with @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
 consteval bool test_sndr_is_transformable() {
     //! Schedule sender.
-    using schd_sndr_t = typename ParallelForTest::schedule_sender_t;
+    using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
 
     //! Parallel for sender.
     using label_t = std::string;
-    using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
+    using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>;
 
@@ -150,19 +151,19 @@ consteval bool test_closure_traits() {
     return true;
 }
 
-static_assert(test_closure_traits<typename ParallelForTest::view_s_t>());
+static_assert(test_closure_traits<typename TEST_CATEGORY(ParallelForTest)::view_s_t>());
 static_assert(test_closure_traits<std::span<int>>());
 
 //! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
 static_assert(Tests::Utils::check_continues_on_after_just_stopped<
-              typename ParallelForTest::scheduler_t,
+              typename TEST_CATEGORY(ParallelForTest)::scheduler_t,
               Kokkos::Execution::parallel_for_t,
               Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
               Tests::Utils::Functors::NoOp<false, false, false>
 >());
 
 //! @test Check @ref Kokkos::Execution::parallel_for with a team policy.
-TEST_F(ParallelForTest, team_policy) {
+TEST_F(TEST_CATEGORY(ParallelForTest), team_policy) {
     constexpr int size = 32;
 
     const auto [num_teams, team_size] = [&]() {
@@ -213,7 +214,7 @@ auto closure_object_creation_overloads(
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for closure object creation overloads.
-TEST_F(ParallelForTest, closure_object_creation_overloads) {
+TEST_F(TEST_CATEGORY(ParallelForTest), closure_object_creation_overloads) {
     constexpr size_t size = 10;
 
     const view_s_t witness(Kokkos::view_alloc(exec, "data - shared space"));
@@ -237,7 +238,7 @@ TEST_F(ParallelForTest, closure_object_creation_overloads) {
 }
 
 //! @test Check @ref Kokkos::Execution::parallel_for with two consecutive parallel regions and check there is no fence in between.
-TEST_F(ParallelForTest, two_parallel_regions) {
+TEST_F(TEST_CATEGORY(ParallelForTest), two_parallel_regions) {
     constexpr size_t size = 10;
 
     const view_s_t witness(Kokkos::view_alloc(exec, "data - shared space"));
@@ -269,7 +270,7 @@ TEST_F(ParallelForTest, two_parallel_regions) {
 }
 
 //! @test Check that @ref Kokkos::Execution::parallel_for with a @c stdexec::starts_on works.
-TEST_F(ParallelForTest, starts_on_parallel_region) {
+TEST_F(TEST_CATEGORY(ParallelForTest), starts_on_parallel_region) {
     constexpr size_t size = 10;
 
     const view_s_t witness(Kokkos::view_alloc(exec, "data - shared space"));
@@ -333,7 +334,7 @@ TEST_F(ParallelForTest, starts_on_parallel_region) {
 }
 
 //! @test The customization of @ref Kokkos::Execution::parallel_for properly forwards forwarding queries.
-TEST_F(ParallelForTest, forwarding_env) {
+TEST_F(TEST_CATEGORY(ParallelForTest), forwarding_env) {
     constexpr size_t size = 10;
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -379,7 +380,7 @@ TEST_F(ParallelForTest, forwarding_env) {
 }
 
 //! @test Check that connecting uses the least amount of moves and copies.
-TEST_F(ParallelForTest, perfect_forwarding_connect) {
+TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     using counter_t = Tests::Utils::Functors::Counter;
 
     const context_t esc{exec};

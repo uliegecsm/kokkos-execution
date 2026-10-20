@@ -7,6 +7,7 @@
 
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
+#include "tests/utils/category.hpp"
 #include "tests/utils/check_node_type.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/no_op.hpp"
@@ -32,7 +33,7 @@ namespace Tests::GraphImpl {
 
 using namespace Kokkos::utils::callbacks;
 
-class ParallelForTest
+class TEST_CATEGORY(ParallelForTest)
     : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
@@ -58,11 +59,11 @@ class ParallelForTest
 template <template <typename...> class SndrAdptr, bool IsDispatchingSender, typename... Args>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
-    using schd_sndr_t = typename ParallelForTest::schedule_sender_t;
+    using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
 
     //! Parallel for sender.
     using label_t = std::string;
-    using functor_t = Tests::Utils::Functors::SumIndices<typename ParallelForTest::view_s_t>;
+    using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_sndr_t = SndrAdptr<schd_sndr_t, label_t, functor_t, policy_t>;
 
@@ -122,12 +123,12 @@ consteval bool test_closure_traits() {
     return true;
 }
 
-static_assert(test_closure_traits<typename ParallelForTest::view_s_t>());
+static_assert(test_closure_traits<typename TEST_CATEGORY(ParallelForTest)::view_s_t>());
 static_assert(test_closure_traits<std::span<int>>());
 
 //! @test Our customization is not selected. No value channel is added, such that it is not sync-waitable.
 static_assert(Tests::Utils::check_continues_on_after_just_stopped<
-              typename ParallelForTest::scheduler_t,
+              typename TEST_CATEGORY(ParallelForTest)::scheduler_t,
               Kokkos::Execution::parallel_for_t,
               Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
               Tests::Utils::Functors::NoOp<false, false, false>
@@ -137,7 +138,7 @@ static_assert(Tests::Utils::check_continues_on_after_just_stopped<
  * @test Check that @ref Kokkos::Execution::GraphContext does its duty well when used with @ref Kokkos::Execution::parallel_for_t
  *       within a chain started with @c stdexec::schedule.
  */
-TEST_F(ParallelForTest, parallel_for_schedule) {
+TEST_F(TEST_CATEGORY(ParallelForTest), parallel_for_schedule) {
     constexpr size_t size = 10;
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -164,11 +165,8 @@ TEST_F(ParallelForTest, parallel_for_schedule) {
     ASSERT_EQ(data(), size / 2 * (size - 1));
 }
 
-/**
- * @test Similar to @ref Tests::GraphImpl::ParallelForTest_parallel_for_schedule_Test, but the sender starts
- *       with a @c stdexec::starts_on.
- */
-TEST_F(ParallelForTest, parallel_for_starts_on) {
+//! @test Check that @ref Kokkos::Execution::parallel_for with a @c stdexec::starts_on works.
+TEST_F(TEST_CATEGORY(ParallelForTest), parallel_for_starts_on) {
     constexpr size_t size = 10;
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -216,7 +214,7 @@ TEST_F(ParallelForTest, parallel_for_starts_on) {
 }
 
 //! @test Check that @ref Kokkos::Execution::parallel_for correctly maps @c Kokkos::range_slice to @c Kokkos::RangePolicy.
-TEST_F(ParallelForTest, with_range_slice) {
+TEST_F(TEST_CATEGORY(ParallelForTest), with_range_slice) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t gctx{exec};
@@ -251,11 +249,8 @@ TEST_F(ParallelForTest, with_range_slice) {
     ASSERT_EQ(data(), 3 + 4);
 }
 
-/**
- * @test Similar to @ref Tests::GraphImpl::ParallelForTest_parallel_for_schedule_Test,
- *       but using a tagged operator.
- */
-TEST_F(ParallelForTest, parallel_for_schedule_tagged_operator) {
+//! @test Check that @ref Kokkos::Execution::parallel_for with a tagged operator works.
+TEST_F(TEST_CATEGORY(ParallelForTest), parallel_for_schedule_tagged_operator) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
     const context_t gctx{exec};

@@ -10,6 +10,7 @@
 #include "tests/utils/check_rcvr_env_queryable_with.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
+#include "tests/utils/functors/maxloc.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/reduce_indices.hpp"
 #include "tests/utils/just_stopped.hpp"
@@ -212,26 +213,13 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
     ParallelReduceManagedAndUnManagedTest,
     pred_managed_and_unmanaged_types_t);
 
-template <typename DataType>
-struct MaxLocFunctor {
-    typename DataType::const_type data;
-
-    template <std::integral IndexType, typename ValueType>
-    KOKKOS_FUNCTION void operator()(const IndexType index, ValueType& current) const noexcept {
-        if (data(index) > current.val) {
-            current.val = data(index);
-            current.loc = index;
-        }
-    }
-};
-
 //! @test Check @ref Kokkos::Execution::parallel_reduce with a range policy and a @c Kokkos::MaxLoc reducer.
 TEST_F(TEST_CATEGORY(ParallelReduceTest), range_policy_maxloc_reducer) {
     constexpr size_t size = 5;
 
     using data_view_t = Kokkos::View<value_t[size], TEST_EXECUTION_SPACE>;
     using max_loc_t = Kokkos::MaxLoc<value_t, typename TEST_EXECUTION_SPACE::index_type, Kokkos::SharedSpace>;
-    using max_loc_functor_t = MaxLocFunctor<data_view_t>;
+    using max_loc_functor_t = Tests::Utils::Functors::MaxLoc<data_view_t>;
 
     const data_view_t data(Kokkos::view_alloc(Kokkos::WithoutInitializing, exec));
 
@@ -239,19 +227,37 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), range_policy_maxloc_reducer) {
 
     const typename max_loc_t::result_view_type target(Kokkos::view_alloc(exec));
 
-    stdexec::sync_wait(
-        stdexec::schedule(esc.get_scheduler())
-        | Kokkos::Execution::parallel_for(
-            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 1),
-            KOKKOS_LAMBDA<std::integral T>(const T) {
-                data(0) = 42;
-                data(1) = -5;
-                data(2) = 6;
-                data(3) = 56;
-                data(4) = -6;
-            })
-        | Kokkos::Execution::parallel_reduce(
-            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size), max_loc_functor_t{.data = data}, max_loc_t{target}));
+    using combined_functor_reducer_t = Kokkos::Impl::CombinedFunctorReducer<
+        max_loc_functor_t,
+        Kokkos::Impl::FunctorAnalysis<
+            Kokkos::Impl::FunctorPatternInterface::REDUCE,
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+            max_loc_t,
+            typename max_loc_t::value_type
+        >::Reducer,
+        void
+    >;
+
+    ASSERT_THAT(
+        Tests::Utils::record_sync_wait<recorder_listener_t>(
+            stdexec::schedule(esc.get_scheduler())
+            | Kokkos::Execution::parallel_for(
+                Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 1),
+                KOKKOS_LAMBDA<std::integral T>(const T) {
+                    data(0) = 42;
+                    data(1) = -5;
+                    data(2) = 6;
+                    data(3) = 56;
+                    data(4) = -6;
+                })
+            | Kokkos::Execution::parallel_reduce(
+                Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+                max_loc_functor_t{.data = data},
+                max_loc_t{target})),
+        testing::ElementsAre(
+            ABeginParallelForEvent(MATCHER_FOR_DEV_ID(BeginParallelFor, exec)),
+            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<combined_functor_reducer_t>::name()),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(target().val, 56);
     ASSERT_EQ(target().loc, 3);
@@ -321,7 +327,7 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), closure_object_creation_overloads) {
         closure_object_creation_overloads(size, target, context_t{exec}));
 
     using functor_t = Tests::Utils::Functors::ReduceIndices;
-    using reducer_t = Kokkos::Impl::CombinedFunctorReducer<
+    using combined_functor_reducer_t = Kokkos::Impl::CombinedFunctorReducer<
         functor_t,
         Kokkos::Impl::FunctorAnalysis<
             Kokkos::Impl::FunctorPatternInterface::REDUCE,
@@ -336,10 +342,10 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), closure_object_creation_overloads) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PRED(exec, "passing label, execution policy, functor and target"),
-            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
+            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<combined_functor_reducer_t>::name()),
             MATCHER_FOR_BEGIN_PRED(exec, "passing label, work count, functor and target"),
-            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
-            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<reducer_t>::name()),
+            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<combined_functor_reducer_t>::name()),
+            MATCHER_FOR_BEGIN_PRED(exec, Kokkos::Impl::TypeInfo<combined_functor_reducer_t>::name()),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(target(), 4 + 5);
