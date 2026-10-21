@@ -607,4 +607,200 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
     ASSERT_EQ(count, 1);
 }
 
+/**
+ * @test Check that @ref Kokkos::Execution::GraphImpl::RemainsOnGraphFor can properly flag the resulting operation state
+ *       as "remains on the graph".
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), diagnose_remains_on_graph_for_two_branches) {
+    const context_t gctx{exec};
+
+    using functor_t = Tests::Utils::Functors::NoOp<false, false, false>;
+    using rcvr_t = Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>;
+
+    stdexec::sender auto br_A = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(functor_t{});
+    stdexec::sender auto br_B = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(functor_t{});
+
+    //! The resulting @c stdexec::when_all operation is well formed, and remains on the graph.
+    stdexec::sender auto sndr = stdexec::when_all(std::move(br_A), std::move(br_B));
+
+    using op_state_t = stdexec::connect_result_t<decltype(sndr), rcvr_t>;
+
+    using res_t = Kokkos::Execution::GraphImpl::RemainsOnGraphFor<op_state_t, TEST_EXECUTION_SPACE>;
+
+    using diagnose_t = Kokkos::Execution::Impl::diagnose_t<res_t>;
+
+    //! The diagnosis is quite verbose, but reading it points exactly to which parts of the operation states are rejected.
+    static_assert(std::same_as<diagnose_t, stdexec::__msuccess>);
+
+    static_assert(Kokkos::Execution::Impl::mandate_or_explain<res_t>());
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr);
+
+    stdexec::sync_wait(std::move(sndr));
+}
+
+/**
+ * @test Check that @ref Kokkos::Execution::GraphImpl::RemainsOnGraphFor can properly flag the resulting operation state
+ *       as "not remains on the graph" with a useful diagnostic.
+ *
+ * One branch out of the two remains on the graph.
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), diagnose_does_not_remains_on_graph_for_two_branches) {
+    const context_t gctx{exec};
+    exec::single_thread_context stc{};
+
+    using functor_t = Tests::Utils::Functors::NoOp<false, false, false>;
+    using rcvr_t = Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>;
+
+    //! This branch will not remain on the graph.
+    stdexec::sender auto br_A = stdexec::schedule(stc.get_scheduler()) | stdexec::continues_on(gctx.get_scheduler())
+                              | stdexec::then(functor_t{});
+
+    //! This branch will remain on the graph.
+    stdexec::sender auto br_B = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(functor_t{});
+
+    //! The resulting @c stdexec::when_all operation is well formed, but does not remain on the graph.
+    stdexec::sender auto sndr = stdexec::when_all(std::move(br_A), std::move(br_B));
+
+    using op_state_t = stdexec::connect_result_t<decltype(sndr), rcvr_t>;
+
+    using op_state_br_A_t = stdexec::connect_result_t<decltype(br_A), typename op_state_t::WhenAllChildReceiver>;
+
+    using diagnose_t = Kokkos::Execution::Impl::diagnose_t<
+        Kokkos::Execution::GraphImpl::RemainsOnGraphFor<op_state_t, TEST_EXECUTION_SPACE>
+    >;
+
+    //! The diagnosis is quite verbose, but reading it points exactly to which parts of the operation states are rejected.
+    static_assert(
+        std::same_as<
+            diagnose_t,
+            stdexec::_ERROR_<
+                stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                stdexec::_WHY_(Kokkos::Execution::GraphImpl::BECAUSE_AT_LEAST_ONE_CHILD_DOES_NOT_REMAIN_ON_GRAPH),
+                Kokkos::Execution::Impl::WITH_OPSTATE<op_state_t>,
+                Kokkos::Execution::Impl::WITH_CHILDREN_ERRORS<stdexec::_ERROR_<
+                    stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                    stdexec::_WHY_(
+                        Kokkos::Execution::GraphImpl::BECAUSE_THE_INNER_OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                    stdexec::_ERROR_<
+                        stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                        stdexec::_WHY_(
+                            Kokkos::Execution::GraphImpl::BECAUSE_THE_INNER_OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                        stdexec::_ERROR_<
+                            stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                            Kokkos::Execution::Impl::WITH_OPSTATE<
+                                typename op_state_br_A_t::inner_op_state_t::inner_op_state_t
+                            >,
+                            Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                        >,
+                        Kokkos::Execution::Impl::WITH_OPSTATE<typename op_state_br_A_t::inner_op_state_t>,
+                        Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                    >,
+                    Kokkos::Execution::Impl::WITH_OPSTATE<op_state_br_A_t>,
+                    Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                >>
+            >
+        >);
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr);
+
+    stdexec::sync_wait(std::move(sndr));
+}
+
+/**
+ * @test Check that @ref Kokkos::Execution::GraphImpl::RemainsOnGraphFor can properly flag the resulting operation state
+ *       as "not remains on the graph" with a useful diagnostic.
+ *
+ * One branch out of the three remains on the graph.
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), diagnose_does_not_remains_on_graph_for_three_branches) {
+    const context_t gctx{exec};
+    exec::single_thread_context stc{};
+
+    using functor_t = Tests::Utils::Functors::NoOp<false, false, false>;
+    using rcvr_t = Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>;
+
+    //! This branch will not remain on the graph.
+    stdexec::sender auto br_A = stdexec::schedule(stc.get_scheduler()) | stdexec::continues_on(gctx.get_scheduler())
+                              | stdexec::then(functor_t{});
+
+    //! This branch will remain on the graph.
+    stdexec::sender auto br_B = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(functor_t{});
+
+    //! This branch will not remain on the graph.
+    stdexec::sender auto br_C = stdexec::schedule(stc.get_scheduler()) | stdexec::continues_on(gctx.get_scheduler())
+                              | stdexec::then(functor_t{});
+
+    //! The resulting @c stdexec::when_all operation is well formed, but does not remain on the graph.
+    stdexec::sender auto sndr = stdexec::when_all(std::move(br_A), std::move(br_B), std::move(br_C));
+
+    using op_state_t = stdexec::connect_result_t<decltype(sndr), rcvr_t>;
+
+    using op_state_br_A_t = stdexec::connect_result_t<decltype(br_A), typename op_state_t::WhenAllChildReceiver>;
+    using op_state_br_C_t = stdexec::connect_result_t<decltype(br_C), typename op_state_t::WhenAllChildReceiver>;
+
+    using diagnose_t = Kokkos::Execution::Impl::diagnose_t<
+        Kokkos::Execution::GraphImpl::RemainsOnGraphFor<op_state_t, TEST_EXECUTION_SPACE>
+    >;
+
+    //! The diagnosis is quite verbose, but reading it points exactly to which parts of the operation states are rejected.
+    static_assert(
+        std::same_as<
+            diagnose_t,
+            stdexec::_ERROR_<
+                stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                stdexec::_WHY_(Kokkos::Execution::GraphImpl::BECAUSE_AT_LEAST_ONE_CHILD_DOES_NOT_REMAIN_ON_GRAPH),
+                Kokkos::Execution::Impl::WITH_OPSTATE<op_state_t>,
+                Kokkos::Execution::Impl::WITH_CHILDREN_ERRORS<
+                    stdexec::_ERROR_<
+                        stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                        stdexec::_WHY_(
+                            Kokkos::Execution::GraphImpl::BECAUSE_THE_INNER_OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                        stdexec::_ERROR_<
+                            stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                            stdexec::_WHY_(
+                                Kokkos::Execution::GraphImpl::BECAUSE_THE_INNER_OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                            stdexec::_ERROR_<
+                                stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                                Kokkos::Execution::Impl::WITH_OPSTATE<
+                                    typename op_state_br_A_t::inner_op_state_t::inner_op_state_t
+                                >,
+                                Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                            >,
+                            Kokkos::Execution::Impl::WITH_OPSTATE<typename op_state_br_A_t::inner_op_state_t>,
+                            Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                        >,
+                        Kokkos::Execution::Impl::WITH_OPSTATE<op_state_br_A_t>,
+                        Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                    >,
+                    stdexec::_ERROR_<
+                        stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                        stdexec::_WHY_(
+                            Kokkos::Execution::GraphImpl::BECAUSE_THE_INNER_OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                        stdexec::_ERROR_<
+                            stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                            stdexec::_WHY_(
+                                Kokkos::Execution::GraphImpl::BECAUSE_THE_INNER_OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                            stdexec::_ERROR_<
+                                stdexec::_WHAT_(Kokkos::Execution::GraphImpl::OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                                Kokkos::Execution::Impl::WITH_OPSTATE<
+                                    typename op_state_br_C_t::inner_op_state_t::inner_op_state_t
+                                >,
+                                Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                            >,
+                            Kokkos::Execution::Impl::WITH_OPSTATE<typename op_state_br_C_t::inner_op_state_t>,
+                            Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                        >,
+                        Kokkos::Execution::Impl::WITH_OPSTATE<op_state_br_C_t>,
+                        Kokkos::Execution::Impl::WITH_EXECUTION_SPACE<TEST_EXECUTION_SPACE>
+                    >
+                >
+            >
+        >);
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr);
+
+    stdexec::sync_wait(std::move(sndr));
+}
+
 } // namespace Tests::GraphImpl

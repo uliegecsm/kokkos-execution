@@ -5,6 +5,9 @@
 
 #include "Kokkos_Concepts.hpp"
 
+#include "kokkos-execution/graph/diagnostics.hpp"
+#include "kokkos-execution/impl/diagnostics.hpp"
+
 namespace Kokkos::Execution {
 
 template <Kokkos::ExecutionSpace Exec>
@@ -33,7 +36,15 @@ concept graph_operation_state_for = stdexec::operation_state<OpState> && Kokkos:
                                  && GraphOperationStateFor<OpState, Exec>::value;
 
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
-struct RemainsOnGraphFor : public std::false_type { };
+struct RemainsOnGraphFor : public std::false_type {
+    static constexpr auto diagnose() noexcept {
+        return stdexec::__mexception<
+            stdexec::_WHAT_(OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+            Impl::WITH_OPSTATE<OpState>,
+            Impl::WITH_EXECUTION_SPACE<Exec>
+        >{};
+    }
+};
 
 template <typename OpState, typename Exec>
 concept remains_on_graph_for = stdexec::operation_state<OpState> && Kokkos::ExecutionSpace<Exec>

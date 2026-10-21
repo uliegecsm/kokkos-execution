@@ -16,6 +16,7 @@
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
+#include "kokkos-execution/impl/diagnostics.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/queryable.hpp"
@@ -221,6 +222,24 @@ struct RemainsOnGraphFor<OpState, Exec> {
         stdexec::__mall_of<stdexec::__q<RemainsOnGraphForChild>>,
         typename OpState::children_op_states_t
     >::value;
+
+    static constexpr auto diagnose() noexcept {
+        using children_t = stdexec::__mapply<
+            stdexec::__mtransform<stdexec::__q<RemainsOnGraphForChild>, stdexec::__q<Impl::diagnose_t>>,
+            typename OpState::children_op_states_t
+        >;
+
+        if constexpr (stdexec::__ok<Impl::first_error_t<children_t>>) {
+            return stdexec::__msuccess{};
+        } else {
+            return stdexec::__mexception<
+                stdexec::_WHAT_(OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                stdexec::_WHY_(BECAUSE_AT_LEAST_ONE_CHILD_DOES_NOT_REMAIN_ON_GRAPH),
+                Impl::WITH_OPSTATE<OpState>,
+                Impl::rebind_t<Impl::WITH_CHILDREN_ERRORS, Impl::keep_errors_t<children_t>>
+            >{};
+        }
+    }
 };
 
 //! Sender for @c stdexec::when_all.

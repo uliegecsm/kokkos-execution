@@ -3,6 +3,7 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "kokkos-execution/graph/diagnostics.hpp"
 #include "kokkos-execution/graph/operation_state.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
