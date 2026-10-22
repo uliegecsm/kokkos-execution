@@ -46,10 +46,9 @@ struct Scheduler {
         }
 
         template <typename R = Rcvr>
+        requires stdexec::__queryable_with<R, get_node_t>
         [[nodiscard]]
-        auto query(get_node_t) const & noexcept -> stdexec::__query_result_t<R, get_node_t>
-            requires std::same_as<GraphComposition::policy_t<R>, GraphComposition::Attach>
-        {
+        auto query(get_node_t) const & noexcept -> stdexec::__query_result_t<R, get_node_t> {
             return this->rcvr.query(get_node);
         }
     };

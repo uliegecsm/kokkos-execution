@@ -201,6 +201,7 @@ struct OpState
         std::declval<RestOfClosures>()...));
 
     inner_op_state_t inner_op_state;
+    [[no_unique_address]]
     state_t state;
     node_t node;
 
