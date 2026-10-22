@@ -21,7 +21,7 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
             ::testing::Eq(Kokkos::Tools::Experimental::device_id(_device_handle_.m_exec))))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define MATCHER_FOR_GRAPH_ADDNODE(_graph_create_event_variant_, _device_handle_, _predecessor_)                        \
+#define MATCHER_FOR_GRAPH_ADDNODE(_graph_create_event_variant_, _device_handle_, _predecessor_, ...)                   \
     AGraphAddNodeEvent(                                                                                                \
         ::testing::Field(                                                                                              \
             &Kokkos::Execution::GraphImpl::GraphAddNodeEvent::dev_id,                                                  \
@@ -30,7 +30,11 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
             &Kokkos::Execution::GraphImpl::GraphAddNodeEvent::graph,                                                   \
             ::testing::Eq(                                                                                             \
                 std::get<Kokkos::Execution::GraphImpl::GraphCreateEvent>(_graph_create_event_variant_).graph)),        \
-        ::testing::Field(&Kokkos::Execution::GraphImpl::GraphAddNodeEvent::predecessor, ::testing::Eq(_predecessor_)))
+        ::testing::Field(&Kokkos::Execution::GraphImpl::GraphAddNodeEvent::predecessor, ::testing::Eq(_predecessor_))  \
+            __VA_OPT__(                                                                                                \
+                ,                                                                                                      \
+                ::testing::Field(                                                                                      \
+                    &Kokkos::Execution::GraphImpl::GraphAddNodeEvent::name, ::testing::Eq(std::string(__VA_ARGS__)))))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(_graph_create_event_variant_, ...)                                        \
