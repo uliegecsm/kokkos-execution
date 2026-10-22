@@ -1,3 +1,9 @@
+#include "kokkos-execution/utils/ignore_warnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/single_thread_context.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 #include "kokkos-utils/callbacks/ConjunctionMatcher.hpp"
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
@@ -67,8 +73,6 @@ class TEST_CATEGORY(ForkJoinTest)
  *
  * Because of @cite P4269R1, passing a single closure to @c exec::fork_join behaves as if removing
  * @c exec::fork_join entirely. Therefore, there shouldn't be any aggregate node created.
- *
- * TODO DO NOT MERGE THIS single branch fork join is no op now!
  */
 TEST_F(TEST_CATEGORY(ForkJoinTest), single_branch_no_aggregate) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -300,7 +304,8 @@ TEST_F(TEST_CATEGORY(ForkJoinTest), double_diamond) {
  * @test Use @c exec::fork_join after a @c stdexec::continues_on.
  *
  * Inspired by https://github.com/NVIDIA/stdexec/issues/1823.
- * Following @cite P4269R1, it should not be too much of an issue since the test passes a single closure.
+ *
+ * @note Following @cite P4269R1, it should not be too much of an issue since the test passes a single closure.
  */
 TEST_F(TEST_CATEGORY(ForkJoinTest), after_a_continues_on) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
@@ -413,9 +418,6 @@ TEST_F(TEST_CATEGORY(ForkJoinTest), nested) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         std::move(sndr)); // NOLINT(performance-move-const-arg)
 
-    for (const auto& event: recorded_events)
-        std::visit([](const auto& value) { std::cout << value << std::endl; }, event);
-
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
@@ -442,6 +444,70 @@ TEST_F(TEST_CATEGORY(ForkJoinTest), nested) {
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "sync_wait"))));
 
     ASSERT_EQ(data(), 12);
+}
+
+/**
+ * @test Our customization also allows for a @c stdexec::fork_join whose branches are not
+ *       remaining in the graph.
+ *
+ * It creates a graph for the before-fork segment of the sender.
+ */
+TEST_F(TEST_CATEGORY(ForkJoinTest), mixed_branches) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t gctx{exec};
+    exec::single_thread_context stc{};
+
+    using functor_t = Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>;
+    using rcvr_t = Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>;
+
+    auto sndr = stdexec::schedule(gctx.get_scheduler())
+              | stdexec::then(functor_t{.prev = 0, .value = 4, .data = data.data()})
+              | exec::fork_join(
+                    stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
+                        | stdexec::continues_on(gctx.get_scheduler()),
+                    THEN_INCREMENT_ATOMIC(System, data))
+              | stdexec::then(functor_t{.prev = 6, .value = 5, .data = data.data()});
+
+    using sndr_t = decltype(sndr);
+
+    static_assert(stdexec::__mset_eq<
+                  stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
+                  stdexec::completion_signatures_of_t<sndr_t, stdexec::env_of_t<rcvr_t>>
+    >);
+
+    static_assert(stdexec::sender_in<sndr_t, rcvr_t>);
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, sndr_t, stdexec::env_of_t<rcvr_t>>,
+                  Kokkos::Execution::GraphImpl::Domain
+    >);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(sndr)); // NOLINT(performance-move-const-arg)
+
+    for (const auto& event: recorded_events)
+        std::visit([](const auto& value) { std::cout << value << std::endl; }, event);
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_GRAPH_CREATE(default_device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+            MATCHER_FOR_GRAPH_CREATE(default_device_handle),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
+                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(3))),
+            MATCHER_FOR_GRAPH_ADDNODE(
+                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+            MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
+            MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(2)),
+            MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "sync_wait"))));
+
+    ASSERT_EQ(data(), 11);
 }
 
 } // namespace Tests::GraphImpl
