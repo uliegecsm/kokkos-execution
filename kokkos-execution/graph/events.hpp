@@ -30,10 +30,10 @@ struct GraphCreateEvent {
 /**
  * @brief Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph node is added.
  *
- * @todo Store a label.
  * @todo Store the dispatch tag.
  */
 struct GraphAddNodeEvent {
+    std::string name{};
     void* graph = nullptr;
     void* predecessor = nullptr;
     void* node = nullptr;
@@ -42,8 +42,9 @@ struct GraphAddNodeEvent {
     constexpr auto operator<=>(const GraphAddNodeEvent&) const = default;
 
     friend std::ostream& operator<<(std::ostream& out, const GraphAddNodeEvent& event) {
-        return out << "GraphAddNodeEvent: {graph = " << event.graph << ", predecessor = " << event.predecessor
-                   << ", node = " << event.node << ", dev_id = " << event.dev_id << '}';
+        return out << "GraphAddNodeEvent: {name = " << event.name << ", graph = " << event.graph
+                   << ", predecessor = " << event.predecessor << ", node = " << event.node
+                   << ", dev_id = " << event.dev_id << '}';
     }
 };
 
@@ -126,16 +127,18 @@ auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&.
 /**
  * @brief Record an event for a @p node added after @p predecessor.
  *
- * @todo Once https://github.com/kokkos/kokkos/pull/9137 is merged, get rid of the @p device_handle argument.
+ * @todo Once https://github.com/kokkos/kokkos/pull/9137 is merged, get rid of the @p device_handle and potentially the @p label arguments.
  */
-template <NodeRef Predecessor, NodeRef NodeType, Kokkos::ExecutionSpace Exec>
+template <typename Label, NodeRef Predecessor, NodeRef NodeType, Kokkos::ExecutionSpace Exec>
 void graph_add_node_event(
+    Label&& label,
     const Predecessor& predecessor,
     const NodeType& node,
     const Kokkos::Impl::DeviceHandle<Exec>& device_handle) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
+            .name = std::forward<Label>(label),
             .graph = get_graph_impl_ptr(predecessor),
             .predecessor = get_node_ptr(predecessor),
             .node = get_node_ptr(node),

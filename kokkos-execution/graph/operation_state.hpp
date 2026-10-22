@@ -322,8 +322,8 @@ using op_state_t = typename make_op_state_t<Sndr, Rcvr, Clsrs...>::type;
 
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING) // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #    define KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(_type_, _node_, _predecessor_)                          \
-        PLOG_INFO << "Adding '" _type_ "' node " << get_node_ptr(_node_) << " to graph " << get_graph_impl_ptr(_node_) \
-                  << " after " << get_node_ptr(_predecessor_) << " on device "                                         \
+        PLOG_INFO << "Adding '" << _type_ << "' node " << get_node_ptr(_node_) << " to graph "                         \
+                  << get_graph_impl_ptr(_node_) << " after " << get_node_ptr(_predecessor_) << " on device "           \
                   << Kokkos::Tools::Experimental::device_id(get_node_ptr(_node_)->get_device_handle().m_exec) << '.';
 #else
 #    define KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(_type_, _node_, _predecessor_)
