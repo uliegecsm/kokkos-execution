@@ -167,7 +167,7 @@ consteval bool test_collapse_t() {
 
 static_assert(test_collapse_t());
 
-//! Because we need at least one discoverage runtime test per unit.
+//! Because we need at least one discoverable runtime test per unit.
 TEST(is, useless) {
 }
 

@@ -235,8 +235,8 @@ struct RemainsOnGraphFor<OpState, Exec> {
             return stdexec::__mexception<
                 stdexec::_WHAT_(OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
                 stdexec::_WHY_(BECAUSE_AT_LEAST_ONE_CHILD_DOES_NOT_REMAIN_ON_GRAPH),
-                Impl::WITH_OPSTATE<OpState>,
-                Impl::rebind_t<Impl::WITH_CHILDREN_ERRORS, Impl::keep_errors_t<children_t>>
+                Impl::rebind_t<Impl::WITH_CHILDREN_ERRORS, Impl::keep_errors_t<children_t>>,
+                Impl::WITH_OPSTATE<OpState>
             >{};
         }
     }
