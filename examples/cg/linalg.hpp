@@ -7,6 +7,16 @@
 
 namespace Examples::CG {
 
+/**
+ * @brief Compressed row storage (CRS) graph data structures.
+ *
+ * Minimalistic implementation inspired by the design of the fully featured implementation of @c KokkosSparse::StaticCrsGraph.
+ *
+ * See also:
+ * - https://github.com/kokkos/kokkos-kernels/blob/505a9c982e8c06f4619d6a80c8f474f9ce7b8e49/sparse/src/KokkosSparse_StaticCrsGraph.hpp#L222-L245
+ * - https://github.com/kokkos/kokkos-kernels/blob/505a9c982e8c06f4619d6a80c8f474f9ce7b8e49/common/src/KokkosKernels_default_types.hpp#L36-L45
+ * - https://github.com/kokkos/kokkos-kernels/blob/505a9c982e8c06f4619d6a80c8f474f9ce7b8e49/cmake/kokkoskernels_eti_offsets.cmake#L4
+ */
 template <typename OrdinalType, Kokkos::MemorySpace Mem>
 struct CrsGraph {
     using ordinal_t = OrdinalType;
@@ -43,19 +53,64 @@ struct DeepCopy {
     SrcViewType src;
 };
 
+template <typename DstViewType, typename SrcViewType>
+DeepCopy(DstViewType, SrcViewType) -> DeepCopy<DstViewType, SrcViewType>;
+
 struct deep_copy_t {
     template <typename DstViewType, typename SrcViewType>
-    constexpr auto operator()(DstViewType dst, SrcViewType src) const {
-        const size_t shape = dst.size();
-        return Kokkos::Execution::parallel_for(
-            "parallel_for (deep_copy)", shape, DeepCopy{std::move(dst), std::move(src)});
+    constexpr auto operator()(DstViewType&& dst, SrcViewType&& src) const {
+        return stdexec::__closure(*this, std::forward<DstViewType>(dst), std::forward<SrcViewType>(src));
     }
 
     template <stdexec::sender Sndr, typename DstViewType, typename SrcViewType>
-    constexpr auto operator()(Sndr&& sndr, DstViewType dst, SrcViewType src) const {
-        return std::forward<Sndr>(sndr) | this->operator()(std::move(dst), std::move(src));
+    constexpr auto operator()(Sndr&& sndr, DstViewType&& dst, SrcViewType&& src) const {
+        const size_t shape = dst.size();
+        return std::forward<Sndr>(sndr)
+             | Kokkos::Execution::parallel_for(
+                   "parallel_for (deep_copy)",
+                   shape,
+                   DeepCopy{std::forward<DstViewType>(dst), std::forward<SrcViewType>(src)});
     }
 };
+
+//template <typename Derived>
+//struct PipeableSenderAdaptorBase {
+//    template <typename... Args>
+//    constexpr auto operator()(Args&&... args) const {
+//        return stdexec::__closure(static_cast<const Derived&>(*this), std::forward<Args>(args)...);
+//    }
+//};
+//
+//struct deep_copy_t : public PipeableSenderAdaptorBase<deep_copy_t> {
+//    using PipeableSenderAdaptorBase<deep_copy_t>::operator();
+//
+//    template <stdexec::sender Sndr, typename DstViewType, typename SrcViewType>
+//    constexpr auto operator()(Sndr&& sndr, DstViewType&& dst, SrcViewType&& src) const {
+//        const size_t shape = dst.size();
+//        return std::forward<Sndr>(sndr)
+//             | Kokkos::Execution::parallel_for(
+//                   "parallel_for (deep_copy)",
+//                   shape,
+//                   DeepCopy{std::forward<DstViewType>(dst), std::forward<SrcViewType>(src)});
+//    }
+//};
+
+//template <typename Derived>
+//struct Base {
+//    template <stdexec::sender Sndr, typename... Args> requires std::invocable<const Derived&, Args...>
+//    constexpr auto operator()(Sndr&& sndr, Args&&... args) const {
+//        return std::forward<Sndr>(sndr) | static_cast<const Derived&>(*this)(std::forward<Args>(args)...);
+//    }
+//};
+//
+//struct deep_copy_t : public Base<deep_copy_t> {
+//    template <typename DstViewType, typename SrcViewType> requires (!stdexec::sender<DstViewType>)
+//    constexpr auto operator()(DstViewType&& dst, SrcViewType&& src) const {
+//        const size_t shape = dst.size();
+//        return Kokkos::Execution::parallel_for(
+//            "parallel_for (deep_copy)", shape, DeepCopy{std::forward<DstViewType>(dst), std::forward<SrcViewType>(src)});
+//    }
+//};
 
 inline constexpr deep_copy_t deep_copy{};
 
@@ -80,13 +135,25 @@ struct SPMV {
     YViewType view_y;
 };
 
+template <typename AMatrixType, typename XViewType, typename YViewType>
+SPMV(
+    typename YViewType::non_const_value_type,
+    AMatrixType,
+    XViewType,
+    typename YViewType::non_const_value_type,
+    YViewType) -> SPMV<AMatrixType, XViewType, YViewType>;
+
 struct spmv_t {
     template <typename AlphaType, typename AMatrixType, typename XViewType, typename BetaType, typename YViewType>
     constexpr auto
-        operator()(AlphaType alpha, AMatrixType mat, XViewType view_x, BetaType beta, YViewType view_y) const {
-        const size_t shape = mat.graph.row_map.size() - 1;
-        return Kokkos::Execution::parallel_for(
-            "parallel_for (spmv)", shape, SPMV{alpha, std::move(mat), std::move(view_x), beta, std::move(view_y)});
+        operator()(AlphaType alpha, AMatrixType&& mat, XViewType&& view_x, BetaType beta, YViewType&& view_y) const {
+        return stdexec::__closure(
+            *this,
+            alpha,
+            std::forward<AMatrixType>(mat),
+            std::forward<XViewType>(view_x),
+            beta,
+            std::forward<YViewType>(view_y));
     }
 
     template <
@@ -97,11 +164,24 @@ struct spmv_t {
         typename BetaType,
         typename YViewType
     >
-    constexpr auto
-        operator()(Sndr&& sndr, AlphaType alpha, AMatrixType mat, XViewType view_x, BetaType beta, YViewType view_y)
-            const {
+    constexpr auto operator()(
+        Sndr&& sndr,
+        AlphaType alpha,
+        AMatrixType&& mat,
+        XViewType&& view_x,
+        BetaType beta,
+        YViewType&& view_y) const {
+        const size_t shape = mat.graph.row_map.size() - 1;
         return std::forward<Sndr>(sndr)
-             | this->operator()(alpha, std::move(mat), std::move(view_x), beta, std::move(view_y));
+             | Kokkos::Execution::parallel_for(
+                   "parallel_for (spmv)",
+                   shape,
+                   SPMV{
+                       alpha,
+                       std::forward<AMatrixType>(mat),
+                       std::forward<XViewType>(view_x),
+                       beta,
+                       std::forward<YViewType>(view_y)});
     }
 };
 
@@ -117,20 +197,32 @@ struct Dot {
     YViewType view_y;
 };
 
+template <typename XViewType, typename YViewType>
+Dot(XViewType, YViewType) -> Dot<XViewType, YViewType>;
+
 struct dot_t {
     template <typename ResultViewType, typename XViewType, typename YViewType>
-    constexpr auto operator()(
-        ResultViewType result, // NOLINT(performance-unnecessary-value-param)
-        XViewType view_x,
-        YViewType view_y) const {
-        const size_t shape = view_x.size();
-        return Kokkos::Execution::parallel_reduce(
-            "parallel_reduce (dot)", shape, Dot{std::move(view_x), std::move(view_y)}, std::move(result));
+    constexpr auto operator()(ResultViewType&& result, XViewType&& view_x, YViewType&& view_y) const {
+        return stdexec::__closure(
+            *this,
+            std::forward<ResultViewType>(result),
+            std::forward<XViewType>(view_x),
+            std::forward<YViewType>(view_y));
     }
 
-    template <stdexec::sender Sndr, typename ResultViewType, typename XViewType, typename YViewType>
-    constexpr auto operator()(Sndr&& sndr, ResultViewType result, XViewType view_x, YViewType view_y) const {
-        return std::forward<Sndr>(sndr) | this->operator()(std::move(result), std::move(view_x), std::move(view_y));
+    template <typename Sndr, typename ResultViewType, typename XViewType, typename YViewType>
+    constexpr auto operator()(
+        Sndr&& sndr,
+        ResultViewType&& result, // NOLINT(performance-unnecessary-value-param)
+        XViewType&& view_x,
+        YViewType&& view_y) const {
+        const size_t shape = view_x.size();
+        return std::forward<Sndr>(sndr)
+             | Kokkos::Execution::parallel_reduce(
+                   "parallel_reduce (dot)",
+                   shape,
+                   Dot{std::forward<XViewType>(view_x), std::forward<YViewType>(view_y)},
+                   std::forward<ResultViewType>(result));
     }
 };
 
@@ -161,15 +253,20 @@ struct Axpby {
     YViewType view_y;
 };
 
+template <typename AMaybeViewType, typename XViewType, typename BMaybeViewType, typename YViewType>
+Axpby(AMaybeViewType, XViewType, BMaybeViewType, YViewType)
+    -> Axpby<AMaybeViewType, XViewType, BMaybeViewType, YViewType>;
+
 struct axpby_t {
     template <typename AMaybeViewType, typename XViewType, typename BMaybeViewType, typename YViewType>
     constexpr auto
-        operator()(AMaybeViewType coeff_a, XViewType view_x, BMaybeViewType coeff_b, YViewType view_y) const {
-        const size_t shape = view_x.size();
-        return Kokkos::Execution::parallel_for(
-            "parallel_for (axbpy)",
-            shape,
-            Axpby{std::move(coeff_a), std::move(view_x), std::move(coeff_b), std::move(view_y)});
+        operator()(AMaybeViewType&& coeff_a, XViewType&& view_x, BMaybeViewType&& coeff_b, YViewType&& view_y) const {
+        return stdexec::__closure(
+            *this,
+            std::forward<AMaybeViewType>(coeff_a),
+            std::forward<XViewType>(view_x),
+            std::forward<BMaybeViewType>(coeff_b),
+            std::forward<YViewType>(view_y));
     }
 
     template <
@@ -179,11 +276,22 @@ struct axpby_t {
         typename BMaybeViewType,
         typename YViewType
     >
-    constexpr auto
-        operator()(Sndr&& sndr, AMaybeViewType coeff_a, XViewType view_x, BMaybeViewType coeff_b, YViewType view_y)
-            const {
+    constexpr auto operator()(
+        Sndr&& sndr,
+        AMaybeViewType&& coeff_a,
+        XViewType&& view_x,
+        BMaybeViewType&& coeff_b,
+        YViewType&& view_y) const {
+        const size_t shape = view_x.size();
         return std::forward<Sndr>(sndr)
-             | this->operator()(std::move(coeff_a), std::move(view_x), std::move(coeff_b), std::move(view_y));
+             | Kokkos::Execution::parallel_for(
+                   "parallel_for (axbpy)",
+                   shape,
+                   Axpby{
+                       std::forward<AMaybeViewType>(coeff_a),
+                       std::forward<XViewType>(view_x),
+                       std::forward<BMaybeViewType>(coeff_b),
+                       std::forward<YViewType>(view_y)});
     }
 };
 
