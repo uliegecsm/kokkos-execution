@@ -8,10 +8,13 @@
 #    define PRAGMA_DIAGNOSTIC_PUSH          _Pragma("clang diagnostic push")
 //NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #    define PRAGMA_DIAGNOSTIC_IGNORED(what) DO_PRAGMA_(clang diagnostic ignored what)
+#    define KOKKOS_EXECUTION_PRAGMA_DIAGNOSTIC_IGNORED_DANGLING_REFERENCE
 #elif defined(__GNUC__) || defined(__GNUG__)
 #    define PRAGMA_DIAGNOSTIC_POP           _Pragma("GCC diagnostic pop")
 #    define PRAGMA_DIAGNOSTIC_PUSH          _Pragma("GCC diagnostic push")
 #    define PRAGMA_DIAGNOSTIC_IGNORED(what) DO_PRAGMA_(GCC diagnostic ignored what)
+#    define KOKKOS_EXECUTION_PRAGMA_DIAGNOSTIC_IGNORED_DANGLING_REFERENCE                                              \
+        PRAGMA_DIAGNOSTIC_IGNORED("-Wdangling-reference")
 #else
 #    error "Unsupported compiler."
 #endif

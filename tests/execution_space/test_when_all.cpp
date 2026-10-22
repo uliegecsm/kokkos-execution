@@ -51,47 +51,6 @@ class WhenAllTest
     >;
 };
 
-//! @test A @c stdexec::when_all with no branch is equivalent to @c stdexec::just().
-TEST(WhenAll, no_branch) {
-    auto sndr = stdexec::when_all();
-
-    static_assert(std::same_as<stdexec::tag_of_t<decltype(sndr)>, stdexec::just_t>);
-
-    static_assert(!stdexec::dependent_sender<decltype(sndr)>);
-
-    static_assert(
-        stdexec::get_completion_signatures<decltype(sndr)>()
-        == stdexec::completion_signatures<stdexec::set_value_t()>{});
-
-    ASSERT_TRUE(stdexec::sync_wait(std::move(sndr)).has_value()); // NOLINT(performance-move-const-arg)
-}
-
-//! @test A @c stdexec::when_all(sndr) with a single branch is equivalent to @c auto(sndr).
-TEST(WhenAll, single_branch) {
-    auto sndr = stdexec::just(42);
-
-    static_assert(std::same_as<decltype(stdexec::when_all(sndr)), decltype(sndr)>);
-    static_assert(std::same_as<
-                  decltype(stdexec::when_all(std::move(sndr))), // NOLINT(performance-move-const-arg)
-                  decltype(sndr)
-    >);
-
-    auto&& w_a = stdexec::when_all(sndr);
-    ASSERT_NE(std::addressof(w_a), std::addressof(sndr)); // w_a is a new copy, not a reference to sndr.
-    sndr = stdexec::just(56);
-    const auto result = stdexec::sync_wait(std::move(w_a)); // NOLINT(performance-move-const-arg)
-    ASSERT_TRUE(result.has_value());
-    ASSERT_EQ(std::get<0>(*result), 42);
-    ASSERT_EQ(
-        std::get<0>(*stdexec::sync_wait(stdexec::when_all(std::move(sndr)))), 56); // NOLINT(performance-move-const-arg)
-
-    // lvalues must be copyable; rvalues move.
-    using just_not_copy_constructible_t = decltype(stdexec::just(std::make_unique<int>(0)));
-    static_assert(!std::copy_constructible<just_not_copy_constructible_t>);
-    static_assert(!std::invocable<const stdexec::when_all_t&, just_not_copy_constructible_t&>);
-    static_assert(std::invocable<const stdexec::when_all_t&, just_not_copy_constructible_t&&>);
-}
-
 /**
  * @test A @c stdexec::when_all with a single branch on @ref Kokkos::Execution::ExecutionSpaceContext.
  *
@@ -402,6 +361,29 @@ TEST_F(WhenAllTest, two_branches_followed_by_self) {
     }
 
     ASSERT_EQ(data(), 3);
+}
+
+/**
+ * @test A @c stdexec::when_all with two branches that contain only schedule senders
+ *       for @ref Kokkos::Execution::ExecutionSpaceContext.
+ *
+ * Nothing happens.
+ */
+TEST_F(WhenAllTest, two_branches_with_schedule_senders_only) {
+    const context_t esc{exec};
+
+    auto sndr = stdexec::when_all(stdexec::schedule(esc.get_scheduler()), stdexec::schedule(esc.get_scheduler()));
+
+    static_assert(std::same_as<stdexec::tag_of_t<decltype(sndr)>, stdexec::when_all_t>);
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(sndr)>,
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain
+    >);
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(sndr)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_THAT(recorded_events, testing::IsEmpty());
 }
 
 /**

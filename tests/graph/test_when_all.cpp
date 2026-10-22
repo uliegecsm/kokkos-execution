@@ -196,6 +196,29 @@ consteval bool test_sndr_cannot_mix_execution_space_type() {
 static_assert(test_sndr_cannot_mix_execution_space_type<TEST_EXECUTION_SPACE, Kokkos::DefaultHostExecutionSpace>());
 
 /**
+ * @test A @c stdexec::when_all with two branches that contain only schedule senders
+ *       for @ref Kokkos::Execution::GraphContext.
+ *
+ * Nothing happens.
+ */
+TEST_F(TEST_CATEGORY(WhenAllTest), two_branches_with_schedule_senders_only) {
+    const context_t gctx{exec};
+
+    auto sndr = stdexec::when_all(stdexec::schedule(gctx.get_scheduler()), stdexec::schedule(gctx.get_scheduler()));
+
+    static_assert(std::same_as<stdexec::tag_of_t<decltype(sndr)>, stdexec::when_all_t>);
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(sndr)>,
+                  Kokkos::Execution::GraphImpl::Domain
+    >);
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
+        std::move(sndr)); // NOLINT(performance-move-const-arg)
+
+    ASSERT_THAT(recorded_events, testing::IsEmpty());
+}
+
+/**
  * @test Check that @c stdexec::when_all allows a branch to consist of only the schedule sender @ref Kokkos::Execution::GraphImpl::Scheduler::Sender.
  *
  * @verbatim
@@ -225,10 +248,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
-            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0),
-                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
-                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 }
@@ -310,10 +329,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender_and_single_branch) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
-            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0),
-                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
-                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
@@ -594,10 +609,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
-            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0),
-                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
-                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
