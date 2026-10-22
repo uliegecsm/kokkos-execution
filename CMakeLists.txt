@@ -98,6 +98,7 @@ target_sources(
             kokkos-execution/stdexec.hpp
             kokkos-execution/execution_space/bulk.hpp
             kokkos-execution/execution_space/continues_on.hpp
+            kokkos-execution/execution_space/diagnostics.hpp
             kokkos-execution/execution_space/domain.hpp
             kokkos-execution/execution_space/env.hpp
             kokkos-execution/execution_space/execution_space_fwd.hpp
@@ -112,6 +113,7 @@ target_sources(
             kokkos-execution/execution_space/when_all.hpp
             kokkos-execution/graph/bulk.hpp
             kokkos-execution/graph/continues_on.hpp
+            kokkos-execution/graph/diagnostics.hpp
             kokkos-execution/graph/domain.hpp
             kokkos-execution/graph/events.hpp
             kokkos-execution/graph/get_graph.hpp
@@ -133,6 +135,7 @@ target_sources(
             kokkos-execution/impl/Cuda/dependency.hpp
             kokkos-execution/impl/Cuda/event.hpp
             kokkos-execution/impl/dependency.hpp
+            kokkos-execution/impl/diagnostics.hpp
             kokkos-execution/impl/dispatch_label.hpp
             kokkos-execution/impl/domain.hpp
             kokkos-execution/impl/empty.hpp

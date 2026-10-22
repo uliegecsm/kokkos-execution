@@ -1,5 +1,6 @@
 add_one_test(NAME bulk)
 add_one_test(NAME continues_on)
+add_one_test(NAME diagnostics.failure)
 add_one_test(NAME domain)
 add_one_test(NAME events)
 add_one_test(NAME operation_state)
@@ -18,4 +19,7 @@ foreach(DEVICE IN LISTS Kokkos_DEVICES)
     ${target_name}.compiler ${target_name}
     "CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_GRAPH_SCHEDULER.*BECAUSE_THERE_IS_NO_GRAPH_SCHEDULER_IN_THE_ENVIRONMENT"
   )
+
+  set(target_name tests_graph_diagnostics.failure.${DEVICE})
+  add_build_failure_test(${target_name}.compiler ${target_name} "Check for the error in the compiler log.")
 endforeach()

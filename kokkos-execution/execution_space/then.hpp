@@ -3,6 +3,7 @@
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
+#include "kokkos-execution/execution_space/diagnostics.hpp"
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"

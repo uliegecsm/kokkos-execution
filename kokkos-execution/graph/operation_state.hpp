@@ -17,6 +17,7 @@
 #include "kokkos-execution/graph/get_node.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/completion_signal.hpp"
+#include "kokkos-execution/impl/diagnostics.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/immovable.hpp"
 #include "kokkos-execution/impl/make_op_state.hpp"
@@ -61,7 +62,24 @@ struct RemainsOnGraphFor<OpState, Exec> : public std::true_type { };
 //! Specialization when there is an @c inner_op_state_t alias.
 template <stdexec::operation_state OpState, Kokkos::ExecutionSpace Exec>
 requires(graph_operation_state_for<OpState, Exec> && requires { typename OpState::inner_op_state_t; })
-struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_op_state_t, Exec> { };
+struct RemainsOnGraphFor<OpState, Exec> : public RemainsOnGraphFor<typename OpState::inner_op_state_t, Exec> {
+
+    using base_t = RemainsOnGraphFor<typename OpState::inner_op_state_t, Exec>;
+
+    static constexpr auto diagnose() noexcept {
+        if constexpr (base_t::value) {
+            return stdexec::__msuccess{};
+        } else {
+            return stdexec::__mexception<
+                stdexec::_WHAT_(OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                stdexec::_WHY_(BECAUSE_THE_INNER_OPERATION_STATE_DOES_NOT_REMAIN_ON_GRAPH),
+                Impl::diagnose_t<base_t>,
+                Impl::WITH_OPSTATE<OpState>,
+                Impl::WITH_EXECUTION_SPACE<Exec>
+            >{};
+        }
+    }
+};
 
 template <typename GraphCompositionPolicy, Kokkos::ExecutionSpace Exec>
 struct State;
