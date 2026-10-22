@@ -27,7 +27,7 @@ template <Kokkos::ExecutionSpace Exec, typename Functor>
 struct ThenClosure {
     using execution_space = Exec;
     using device_handle_t = Kokkos::Impl::DeviceHandle<Exec>;
-    using node_props_t = typename Kokkos::Impl::NodeCtorProps<std::string, device_handle_t>::uniform_type;
+    using node_props_t = typename Kokkos::Impl::NodeCtorProps<device_handle_t, std::string>::uniform_type;
 
     template <NodeRef Predecessor>
     using node_t = decltype(std::declval<const Predecessor&>()
@@ -36,10 +36,15 @@ struct ThenClosure {
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
-        const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        auto [device_handle, label] = std::tuple<device_handle_t, std::string>{
+            Kokkos::Execution::GraphImpl::get_properties<device_handle_t, std::string>(node_props)};
+#endif
         auto node = predecessor.then(std::move(node_props), std::forward<Functor>(functor));
-        KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("then", node, predecessor)
-        graph_add_node_event(predecessor, node, device_handle);
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
+        graph_add_node_event(std::move(label), predecessor, node, device_handle);
+#endif
         return node;
     }
 
@@ -82,8 +87,8 @@ struct TransformSenderFor<stdexec::then_t> {
         return trnsfrmd_sndr_t<Env, Functor, Sndr>{
             .clsr =
                 {.node_props = Kokkos::Experimental::node_props(
-                     std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">()),
-                       Kokkos::Experimental::get_device_handle(schd.state->exec)),
+                     Kokkos::Experimental::get_device_handle(schd.state->exec),
+                       std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">())),
                        .functor = std::forward<Functor>(functor)},
             .sndr = std::forward<Sndr>(sndr)
         };
