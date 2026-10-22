@@ -216,12 +216,10 @@ struct OpState
                       << '.';
 #endif
             return state.get_root_node();
+        } else if constexpr (stdexec::__queryable_with<inner_op_state_t, get_node_t>) {
+            return inner_op_state.query(get_node);
         } else {
-            if constexpr (stdexec::__queryable_with<inner_op_state_t, get_node_t>) {
-                return inner_op_state.query(get_node);
-            } else {
-                return this->completion_signal.rcvr.query(get_node);
-            }
+            return this->completion_signal.rcvr.query(get_node);
         }
     }
 
