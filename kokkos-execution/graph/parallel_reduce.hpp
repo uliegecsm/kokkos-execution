@@ -3,6 +3,7 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "kokkos-execution/graph/node_props.hpp"
 #include "kokkos-execution/graph/operation_state.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
@@ -12,16 +13,22 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy, typename Reducer>
+template <
+    typename NodeProps,
+    typename Functor,
+    Impl::execution_policy_or_iteration_space ExecPolicyOrIterSpace,
+    typename Reducer
+>
 struct ParallelReduceClosure {
-    using execution_space = typename ExecPolicy::execution_space;
-    using device_handle_t = Kokkos::Impl::DeviceHandle<execution_space>;
-    using node_props_t = typename Kokkos::Impl::NodeCtorProps<Label, device_handle_t>::uniform_type;
+    using node_props_t = NodeProps;
+    using device_handle_t = device_handle_of_t<NodeProps>;
+    using execution_space = exec_of_t<device_handle_t>;
+    using policy_t = Impl::make_policy_t<execution_space, ExecPolicyOrIterSpace&&>;
 
     template <NodeRef Predecessor>
     using node_t = decltype(std::declval<const Predecessor&>().then_parallel_reduce(
         std::declval<node_props_t&&>(),
-        std::declval<ExecPolicy&&>(),
+        std::declval<policy_t&&>(),
         std::declval<Functor&&>(),
         std::declval<Reducer&&>()));
 
@@ -30,7 +37,10 @@ struct ParallelReduceClosure {
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
         const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
         auto node = predecessor.then_parallel_reduce(
-            std::move(node_props), std::move(policy), std::move(functor), std::move(reducer));
+            std::move(node_props),
+            Impl::make_policy(execution_space{}, std::move(policy_or_iter_space)),
+            std::move(functor),
+            std::move(reducer));
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("parallel_reduce", node, predecessor)
         graph_add_node_event(predecessor, node, device_handle);
         return node;
@@ -38,15 +48,21 @@ struct ParallelReduceClosure {
 
     node_props_t node_props;
     Functor functor;
-    ExecPolicy policy;
+    ExecPolicyOrIterSpace policy_or_iter_space;
     Reducer reducer;
 };
 
-template <stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy, typename Reducer>
+template <
+    stdexec::sender Sndr,
+    typename NodeProps,
+    typename Functor,
+    Impl::execution_policy_or_iteration_space ExecPolicyOrIterSpace,
+    typename Reducer
+>
 struct ParallelReduceSender {
     using sender_concept = stdexec::sender_tag;
 
-    using closure_t = ParallelReduceClosure<Label, Functor, ExecPolicy, Reducer>;
+    using closure_t = ParallelReduceClosure<NodeProps, Functor, ExecPolicyOrIterSpace, Reducer>;
 
     KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelReduceSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
@@ -63,9 +79,9 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t = ParallelReduceSender<
         Sndr,
-        typename std::remove_cvref_t<Data>::label_t,
+        node_props_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::label_t>,
         typename std::remove_cvref_t<Data>::functor_t,
-        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>,
+        typename std::remove_cvref_t<Data>::policy_or_iter_space_t,
         typename std::remove_cvref_t<Data>::reducer_t
     >;
 
@@ -86,11 +102,10 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
             .clsr =
                 {.node_props = Kokkos::Experimental::node_props(
-                     stdexec::__forward_like<Data>(data.label),
-                       Kokkos::Experimental::get_device_handle(schd.state->exec)),
+                     Kokkos::Experimental::get_device_handle(schd.state->exec),
+                       stdexec::__forward_like<Data>(data.label)),
                        .functor = stdexec::__forward_like<Data>(data.functor),
-                       .policy = Impl::make_policy(
-                     Impl::exec_of_t<Sndr, Env>{}, stdexec::__forward_like<Data>(data.policy_or_iter_space)),
+                       .policy_or_iter_space = stdexec::__forward_like<Data>(data.policy_or_iter_space),
                        .reducer = stdexec::__forward_like<Data>(data.reducer)},
             .sndr = std::forward<Sndr>(sndr)
         };

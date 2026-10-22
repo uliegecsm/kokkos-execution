@@ -65,7 +65,7 @@ consteval bool test_sndr_traits() {
     using label_t = std::string;
     using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using pfor_sndr_t = SndrAdptr<schd_sndr_t, label_t, functor_t, policy_t>;
+    using pfor_sndr_t = SndrAdptr<schd_sndr_t, TEST_EXECUTION_SPACE, label_t, functor_t, policy_t>;
 
     //! Models the graph completing sender concept.
     static_assert(Kokkos::Execution::GraphImpl::graph_completing_sender<pfor_sndr_t>);
@@ -96,7 +96,12 @@ consteval bool test_sndr_traits() {
 
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
-                  Kokkos::Execution::GraphImpl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>
+                  Kokkos::Execution::GraphImpl::ParallelForSender<
+                      schd_sndr_t,
+                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, label_t>,
+                      functor_t,
+                      policy_t
+                  >
     >);
 
     //! It is not nothrow connectable.
@@ -105,20 +110,43 @@ consteval bool test_sndr_traits() {
     return true;
 }
 
-static_assert(test_sndr_traits<Kokkos::Execution::Impl::ParallelForSender, true>());
-static_assert(test_sndr_traits<Kokkos::Execution::GraphImpl::ParallelForSender, false>());
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy>
+using generic_t = Kokkos::Execution::Impl::ParallelForSender<Sndr, Label, Functor, Policy>;
+
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy>
+using impl_t = Kokkos::Execution::GraphImpl::ParallelForSender<
+    Sndr,
+    Kokkos::Execution::GraphImpl::node_props_t<Exec, Label>,
+    Functor,
+    Policy
+>;
+
+static_assert(test_sndr_traits<generic_t, true>());
+static_assert(test_sndr_traits<impl_t, false>());
 
 //! @test Check traits of @ref Kokkos::Execution::GraphImpl::ParallelForClosure.
 template <typename ViewType>
 consteval bool test_closure_traits() {
     using functor_t = Tests::Utils::Functors::SumIndices<ViewType>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using closure_t = Kokkos::Execution::GraphImpl::ParallelForClosure<std::string, functor_t, policy_t>;
+    using iter_space_t = Kokkos::dims<1, int>;
+    using closure_policy_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
+        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        functor_t,
+        policy_t
+    >;
+    using closure_iter_space_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
+        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        functor_t,
+        iter_space_t
+    >;
 
     //! Models the @ref Kokkos::Execution::GraphImpl::Closure concept.
-    static_assert(Kokkos::Execution::GraphImpl::Closure<closure_t>);
+    static_assert(Kokkos::Execution::GraphImpl::Closure<closure_policy_t>);
+    static_assert(Kokkos::Execution::GraphImpl::Closure<closure_iter_space_t>);
 
-    static_assert(std::is_nothrow_move_constructible_v<closure_t>);
+    static_assert(std::is_nothrow_move_constructible_v<closure_policy_t>);
+    static_assert(std::is_nothrow_move_constructible_v<closure_iter_space_t>);
 
     return true;
 }

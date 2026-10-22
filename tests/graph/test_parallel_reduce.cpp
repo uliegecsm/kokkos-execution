@@ -65,7 +65,7 @@ consteval bool test_sndr_traits() {
     using functor_t = Tests::Utils::Functors::ReduceIndices;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using reducer_t = typename TEST_CATEGORY(ParallelReduceTest)::view_s_t;
-    using pred_sndr_t = SndrAdptr<Args..., schd_sndr_t, label_t, functor_t, policy_t, reducer_t>;
+    using pred_sndr_t = SndrAdptr<Args..., schd_sndr_t, TEST_EXECUTION_SPACE, label_t, functor_t, policy_t, reducer_t>;
 
     //! Models the graph completing sender concept.
     static_assert(Kokkos::Execution::GraphImpl::graph_completing_sender<pred_sndr_t>);
@@ -94,11 +94,16 @@ consteval bool test_sndr_traits() {
     //! Is connectable.
     static_assert(stdexec::sender_to<pred_sndr_t, Tests::Utils::SinkReceiver>);
 
-    static_assert(
-        std::same_as<
-            stdexec::transform_sender_result_t<pred_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
-            Kokkos::Execution::GraphImpl::ParallelReduceSender<schd_sndr_t, label_t, functor_t, policy_t, reducer_t>
-        >);
+    static_assert(std::same_as<
+                  stdexec::transform_sender_result_t<pred_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
+                  Kokkos::Execution::GraphImpl::ParallelReduceSender<
+                      schd_sndr_t,
+                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, label_t>,
+                      functor_t,
+                      policy_t,
+                      reducer_t
+                  >
+    >);
 
     //! It is not nothrow connectable.
     static_assert(!stdexec::__nothrow_connectable<pred_sndr_t, Tests::Utils::SinkReceiver>);
@@ -106,21 +111,47 @@ consteval bool test_sndr_traits() {
     return true;
 }
 
-static_assert(test_sndr_traits<Kokkos::Execution::Impl::ParallelReduceSender, true>());
-static_assert(test_sndr_traits<Kokkos::Execution::GraphImpl::ParallelReduceSender, false>());
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy, typename Reducer>
+using generic_t = Kokkos::Execution::Impl::ParallelReduceSender<Sndr, Label, Functor, Policy, Reducer>;
+
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy, typename Reducer>
+using impl_t = Kokkos::Execution::GraphImpl::ParallelReduceSender<
+    Sndr,
+    Kokkos::Execution::GraphImpl::node_props_t<Exec, Label>,
+    Functor,
+    Policy,
+    Reducer
+>;
+
+static_assert(test_sndr_traits<generic_t, true>());
+static_assert(test_sndr_traits<impl_t, false>());
 
 //! @test Check traits of @ref Kokkos::Execution::GraphImpl::ParallelReduceClosure.
 template <typename ViewType>
 consteval bool test_closure_traits() {
     using functor_t = Tests::Utils::Functors::ReduceIndices;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
+    using iter_space_t = Kokkos::dims<1, int>;
     using reducer_t = ViewType;
-    using closure_t = Kokkos::Execution::GraphImpl::ParallelReduceClosure<std::string, functor_t, policy_t, reducer_t>;
+    using closure_policy_t = Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        functor_t,
+        policy_t,
+        reducer_t
+    >;
+    using closure_iter_space_t = Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        functor_t,
+        iter_space_t,
+        reducer_t
+    >;
 
     //! Models the @ref Kokkos::Execution::GraphImpl::Closure concept.
-    static_assert(Kokkos::Execution::GraphImpl::Closure<closure_t>);
+    static_assert(Kokkos::Execution::GraphImpl::Closure<closure_policy_t>);
+    static_assert(Kokkos::Execution::GraphImpl::Closure<closure_iter_space_t>);
 
-    static_assert(std::is_nothrow_move_constructible_v<closure_t>);
+    static_assert(std::is_nothrow_move_constructible_v<closure_policy_t>);
+    static_assert(std::is_nothrow_move_constructible_v<closure_iter_space_t>);
 
     return true;
 }
