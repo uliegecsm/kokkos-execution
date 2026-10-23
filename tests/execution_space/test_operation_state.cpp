@@ -219,7 +219,7 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
                 Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<size_t>>(0, 10),
                 Tests::Utils::Functors::Labeled<'a'>{}),
             stdexec::par,
-            10,
+            char(10),
             Tests::Utils::Functors::Labeled<'b'>{}),
         Tests::Utils::Functors::Labeled<'c'>{}));
 
@@ -233,7 +233,7 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
     using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
         std::string_view,
         Tests::Utils::Functors::Labeled<'b'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<char>>
     >;
     using clsr_2_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
         std::string_view,
