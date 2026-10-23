@@ -5,6 +5,8 @@
 
 #include "Kokkos_Core.hpp"
 
+#include "kokkos-execution/impl/label.hpp"
+
 namespace Examples::CG {
 
 /**
@@ -67,7 +69,7 @@ struct deep_copy_t {
         const size_t shape = dst.size();
         return std::forward<Sndr>(sndr)
              | Kokkos::Execution::parallel_for(
-                   "parallel_for (deep_copy)",
+                   Kokkos::Execution::label("parallel_for (deep_copy)"),
                    shape,
                    DeepCopy{std::forward<DstViewType>(dst), std::forward<SrcViewType>(src)});
     }
@@ -174,7 +176,7 @@ struct spmv_t {
         const size_t shape = mat.graph.row_map.size() - 1;
         return std::forward<Sndr>(sndr)
              | Kokkos::Execution::parallel_for(
-                   "parallel_for (spmv)",
+                   Kokkos::Execution::label("parallel_for (spmv)"),
                    shape,
                    SPMV{
                        alpha,
@@ -219,7 +221,7 @@ struct dot_t {
         const size_t shape = view_x.size();
         return std::forward<Sndr>(sndr)
              | Kokkos::Execution::parallel_reduce(
-                   "parallel_reduce (dot)",
+                   Kokkos::Execution::label("parallel_reduce (dot)"),
                    shape,
                    Dot{std::forward<XViewType>(view_x), std::forward<YViewType>(view_y)},
                    std::forward<ResultViewType>(result));
@@ -285,7 +287,7 @@ struct axpby_t {
         const size_t shape = view_x.size();
         return std::forward<Sndr>(sndr)
              | Kokkos::Execution::parallel_for(
-                   "parallel_for (axbpy)",
+                   Kokkos::Execution::label("parallel_for (axpby)"),
                    shape,
                    Axpby{
                        std::forward<AMaybeViewType>(coeff_a),
