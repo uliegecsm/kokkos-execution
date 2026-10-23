@@ -61,7 +61,7 @@ struct parallel_reduce_t {
         return stdexec::__closure(
             *this,
             std::move(label),
-            Kokkos::range_slice<Kokkos::detail::constant_wrapper<size_t(0)>, T>{.last = work_count},
+            Kokkos::dims<1, T>{work_count},
             std::forward<Functor>(functor),
             std::forward<Reducer>(reducer));
     }

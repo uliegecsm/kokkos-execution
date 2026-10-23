@@ -145,7 +145,8 @@ consteval bool test_bulk_op_state_traits() {
     static_assert(stdexec::__is_instance_of<connect_result_t, Kokkos::Execution::GraphImpl::OpState>);
 
     using root_t = typename BulkTest::graph_t::root_t;
-    using range_policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::Impl::IsGraphKernelTag>;
+    using range_policy_t =
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>, Kokkos::Impl::IsGraphKernelTag>;
     using bulk_A_t = Kokkos::Experimental::GraphNodeRef<
         TEST_EXECUTION_SPACE,
         Kokkos::Impl::GraphNodeKernelImpl<TEST_EXECUTION_SPACE, range_policy_t, functor_t, Kokkos::ParallelForTag>,
@@ -193,7 +194,7 @@ TEST_F(BulkTest, bulk_schedule) {
                       >,
                       Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
                       sum_indices_t,
-                      Kokkos::dims<1, int>
+                      Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>
                   >
     >);
 

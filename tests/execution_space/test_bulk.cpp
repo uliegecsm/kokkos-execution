@@ -64,7 +64,7 @@ consteval bool test_sndr_traits() {
                       schd_sndr_t,
                       std::string_view,
                       functor_t,
-                      Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+                      Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>
                   >
     >);
 
@@ -140,7 +140,7 @@ constexpr bool test_op_state_passed_by_const_ref() {
                       Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
                           std::string_view,
                           Tests::Utils::Functors::Labeled<'a'>,
-                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>
                       >
                   >
     >);

@@ -48,10 +48,7 @@ struct parallel_for_t {
     template <typename Functor, std::integral T>
     constexpr auto operator()(std::string label, const T work_count, Functor&& functor) const {
         return stdexec::__closure(
-            *this,
-            std::move(label),
-            Kokkos::range_slice<Kokkos::detail::constant_wrapper<size_t(0)>, T>{.last = work_count},
-            std::forward<Functor>(functor));
+            *this, std::move(label), Kokkos::dims<1, T>{work_count}, std::forward<Functor>(functor));
     }
 
     template <typename Functor, std::integral T>
