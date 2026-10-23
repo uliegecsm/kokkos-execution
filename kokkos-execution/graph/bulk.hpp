@@ -3,12 +3,9 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-#    include "plog/Log.h"
-#endif
-
 #include "Kokkos_Graph.hpp"
 
+#include "kokkos-execution/graph/node_props.hpp"
 #include "kokkos-execution/graph/parallel_for.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/bulk.hpp"
@@ -21,12 +18,15 @@ namespace Kokkos::Execution::GraphImpl {
 
 template <>
 struct TransformSenderFor<stdexec::bulk_t> {
+    template <typename Data>
+    using iter_space_t = Kokkos::dims<1, typename Kokkos::Execution::Impl::bulk_traits<Data>::shape_t>;
+
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t = ParallelForSender<
         Sndr,
-        std::string,
+        node_props_t<Impl::exec_of_t<Sndr, Env>, std::string>,
         typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t,
-        Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>
+        iter_space_t<Data>
     >;
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
@@ -44,10 +44,10 @@ struct TransformSenderFor<stdexec::bulk_t> {
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
             .clsr =
                 {.node_props = Kokkos::Experimental::node_props(
-                     std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">()),
-                       Kokkos::Experimental::get_device_handle(schd.state->exec)),
+                     Kokkos::Experimental::get_device_handle(schd.state->exec),
+                       std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">())),
                        .functor = stdexec::__forward_like<Data>(functor),
-                       .policy = Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>>(0, stdexec::__forward_like<Data>(shape))},
+                       .policy_or_iter_space = iter_space_t<Data>(stdexec::__forward_like<Data>(shape))},
             .sndr = std::forward<Sndr>(sndr)
         };
     }

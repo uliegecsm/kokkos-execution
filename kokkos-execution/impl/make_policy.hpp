@@ -5,6 +5,12 @@
 
 namespace Kokkos::Execution::Impl {
 
+template <Kokkos::ExecutionSpace Exec, extents Extents>
+requires(Extents::rank() == 1)
+auto make_policy(const Exec& exec, const Extents& extents) -> Kokkos::RangePolicy<Exec> {
+    return {exec, 0, extents.extent(0)};
+}
+
 template <Kokkos::ExecutionSpace Exec, range_slice_with_default_stride RangeSlice>
 auto make_policy(const Exec& exec, const RangeSlice& rgsl) -> Kokkos::RangePolicy<Exec> {
     return {exec, rgsl.first, rgsl.last};

@@ -191,9 +191,9 @@ TEST_F(BulkTest, bulk_schedule) {
                           load_check_add_t,
                           stdexec::__sexpr<stdexec::bulk_t, bulk_data_t, typename BulkTest::schedule_sender_t>
                       >,
-                      std::string,
+                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
                       sum_indices_t,
-                      Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+                      Kokkos::dims<1, int>
                   >
     >);
 
