@@ -27,7 +27,7 @@ using bulk_traits = BulkTraits<std::remove_cvref_t<Data>>;
 
 /**
  * According to https://eel.is/c++draft/exec#bulk-4, the callable is invoked using an index
- * whose type is the same as @ref BulkTraits::shape_t.
+ * whose type is the same as the @c stdexec::bulk_t shape argument type.
  *
  * See also https://github.com/NVIDIA/stdexec/pull/2359.
  */
