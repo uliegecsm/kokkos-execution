@@ -44,13 +44,6 @@ struct Scheduler {
         void start() & noexcept {
             stdexec::set_value(std::move(rcvr));
         }
-
-        // template <typename R = Rcvr>
-        // requires stdexec::__queryable_with<R, get_node_t>
-        // [[nodiscard]]
-        // auto query(get_node_t) const & noexcept -> stdexec::__query_result_t<R, get_node_t> {
-        //     return this->rcvr.query(get_node);
-        // }
     };
 
     struct Sender {

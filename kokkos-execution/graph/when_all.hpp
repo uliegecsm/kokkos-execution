@@ -40,15 +40,6 @@ struct WhenAllOpState
     using base_t = OpStateBase<Exec, Rcvr>;
     using execution_space = Exec;
 
-    //! Determine if there is at least one node to be added to the graph.
-    // static constexpr bool adds_nodes = (Impl::dispatching_sender<Sndrs> || ...);
-
-    /// If @ref adds_nodes is @c false, the composition policy is unconditionally @ref GraphComposition::Attach
-    /// to avoid creating a useless @c Kokkos::Experimental::Graph.
-    // using graph_composition_policy_t =
-    //     std::conditional_t<adds_nodes, GraphComposition::policy_t<Rcvr>, GraphComposition::Attach>;
-    using graph_composition_policy_t = GraphComposition::policy_t<Rcvr>;
-    // using state_t = State<graph_composition_policy_t, execution_space>;
     using predecessor_t = GraphComposition::node_t<Exec, Rcvr>;
 
     //! Receiver for a child of @c stdexec::when_all.
@@ -131,6 +122,13 @@ struct WhenAllOpState
     // using node_t = decltype(stdexec::__apply(joiner_t{}, std::declval<const children_op_states_t&>()));
     using node_t = std::invoke_result_t<joiner_t, const children_op_states_t&>;
 
+    /// If @ref adds_nodes is @c false, the composition policy is unconditionally @ref GraphComposition::Attach
+    /// to avoid creating a useless @c Kokkos::Experimental::Graph.
+    // using graph_composition_policy_t =
+    //     std::conditional_t<adds_nodes, GraphComposition::policy_t<Rcvr>, GraphComposition::Attach>;
+    using graph_composition_policy_t = GraphComposition::policy_t<Rcvr>;
+    // using state_t = State<graph_composition_policy_t, execution_space>;
+    using predecessor_t = GraphComposition::node_t<Exec, Rcvr>;
     using state_t = std::conditional_t<
         adds_anything,
         State<graph_composition_policy_t, execution_space>,
