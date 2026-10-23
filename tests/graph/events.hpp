@@ -21,7 +21,7 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
             ::testing::Eq(Kokkos::Tools::Experimental::device_id(_device_handle_.m_exec))))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define MATCHER_FOR_GRAPH_ADDNODE(_graph_create_event_variant_, _device_handle_, _predecessor_)                        \
+#define MATCHER_FOR_GRAPH_ADDNODE(_graph_create_event_variant_, _device_handle_, _predecessor_, ...)                   \
     AGraphAddNodeEvent(                                                                                                \
         ::testing::Field(                                                                                              \
             &Kokkos::Execution::GraphImpl::GraphAddNodeEvent::dev_id,                                                  \
@@ -30,7 +30,11 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
             &Kokkos::Execution::GraphImpl::GraphAddNodeEvent::graph,                                                   \
             ::testing::Eq(                                                                                             \
                 std::get<Kokkos::Execution::GraphImpl::GraphCreateEvent>(_graph_create_event_variant_).graph)),        \
-        ::testing::Field(&Kokkos::Execution::GraphImpl::GraphAddNodeEvent::predecessor, ::testing::Eq(_predecessor_)))
+        ::testing::Field(&Kokkos::Execution::GraphImpl::GraphAddNodeEvent::predecessor, ::testing::Eq(_predecessor_))  \
+            __VA_OPT__(                                                                                                \
+                ,                                                                                                      \
+                ::testing::Field(                                                                                      \
+                    &Kokkos::Execution::GraphImpl::GraphAddNodeEvent::name, ::testing::Eq(std::string(__VA_ARGS__)))))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(_graph_create_event_variant_, ...)                                        \
@@ -73,27 +77,6 @@ DEFINE_EVENT_MATCHER_IN(Kokkos::Execution::GraphImpl, GraphSubmitEvent)
             &Kokkos::Execution::GraphImpl::GraphSubmitEvent::graph,                                                    \
             ::testing::Eq(                                                                                             \
                 std::get<Kokkos::Execution::GraphImpl::GraphCreateEvent>(_graph_create_event_variant_).graph)))
-
-//! Similar to @ref EventDiscardMatcher, for graph-related events.
-template <Kokkos::ExecutionSpace Exec>
-struct GraphEventDiscardMatcher {
-    /**
-     * Filter out @ref Kokkos::utils::callbacks::BeginFenceEvent triggered by:
-     *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/impl/Kokkos_Default_Graph_Impl.hpp#L144
-     *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/impl/Kokkos_Default_GraphNode_Impl.hpp#L124
-     *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/HIP/Kokkos_HIP_Graph_Impl.hpp#L100
-     */
-    constexpr bool operator()(const Kokkos::utils::callbacks::BeginFenceEvent& event) const {
-        return event.name != "Kokkos::DefaultGraph::submit: fencing before launching graph nodes"
-            && event.name != "Kokkos::DefaultGraphNode::execute_node: sync with predecessors"
-            && event.name != "Kokkos::GraphImpl::~GraphImpl: Graph Destruction";
-    }
-
-    template <Kokkos::utils::callbacks::Event EventType>
-    constexpr bool operator()(const EventType&) const {
-        return true;
-    }
-};
 
 } // namespace Tests::GraphImpl
 

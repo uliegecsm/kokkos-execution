@@ -5,6 +5,7 @@
 #include "kokkos-execution/graph.hpp"
 #include "kokkos-execution/impl/event.hpp"
 
+#include "tests/graph/event_discard_matcher.hpp"
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/functors/increment.hpp"
@@ -220,11 +221,20 @@ TEST_F(BulkTest, bulk_schedule) {
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
-                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+                recorded_events.at(0),
+                device_handle,
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
+                dispatch_label(exec, "bulk")),
             MATCHER_FOR_GRAPH_ADDNODE(
-                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+                recorded_events.at(0),
+                device_handle,
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)),
+                dispatch_label(exec, "then")),
             MATCHER_FOR_GRAPH_ADDNODE(
-                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2))),
+                recorded_events.at(0),
+                device_handle,
+                MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(2)),
+                dispatch_label(exec, "bulk")),
             MATCHER_FOR_GRAPH_SUBMIT(exec, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
