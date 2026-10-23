@@ -1,8 +1,14 @@
 #ifndef KOKKOS_EXECUTION_TESTS_UTILS_GRAPH_CONTEXT_HPP
 #define KOKKOS_EXECUTION_TESTS_UTILS_GRAPH_CONTEXT_HPP
 
-#include "Kokkos_Graph_fwd.hpp"
-#include "impl/Kokkos_DeviceHandle.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+import kokkos.graph;
+#else
+#    include "Kokkos_Graph_fwd.hpp"
+#    include "impl/Kokkos_DeviceHandle.hpp"
+#endif
 
 #include "kokkos-execution/graph/graph_fwd.hpp"
 

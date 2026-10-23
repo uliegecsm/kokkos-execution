@@ -1,7 +1,12 @@
 #ifndef KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_MAXLOC_HPP
 #define KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_MAXLOC_HPP
 
-#include "Kokkos_Core.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 namespace Tests::Utils::Functors {
 
