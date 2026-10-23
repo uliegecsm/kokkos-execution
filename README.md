@@ -10,11 +10,11 @@ that customizes `std::execution` for [`Kokkos`](https://github.com/kokkos/kokkos
 It uses [`stdexec`](https://github.com/NVIDIA/stdexec/), the reference implementation of `std::execution`.
 
 `kokkos-execution` lets you express your operations as sender pipelines,
-and lower them transparently to either of these two `Kokkos` execution models:
+and lower them transparently to either of these two `Kokkos` programming models:
 1. [execution space](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/Machine-Model.html#execution-space-instances)
 2. [graph](https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/Graph.html)
 
-A thorough comparison of these execution models can be found [here](https://orbi.uliege.be/handle/2268/348774).
+A thorough comparison of these programming models can be found [here](https://orbi.uliege.be/handle/2268/348774).
 
 The full documentation is available [here](https://uliegecsm.github.io/kokkos-execution/).
 
