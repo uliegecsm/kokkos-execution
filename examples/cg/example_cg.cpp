@@ -1,6 +1,7 @@
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Profiling_ProfileSection.hpp"
 
+#include "kokkos-utils/callbacks/ConjunctionMatcher.hpp"
 #include "kokkos-utils/callbacks/EventInProfileSectionMatcher.hpp"
 #include "kokkos-utils/callbacks/EventRegexMatcher.hpp"
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
@@ -8,6 +9,8 @@
 
 #include "kokkos-execution/execution_space.hpp"
 #include "kokkos-execution/graph.hpp"
+
+#include "tests/graph/event_discard_matcher.hpp"
 
 #include "fem_laplacian_1d.hpp"
 #include "solver.hpp"
@@ -79,7 +82,10 @@ int main(int argc, char* argv[]) {
         /// const auto [summary, events] = recorder_t::record(section_matcher_t("CG solver execution"),
         ///                                                   [&] { return problem.solve(); });
         using event_in_profile_section_recorder_t = Kokkos::utils::callbacks::RecorderListener<
-            Kokkos::utils::callbacks::EventInProfileSectionMatcher<Kokkos::utils::callbacks::EventRegexMatcher>,
+            Kokkos::utils::callbacks::ConjunctionMatcher<
+                Kokkos::utils::callbacks::EventInProfileSectionMatcher<Kokkos::utils::callbacks::EventRegexMatcher>,
+                Tests::GraphImpl::GraphEventDiscardMatcher<EXAMPLE_EXECUTION_SPACE>
+            >,
             Kokkos::Impl::type_list<
                 Kokkos::utils::callbacks::BeginFenceEvent,
                 Kokkos::utils::callbacks::BeginParallelForEvent,
@@ -91,6 +97,7 @@ int main(int argc, char* argv[]) {
                 Kokkos::Execution::Impl::RecordEvent,
                 Kokkos::Execution::Impl::WaitEvent,
                 Kokkos::Execution::GraphImpl::GraphAddNodeEvent,
+                Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent,
                 Kokkos::Execution::GraphImpl::GraphCreateEvent,
                 Kokkos::Execution::GraphImpl::GraphInstantiateEvent,
                 Kokkos::Execution::GraphImpl::GraphSubmitEvent
@@ -99,7 +106,11 @@ int main(int argc, char* argv[]) {
 
         Kokkos::utils::callbacks::EventInProfileSectionMatcher matcher{
             .matcher = Kokkos::utils::callbacks::EventRegexMatcher{.regex = std::regex("CG solver execution")}};
-        const auto recorder = std::make_shared<event_in_profile_section_recorder_t>(std::move(matcher));
+        const auto recorder = std::make_shared<event_in_profile_section_recorder_t>(
+            Kokkos::utils::callbacks::ConjunctionMatcher<
+                Kokkos::utils::callbacks::EventInProfileSectionMatcher<Kokkos::utils::callbacks::EventRegexMatcher>,
+                Tests::GraphImpl::GraphEventDiscardMatcher<EXAMPLE_EXECUTION_SPACE>
+            >{std::move(matcher), Tests::GraphImpl::GraphEventDiscardMatcher<EXAMPLE_EXECUTION_SPACE>{}});
         Kokkos::utils::callbacks::Manager::register_listener(recorder);
 
         //const Kokkos::Execution::ExecutionSpaceContext esc{exec};
