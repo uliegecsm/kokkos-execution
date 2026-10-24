@@ -40,8 +40,7 @@ struct WhenAllOpState
     using base_t = OpStateBase<Exec, Rcvr>;
     using execution_space = Exec;
 
-    using state_t = State<GraphComposition::Create, execution_space>;
-    using root_t = typename state_t::graph_t::root_t;
+    using predecessor_t = GraphComposition::node_t<Exec, Rcvr>;
 
     //! Receiver for a child of @c stdexec::when_all.
     struct WhenAllChildReceiver : public Impl::Receiver<WhenAllOpState, stdexec::env_of_t<Rcvr>> {
@@ -51,8 +50,8 @@ struct WhenAllOpState
          *       through @c parent_op leading to an incomplete type compilation error.
          */
         [[nodiscard]]
-        auto query(get_node_t) const & noexcept -> const root_t& {
-            return this->parent_op->root;
+        auto query(get_node_t) const & noexcept -> const predecessor_t& {
+            return this->parent_op->get_predecessor();
         }
     };
 
@@ -72,14 +71,64 @@ struct WhenAllOpState
     static constexpr bool as_one =
         (connect_result_remains_on_graph_for<execution_space, Sndrs, WhenAllChildReceiver> && ...);
 
-    using node_t = decltype(stdexec::__apply(
-        [](const auto&... ops) { return Kokkos::Experimental::when_all(ops.query(get_node)...); },
-        std::declval<const children_op_states_t&>()));
+    //! Determine if at least one child operation state will add a node.
+    static constexpr bool at_least_one_child_adds_a_node = stdexec::__mapply<
+        stdexec::__many_of<stdexec::__q<Impl::queryable_for<get_node_t>::type>>,
+        children_op_states_t
+    >::value;
 
+    /**
+     * @brief Join the nodes of all operation states into one aggregate node.
+     *
+     * The operation states that are not queryable for @ref get_node_t are skipped.
+     * If none of the operation states is queryable for @ref get_node_t, @ref Impl::Empty is returned.
+     */
+    struct JoinOpStateNodes {
+        template <typename OpState>
+        static constexpr auto node_of(const OpState& opstate) noexcept {
+            if constexpr (stdexec::__queryable_with<OpState, get_node_t>)
+                return std::make_tuple(opstate.query(get_node));
+            else
+                return std::tuple<>{};
+        }
+
+        template <typename... Nodes>
+        static constexpr auto join(const std::tuple<Nodes...>& nodes) {
+            return std::apply(
+                [](const Nodes&... ns) {
+                    if constexpr (sizeof...(Nodes) == 0) {
+                        return Impl::Empty{};
+                    } else if constexpr (sizeof...(Nodes) == 1) {
+                        return (ns, ...);
+                    } else {
+                        auto agg = Kokkos::Experimental::when_all(ns...);
+                        graph_add_aggregate_node_event(agg, ns...);
+                        return agg;
+                    }
+                },
+                nodes);
+        }
+
+        template <typename ChildrenOpStates>
+        constexpr auto operator()(const ChildrenOpStates& children) const {
+            return stdexec::__apply(
+                [](const auto&... opstates) { return join(std::tuple_cat(node_of(opstates)...)); }, children);
+        }
+    };
+
+    using node_t = std::invoke_result_t<JoinOpStateNodes, const children_op_states_t&>;
+
+    /// If @ref at_least_one_child_adds_a_node is @c false, the composition policy is unconditionally
+    /// @ref GraphComposition::Attach to avoid creating a useless @c Kokkos::Experimental::Graph.
+    //     std::conditional_t<adds_nodes, GraphComposition::policy_t<Rcvr>, GraphComposition::Attach>;
+    using graph_composition_policy_t =
+        std::conditional_t<at_least_one_child_adds_a_node, GraphComposition::policy_t<Rcvr>, GraphComposition::Attach>;
+    using state_t = State<graph_composition_policy_t, execution_space>;
+
+    [[no_unique_address]]
     state_t state;
-    //! @todo The root node is stored to avoid reference counting incurred by https://github.com/kokkos/kokkos/blob/1945b637c3fab027fe90208753e8b2ec236302d4/core/src/Kokkos_Graph.hpp#L100.
-    root_t root;
     children_op_states_t children_op_states;
+    [[no_unique_address]]
     node_t node;
     std::atomic<size_t> count = sizeof...(Sndrs);
 
@@ -93,7 +142,6 @@ struct WhenAllOpState
          *       to submit the graph onto.
          */
         , state{Kokkos::Experimental::get_device_handle(execution_space{})}
-        , root(state.graph.root_node())
         , children_op_states(
               stdexec::__apply(
                   [this](auto&&... children) -> children_op_states_t {
@@ -102,14 +150,17 @@ struct WhenAllOpState
                           stdexec::connect(std::forward<Sndrs>(children), WhenAllChildReceiver{this})...};
                   },
                   std::move(sndrs_)))
-        , node(
-              stdexec::__apply(
-                  [](const auto&... child_op) {
-                      auto agg = Kokkos::Experimental::when_all(child_op.query(get_node)...);
-                      graph_add_aggregate_node_event(agg, child_op.query(get_node)...);
-                      return agg;
-                  },
-                  children_op_states)) {
+        , node(JoinOpStateNodes{}(children_op_states)) {
+        std::cout << "> at_least_one_child_adds_a_node: " << at_least_one_child_adds_a_node << std::endl;
+        std::cout << "> " << Kokkos::Impl::TypeInfo<graph_composition_policy_t>::name() << std::endl;
+    }
+
+    const predecessor_t& get_predecessor() const noexcept {
+        if constexpr (std::same_as<graph_composition_policy_t, GraphComposition::Create>) {
+            return state.get_root_node();
+        } else {
+            return this->completion_signal.rcvr.query(get_node);
+        }
     }
 
     [[nodiscard]]
@@ -148,6 +199,7 @@ struct WhenAllOpState
      */
     void submit() & noexcept requires(!as_one)
     {
+        std::cout << "- submit" << std::endl;
         if (count.fetch_sub(1) == 1) {
             this->submit_graph();
         }
@@ -185,11 +237,26 @@ struct WhenAllOpState
         this->submit();
     }
 
-    void submit_graph() & noexcept {
+    void submit_graph() & noexcept
+        requires(std::same_as<graph_composition_policy_t, GraphComposition::Attach> && !at_least_one_child_adds_a_node)
+    {
+        stdexec::set_value(std::move(this->completion_signal.rcvr));
+    }
+
+    void submit_graph() & noexcept
+        requires(std::same_as<graph_composition_policy_t, GraphComposition::Attach> && at_least_one_child_adds_a_node)
+    {
+        stdexec::set_value(std::move(this->completion_signal.rcvr));
+    }
+
+    void submit_graph() & noexcept
+        requires(std::same_as<graph_composition_policy_t, GraphComposition::Create> && at_least_one_child_adds_a_node)
+    {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
                   << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
 #endif
+        std::cout << "submit the graph (create and at least one)" << std::endl;
         try {
             Kokkos::Execution::GraphImpl::submit_graph(state.graph, state.get_device_handle().m_exec);
         } catch (...) {
