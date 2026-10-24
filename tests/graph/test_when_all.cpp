@@ -242,18 +242,12 @@ TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         std::move(sndr)); // NOLINT(performance-move-const-arg)
 
-    for (const auto& event: recorded_events)
-        std::visit([](const auto& e) { std::cout << e << std::endl; }, event);
-
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
-            // MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-            //     recorded_events.at(0),
-            //     MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 }
@@ -335,10 +329,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), schedule_sender_and_single_branch) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
-            // MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-            //     recorded_events.at(0),
-            //     // MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
-            //     MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 
@@ -619,10 +609,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), forwarding_env) {
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
-            // MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-            //     recorded_events.at(0),
-            //     // MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
-            //     MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "after dispatch"))));
 

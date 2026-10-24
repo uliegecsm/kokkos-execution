@@ -80,7 +80,7 @@ struct GraphEventDiscardMatcher {
     /**
      * Filter out @ref Kokkos::utils::callbacks::BeginFenceEvent triggered by:
      *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/impl/Kokkos_Default_Graph_Impl.hpp#L144
-     * *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/impl/Kokkos_Default_Graph_Impl.hpp#L154
+     *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/impl/Kokkos_Default_Graph_Impl.hpp#L154
      *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/impl/Kokkos_Default_GraphNode_Impl.hpp#L124
      *  * https://github.com/kokkos/kokkos/blob/10e9786f862733fc7c7a23d5e998e3d161dd7b70/core/src/HIP/Kokkos_HIP_Graph_Impl.hpp#L100
      */
