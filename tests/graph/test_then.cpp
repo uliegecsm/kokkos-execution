@@ -117,6 +117,16 @@ consteval bool test_sndr_nothrow_transformable() {
                   stdexec::env<>
     >);
 
+    using sndr_then_maythrow_on_copy_t =
+        decltype(stdexec::schedule(std::declval<typename ThenTest::scheduler_t>()) | stdexec::then(Tests::Utils::Functors::NoOp<false, true, false>{}));
+
+    static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Execution::GraphImpl::Domain,
+                  stdexec::set_value_t,
+                  const sndr_then_maythrow_on_copy_t&,
+                  stdexec::env<>
+    >);
+
     return true;
 }
 
@@ -187,8 +197,9 @@ TEST_F(ThenTest, then_schedule) {
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<sndr_t, stdexec::env<>>,
                   Kokkos::Execution::GraphImpl::ThenSender<
-                      TEST_EXECUTION_SPACE,
                       stdexec::then_t::__sender<functor_t, typename ThenTest::schedule_sender_t>,
+                      std::string_view,
+                      Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
                       functor_t
                   >
     >);

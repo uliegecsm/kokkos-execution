@@ -102,6 +102,16 @@ consteval bool test_sndr_nothrow_transformable() {
                   stdexec::env<>
     >);
 
+    using sndr_bulk_maythrow_on_copy_t =
+        decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 1, Tests::Utils::Functors::NoOp<false, true, false>{}));
+
+    static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain,
+                  stdexec::set_value_t,
+                  const sndr_bulk_maythrow_on_copy_t&,
+                  stdexec::env<>
+    >);
+
     return true;
 }
 

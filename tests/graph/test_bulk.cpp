@@ -114,6 +114,16 @@ consteval bool test_sndr_nothrow_transformable() {
                   stdexec::env<>
     >);
 
+    using sndr_bulk_maythrow_on_copy_t =
+        decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, true, false>{}));
+
+    static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Execution::GraphImpl::Domain,
+                  stdexec::set_value_t,
+                  const sndr_bulk_maythrow_on_copy_t&,
+                  stdexec::env<>
+    >);
+
     return true;
 }
 
@@ -192,7 +202,8 @@ TEST_F(BulkTest, bulk_schedule) {
                           load_check_add_t,
                           stdexec::__sexpr<stdexec::bulk_t, bulk_data_t, typename BulkTest::schedule_sender_t>
                       >,
-                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+                      std::string_view,
+                      Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
                       sum_indices_t,
                       Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>
                   >

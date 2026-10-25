@@ -214,7 +214,7 @@ struct OpState
         RestOfClosures... clsrs) noexcept(false)
         : OpStateBase<execution_space, Rcvr>(std::move(rcvr))
         , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
-        , state{Kokkos::Impl::get_property<device_handle_t>(clsr.node_props)}
+        , state{clsr.device_handle}
         , node{add_nodes(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Operation state graph composition policy is "

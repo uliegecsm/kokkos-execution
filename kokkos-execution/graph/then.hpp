@@ -12,6 +12,7 @@
 #include "kokkos-execution/graph/graph_fwd.hpp"
 
 #include "kokkos-execution/graph/events.hpp"
+#include "kokkos-execution/graph/node_props.hpp"
 #include "kokkos-execution/graph/operation_state.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
@@ -23,10 +24,10 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-template <Kokkos::ExecutionSpace Exec, typename Functor>
+template <typename Label, typename DeviceHandle, typename Functor>
 struct ThenClosure {
-    using execution_space = Exec;
-    using device_handle_t = Kokkos::Impl::DeviceHandle<Exec>;
+    using device_handle_t = DeviceHandle;
+    using execution_space = exec_of_t<device_handle_t>;
     using node_props_t = typename Kokkos::Impl::NodeCtorProps<device_handle_t, std::string>::uniform_type;
 
     template <NodeRef Predecessor>
@@ -37,27 +38,30 @@ struct ThenClosure {
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        auto [device_handle, label] = std::tuple<device_handle_t, std::string>{
-            Kokkos::Execution::GraphImpl::get_properties<device_handle_t, std::string>(node_props)};
+        auto label_copy = std::string(label);
+        const auto device_handle_copy = device_handle;
 #endif
-        auto node = predecessor.then(std::move(node_props), std::forward<Functor>(functor));
+        auto node = predecessor.then(
+            Kokkos::Experimental::node_props(std::move(device_handle), std::string(std::move(label))),
+            std::forward<Functor>(functor));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
-        graph_add_node_event(std::move(label), predecessor, node, device_handle);
+        KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label_copy, node, predecessor)
+        graph_add_node_event(std::move(label_copy), predecessor, node, device_handle_copy);
 #endif
         return node;
     }
 
-    node_props_t node_props;
+    Label label;
+    device_handle_t device_handle;
     Functor functor; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
 //! Sender for @c stdexec::then.
-template <typename Exec, typename Sndr, typename Functor>
+template <typename Sndr, typename Label, typename DeviceHandle, typename Functor>
 struct ThenSender {
     using sender_concept = stdexec::sender_tag;
 
-    using closure_t = ThenClosure<Exec, Functor>;
+    using closure_t = ThenClosure<Label, DeviceHandle, Functor>;
 
     KOKKOS_EXECUTION_COMPL_SIGS_ADD(ThenSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
@@ -72,33 +76,30 @@ struct ThenSender {
 template <>
 struct TransformSenderFor<stdexec::then_t> {
     template <typename Env, typename Functor, typename Sndr>
-    using trnsfrmd_sndr_t = ThenSender<Impl::exec_of_t<Sndr, Env>, Sndr, Functor>;
-
-    template <typename Env, typename Functor, typename Sndr>
-    requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && graph_completing_sender<Sndr, Env>)
-    auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Functor, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Functor, Sndr>::closure_t,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Functor, Sndr>{
-            .clsr =
-                {.node_props = Kokkos::Experimental::node_props(
-                     Kokkos::Experimental::get_device_handle(schd.state->exec),
-                       std::string(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": then"))),
-                       .functor = std::forward<Functor>(functor)},
-            .sndr = std::forward<Sndr>(sndr)
-        };
-    }
+    using trnsfrmd_sndr_t = ThenSender<
+        Sndr,
+        std::string_view,
+        Kokkos::Impl::DeviceHandle<Impl::exec_of_t<Sndr, Env>>,
+        std::remove_cvref_t<Functor>
+    >;
 
     template <typename Env, typename Functor, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
     auto operator()(const Env&, stdexec::then_t, Functor&&, Sndr&&) const noexcept {
         return no_graph_scheduler_in_env<stdexec::then_t, Sndr, Env>();
     }
+
+    template <typename Env, typename Functor, typename Sndr>
+    requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && graph_completing_sender<Sndr, Env>)
+    auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const STDEXEC_AUTO_RETURN(
+        trnsfrmd_sndr_t<Env, Functor, Sndr>{
+            .clsr =
+                {.label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": then"),
+                       .device_handle = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
+                                      .state->get_device_handle(),
+                       .functor = std::forward<Functor>(functor)},
+            .sndr = std::forward<Sndr>(sndr)
+    })
 };
 
 } // namespace Kokkos::Execution::GraphImpl
