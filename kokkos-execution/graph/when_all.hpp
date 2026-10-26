@@ -40,8 +40,7 @@ struct WhenAllOpState
     using base_t = OpStateBase<Exec, Rcvr>;
     using execution_space = Exec;
 
-    using state_t = State<GraphComposition::Create, execution_space>;
-    using root_t = typename state_t::graph_t::root_t;
+    using predecessor_t = GraphComposition::node_t<Exec, Rcvr>;
 
     //! Receiver for a child of @c stdexec::when_all.
     struct WhenAllChildReceiver : public Impl::Receiver<WhenAllOpState, stdexec::env_of_t<Rcvr>> {
@@ -51,36 +50,86 @@ struct WhenAllOpState
          *       through @c parent_op leading to an incomplete type compilation error.
          */
         [[nodiscard]]
-        auto query(get_node_t) const & noexcept -> const root_t& {
-            return this->parent_op->root;
+        auto query(get_node_t) const & noexcept -> const predecessor_t& {
+            return this->parent_op->get_predecessor();
         }
     };
 
     using children_op_states_t = stdexec::__tuple<stdexec::connect_result_t<Sndrs, WhenAllChildReceiver>...>;
 
-#if defined(KOKKOS_ENABLE_DEBUG)
-    //! If this assertion fails, it probably means that one of the branches finishes with an algorithm that is not customized yet.
-    static_assert(
-        stdexec::__mapply<
-            stdexec::__mall_of<stdexec::__q<Impl::queryable_for<get_node_t>::type>>,
-            children_op_states_t
-        >::value,
-        "Child senders of the 'when_all' must lead to 'get_node_t' queryable operation states.");
-#endif
-
     //! Determine if all branches remain fully on the graph, if connected to @ref WhenAllChildReceiver.
     static constexpr bool as_one =
         (connect_result_remains_on_graph_for<execution_space, Sndrs, WhenAllChildReceiver> && ...);
 
-    using node_t = decltype(stdexec::__apply(
-        [](const auto&... ops) { return Kokkos::Experimental::when_all(ops.query(get_node)...); },
-        std::declval<const children_op_states_t&>()));
+    //! Determine if at least one child operation state will add a node.
+    static constexpr bool at_least_one_child_adds_a_node = stdexec::__mapply<
+        stdexec::__many_of<stdexec::__q<Impl::queryable_for<get_node_t>::type>>,
+        children_op_states_t
+    >::value;
 
+    /**
+     * @brief Join the nodes of all operation states into one aggregate node.
+     *
+     * The operation states that are not queryable for @ref get_node_t are skipped.
+     * If none of the operation states is queryable for @ref get_node_t, @ref Impl::Empty is returned.
+     */
+    struct JoinOpStateNodes {
+        template <typename OpState>
+        static constexpr auto node_of(const OpState& opstate) noexcept {
+            if constexpr (stdexec::__queryable_with<OpState, get_node_t>) {
+                using query_t = stdexec::__query_result_t<OpState, get_node_t>;
+                static_assert(std::is_lvalue_reference_v<query_t>);
+                return std::tuple<query_t>{opstate.query(get_node)};
+            } else {
+                return std::tuple<>{};
+            }
+        }
+
+        static constexpr auto join() noexcept {
+            return Impl::Empty{};
+        }
+
+        template <typename Node>
+        static constexpr const Node& join(const Node& node) noexcept {
+            return node;
+        }
+
+        template <typename... Nodes>
+        requires(sizeof...(Nodes) >= 2)
+        static constexpr auto join(const Nodes&... nodes) {
+            auto agg = Kokkos::Experimental::when_all(nodes...);
+            graph_add_aggregate_node_event(agg, nodes...);
+            return agg;
+        }
+
+        template <typename ChildrenOpStates>
+        constexpr decltype(auto) operator()(const ChildrenOpStates& children) const {
+            return stdexec::__apply(
+                [](const auto&... opstates) -> decltype(auto) {
+                    return std::apply(
+                        [](const auto&... nodes) -> decltype(auto) { return join(nodes...); },
+                        std::tuple_cat(node_of(opstates)...));
+                },
+                children);
+        }
+    };
+
+    using node_t = std::invoke_result_t<JoinOpStateNodes, const children_op_states_t&>;
+
+    /// If @ref at_least_one_child_adds_a_node is @c false, the composition policy is unconditionally
+    /// @ref GraphComposition::Attach to avoid creating a useless @c Kokkos::Experimental::Graph.
+    using graph_composition_policy_t =
+        std::conditional_t<at_least_one_child_adds_a_node, GraphComposition::policy_t<Rcvr>, GraphComposition::Attach>;
+    using state_t = State<graph_composition_policy_t, execution_space>;
+
+    [[no_unique_address]]
     state_t state;
-    //! @todo The root node is stored to avoid reference counting incurred by https://github.com/kokkos/kokkos/blob/1945b637c3fab027fe90208753e8b2ec236302d4/core/src/Kokkos_Graph.hpp#L100.
-    root_t root;
     children_op_states_t children_op_states;
+    PRAGMA_DIAGNOSTIC_PUSH
+    KOKKOS_EXECUTION_PRAGMA_DIAGNOSTIC_IGNORED_DANGLING_REFERENCE
+    [[no_unique_address]]
     node_t node;
+    PRAGMA_DIAGNOSTIC_POP
     std::atomic<size_t> count = sizeof...(Sndrs);
 
     //! @warning Unconditionally **not** @c noexcept because both graph and node construction may throw.
@@ -93,7 +142,6 @@ struct WhenAllOpState
          *       to submit the graph onto.
          */
         , state{Kokkos::Experimental::get_device_handle(execution_space{})}
-        , root(state.graph.root_node())
         , children_op_states(
               stdexec::__apply(
                   [this](auto&&... children) -> children_op_states_t {
@@ -102,23 +150,27 @@ struct WhenAllOpState
                           stdexec::connect(std::forward<Sndrs>(children), WhenAllChildReceiver{this})...};
                   },
                   std::move(sndrs_)))
-        , node(
-              stdexec::__apply(
-                  [](const auto&... child_op) {
-                      auto agg = Kokkos::Experimental::when_all(child_op.query(get_node)...);
-                      graph_add_aggregate_node_event(agg, child_op.query(get_node)...);
-                      return agg;
-                  },
-                  children_op_states)) {
+        , node(JoinOpStateNodes{}(children_op_states)) {
+    }
+
+    const predecessor_t& get_predecessor() const noexcept {
+        if constexpr (std::same_as<graph_composition_policy_t, GraphComposition::Create>) {
+            return state.get_root_node();
+        } else {
+            return this->completion_signal.rcvr.query(get_node);
+        }
     }
 
     [[nodiscard]]
-    auto query(get_node_t) const & noexcept -> const node_t& {
+    auto query(get_node_t) const & noexcept -> const node_t& requires Impl::not_empty<node_t>
+    {
         return node;
     }
 
     [[nodiscard]]
-    auto query(get_graph_t) const & noexcept -> const typename state_t::graph_t& {
+    auto query(get_graph_t) const & noexcept -> const
+        typename state_t::graph_t& requires std::same_as<graph_composition_policy_t, GraphComposition::Create>
+    {
         return state.graph;
     }
 
@@ -186,6 +238,12 @@ struct WhenAllOpState
     }
 
     void submit_graph() & noexcept {
+        stdexec::set_value(std::move(this->completion_signal.rcvr));
+    }
+
+    void submit_graph() & noexcept
+        requires(std::is_same_v<graph_composition_policy_t, GraphComposition::Create> && at_least_one_child_adds_a_node)
+    {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Submitting graph " << get_graph_impl_ptr(state.graph.root_node()) << " on "
                   << Kokkos::Tools::Experimental::device_id(state.get_device_handle().m_exec) << '.';
