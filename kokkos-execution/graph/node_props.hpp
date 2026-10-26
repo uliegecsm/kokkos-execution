@@ -1,8 +1,6 @@
 #ifndef KOKKOS_EXECUTION_GRAPH_NODE_PROPS_HPP
 #define KOKKOS_EXECUTION_GRAPH_NODE_PROPS_HPP
 
-#include "kokkos-utils/impl/type_list.hpp"
-
 #include "Kokkos_Core.hpp"
 
 namespace Kokkos::Execution::GraphImpl {
@@ -11,11 +9,12 @@ template <Kokkos::ExecutionSpace Exec, typename Label>
 using node_props_t = typename Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<Exec>, Label>::uniform_type;
 
 //! Retrieve the @c Kokkos::Impl::DeviceHandle type from a node properties type.
-template <Kokkos::Impl::NodeProperties NodeProps>
-using device_handle_of_t = Kokkos::utils::impl::type_list_at_t<
-    0,
-    Kokkos::Impl::filter_type_list_t<Kokkos::Impl::is_device_handle, typename NodeProps::properties_value_type_list_t>
->;
+template <Kokkos::ExecutionSpace Exec>
+auto device_handle_of(const Kokkos::Impl::NodeCtorProp<Kokkos::Impl::DeviceHandle<Exec>>&)
+    -> std::type_identity<Kokkos::Impl::DeviceHandle<Exec>>;
+
+template <typename T>
+using device_handle_of_t = typename decltype(device_handle_of(std::declval<const T&>()))::type;
 
 template <typename>
 struct ExecOf;
@@ -31,12 +30,18 @@ struct ExecOf<Kokkos::Impl::DeviceHandle<Exec>> : std::type_identity<Exec> { };
 template <typename T>
 using exec_of_t = typename ExecOf<T>::type;
 
-//! Retrieve the label type from a node properties type.
-template <Kokkos::Impl::NodeProperties NodeProps>
-using label_of_t = Kokkos::utils::impl::type_list_at_t<
-    0,
-    Kokkos::Impl::filter_type_list_t<Kokkos::Impl::is_view_label, typename NodeProps::properties_value_type_list_t>
->;
+template <Kokkos::Impl::ValidNodeProperty... Props, typename PropsContainer>
+requires Kokkos::Impl::NodeProperties<std::remove_cvref_t<PropsContainer>>
+[[nodiscard]]
+constexpr auto get_properties(PropsContainer&& props) { // NOLINT(cppcoreguidelines-missing-std-forward)
+    if constexpr (std::is_lvalue_reference_v<PropsContainer>) {
+        return std::tie(Kokkos::Impl::get_property<Props>(props)...);
+    } else {
+        return std::tuple<Props...>{
+            Kokkos::Impl::forward_like<PropsContainer>(Kokkos::Impl::get_property<Props>(props))...};
+    }
+}
+
 } // namespace Kokkos::Execution::GraphImpl
 
 #endif // KOKKOS_EXECUTION_GRAPH_NODE_PROPS_HPP

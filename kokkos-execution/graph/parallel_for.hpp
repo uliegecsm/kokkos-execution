@@ -30,13 +30,18 @@ struct ParallelForClosure {
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
-        const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        auto [device_handle, label] = std::tuple<device_handle_t, std::string>{
+            Kokkos::Execution::GraphImpl::get_properties<device_handle_t, std::string>(node_props)};
+#endif
         auto node = predecessor.then_parallel_for(
             std::move(node_props),
             Impl::make_policy(execution_space{}, std::move(policy_or_iter_space)),
             std::move(functor));
-        KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING("parallel_for", node, predecessor)
-        graph_add_node_event(predecessor, node, device_handle);
+#if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
+        KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
+        graph_add_node_event(std::move(label), predecessor, node, device_handle);
+#endif
         return node;
     }
 
