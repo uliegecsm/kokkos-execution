@@ -15,13 +15,14 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 template <>
 struct TransformSenderFor<stdexec::bulk_t> {
     template <typename Env, typename Data, typename Sndr>
-    using trnsfrmd_sndr_t = ParallelForSender<
-        stdexec::bulk_t,
-        Sndr,
-        std::string_view,
+    using data_t = Impl::ParallelForData<
         typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t,
-        Impl::policy_for_bulk_t<Env, Data, Sndr>
+        Impl::policy_for_bulk_t<Env, Data, Sndr>,
+        Impl::Label<std::string_view>
     >;
+
+    template <typename Env, typename Data, typename Sndr>
+    using trnsfrmd_sndr_t = ParallelForSender<stdexec::bulk_t, Sndr, data_t<Env, Data, Sndr>>;
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
@@ -36,12 +37,11 @@ struct TransformSenderFor<stdexec::bulk_t> {
         const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk"),
-             .functor = stdexec::__forward_like<Data>(functor),
-             .policy =
-                 Impl::policy_for_bulk_t<Env, Data, Sndr>(schd.state->exec, 0, stdexec::__forward_like<Data>(shape))},
-            std::forward<Sndr>(sndr)
-        };
+            {.data =
+                 {{Impl::Label{KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk")}},
+                  stdexec::__forward_like<Data>(functor),
+                  Impl::policy_for_bulk_t<Env, Data, Sndr>(schd.state->exec, 0, stdexec::__forward_like<Data>(shape))}},
+            std::forward<Sndr>(sndr)};
     }
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>

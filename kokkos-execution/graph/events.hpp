@@ -8,6 +8,7 @@
 #    include "kokkos-utils/callbacks/Manager.hpp"
 #endif
 
+#include "kokkos-execution/impl/label.hpp"
 #include "kokkos-execution/utils/streamers.hpp"
 
 namespace Kokkos::Execution::GraphImpl {
@@ -152,7 +153,7 @@ void graph_add_node_event(
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
-            .name = std::forward<Label>(label),
+            .name = Impl::as_convertible_to_string(std::forward<Label>(label)),
             .graph = get_graph_impl_ptr(predecessor),
             .predecessor = get_node_ptr(predecessor),
             .node = get_node_ptr(node),

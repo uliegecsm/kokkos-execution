@@ -59,11 +59,12 @@ consteval bool test_sndr_traits() {
     using schd_sndr_t = typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t;
 
     //! Parallel reduce sender.
-    using label_t = std::string;
+    using label_t = Kokkos::Execution::Impl::Label<std::string>;
     using functor_t = Tests::Utils::Functors::ReduceIndices;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using reducer_t = typename TEST_CATEGORY(ParallelReduceTest)::view_s_t;
-    using pred_sndr_t = SndrAdptr<Args..., schd_sndr_t, label_t, functor_t, policy_t, reducer_t>;
+    using pred_data_t = Kokkos::Execution::Impl::ParallelReduceData<functor_t, policy_t, reducer_t, label_t>;
+    using pred_sndr_t = SndrAdptr<Args..., schd_sndr_t, pred_data_t>;
 
     //! Models the execution space completing sender concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<pred_sndr_t>);
@@ -98,10 +99,7 @@ consteval bool test_sndr_traits() {
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceSender<
                       Kokkos::Execution::parallel_reduce_t,
                       schd_sndr_t,
-                      label_t,
-                      functor_t,
-                      policy_t,
-                      reducer_t
+                      pred_data_t
                   >
     >);
 
@@ -128,8 +126,8 @@ consteval bool test_sndr_is_transformable() {
     using functor_t = Tests::Utils::Functors::ReduceIndices;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using reducer_t = typename TEST_CATEGORY(ParallelReduceTest)::view_s_t;
-    using pred_sndr_t =
-        Kokkos::Execution::Impl::ParallelReduceSender<schd_sndr_t, label_t, functor_t, policy_t, reducer_t>;
+    using pred_data_t = Kokkos::Execution::Impl::ParallelReduceData<functor_t, policy_t, reducer_t, label_t>;
+    using pred_sndr_t = Kokkos::Execution::Impl::ParallelReduceSender<schd_sndr_t, pred_data_t>;
 
     //! Is transformable via @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
     static_assert(stdexec::__applicable<
@@ -149,8 +147,13 @@ consteval bool test_closure_traits() {
     using functor_t = Tests::Utils::Functors::ReduceIndices;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using reducer_t = ViewType;
-    using closure_t =
-        Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceClosure<std::string, functor_t, policy_t, reducer_t>;
+    using pred_data_t = Kokkos::Execution::Impl::ParallelReduceData<
+        functor_t,
+        policy_t,
+        reducer_t,
+        Kokkos::Execution::Impl::Label<std::string_view>
+    >;
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceClosure<pred_data_t>;
 
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);

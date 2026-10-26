@@ -17,7 +17,9 @@ set(DOXYGEN_FILE_PATTERNS *.c *.cpp *.h *.hpp)
 set(DOXYGEN_GENERATE_BUGLIST YES)
 set(DOXYGEN_IMAGE_PATH ${CMAKE_SOURCE_DIR})
 set(DOXYGEN_MACRO_EXPANSION YES)
-set(DOXYGEN_PREDEFINED __DOXYGEN__)
+# The __cpp_explicit_this_parameter predefined macro is needed to tackle
+# https://github.com/doxygen/doxygen/issues/12422.
+set(DOXYGEN_PREDEFINED __DOXYGEN__ __cpp_explicit_this_parameter=202110L)
 set(DOXYGEN_REFERENCES_RELATION YES)
 set(DOXYGEN_SOURCE_BROWSER YES)
 set(DOXYGEN_TIMESTAMP YES)

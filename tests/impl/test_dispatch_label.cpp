@@ -38,6 +38,8 @@ static_assert(test_dispatch_label_v());
 
 //! @test Check that @ref Kokkos::Execution::Impl::dispatch_label works as expected.
 consteval bool test_dispatch_label() {
+    static_assert(
+        std::same_as<decltype(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(TEST_EXECUTION_SPACE, suffix)), std::string_view>);
     static_assert(std::same_as<decltype(label_as_view), const std::string_view>);
     static_assert(label_as_view.starts_with(label_of_exec));
     static_assert(label_as_view.ends_with(suffix));

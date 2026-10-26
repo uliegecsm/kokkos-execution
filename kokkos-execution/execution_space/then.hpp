@@ -19,13 +19,10 @@ struct ThenClosure {
     using execution_space = typename policy_t::execution_space;
 
     void submit() const & {
-        if constexpr (std::convertible_to<Label, std::string>) {
-            Kokkos::single(label, policy, functor);
-        } else {
-            Kokkos::single(std::string{label}, policy, functor);
-        }
+        Kokkos::single(Impl::as_convertible_to_string(label), policy, functor);
     }
 
+    [[nodiscard]]
     const policy_t& get_policy() const & noexcept {
         return policy;
     }

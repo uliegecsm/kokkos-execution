@@ -57,10 +57,11 @@ consteval bool test_sndr_traits() {
     using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
 
     //! Parallel for sender.
-    using label_t = std::string;
+    using label_t = Kokkos::Execution::Impl::Label<std::string>;
     using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using pfor_sndr_t = SndrAdptr<Args..., schd_sndr_t, label_t, functor_t, policy_t>;
+    using pfor_data_t = Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, label_t>;
+    using pfor_sndr_t = SndrAdptr<Args..., schd_sndr_t, pfor_data_t>;
 
     //! Models the execution space completing sender concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<pfor_sndr_t>);
@@ -95,9 +96,7 @@ consteval bool test_sndr_traits() {
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
                       Kokkos::Execution::parallel_for_t,
                       schd_sndr_t,
-                      label_t,
-                      functor_t,
-                      policy_t
+                      pfor_data_t
                   >
     >);
 
@@ -120,10 +119,11 @@ consteval bool test_sndr_is_transformable() {
     using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
 
     //! Parallel for sender.
-    using label_t = std::string;
+    using label_t = Kokkos::Execution::Impl::Label<std::string>;
     using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, label_t, functor_t, policy_t>;
+    using pfor_data_t = Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, label_t>;
+    using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, pfor_data_t>;
 
     //! Is transformable via @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
     static_assert(stdexec::__applicable<
@@ -142,7 +142,9 @@ template <typename ViewType>
 consteval bool test_closure_traits() {
     using functor_t = Tests::Utils::Functors::SumIndices<ViewType>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<std::string, functor_t, policy_t>;
+    using pfor_data_t =
+        Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<std::string_view>>;
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<pfor_data_t>;
 
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);
