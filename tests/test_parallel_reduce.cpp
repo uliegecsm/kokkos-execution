@@ -20,6 +20,22 @@
 
 namespace Tests {
 
+//! @test The @ref Kokkos::Execution::parallel_reduce_t operator may be used in a constant expression.
+consteval bool test_parallel_reduce_in_constant_expression() {
+    using functor_t = Tests::Utils::Functors::NoOp<false, false, false>;
+
+    [[maybe_unused]]
+    const auto sndr_a = Kokkos::Execution::parallel_reduce(42, functor_t{}, functor_t{});
+
+    [[maybe_unused]]
+    const auto sndr_b =
+        Kokkos::Execution::parallel_reduce(Kokkos::range_slice<size_t, size_t>{42, 43}, functor_t{}, functor_t{});
+
+    return std::is_constant_evaluated();
+}
+
+static_assert(test_parallel_reduce_in_constant_expression());
+
 //! @test Check that the @c noexcept contract of @ref Kokkos::Execution::parallel_reduce is as expected.
 consteval bool test_parallel_reduce_noexcept_contract() {
     using label_t = std::string;
