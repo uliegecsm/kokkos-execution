@@ -25,6 +25,12 @@ concept iteration_space = (extents<T> && requires { T::rank() == 1; }) || range_
 template <typename T>
 concept execution_policy_or_iteration_space = Kokkos::ExecutionPolicy<T> || iteration_space<T>;
 
+//! Make a valid iteration space from a work count.
+template <std::integral T>
+auto make_iter_space(const T work_count) noexcept -> Kokkos::dims<1, T> {
+    return Kokkos::dims<1, T>{work_count};
+}
+
 } // namespace Kokkos::Execution::Impl
 
 #endif // KOKKOS_EXECUTION_IMPL_ITERATION_SPACE_HPP

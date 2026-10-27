@@ -61,7 +61,7 @@ struct parallel_reduce_t {
         return stdexec::__closure(
             *this,
             std::move(label),
-            Kokkos::dims<1, T>{work_count},
+            Impl::make_iter_space(work_count),
             std::forward<Functor>(functor),
             std::forward<Reducer>(reducer));
     }
