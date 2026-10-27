@@ -10,24 +10,24 @@ template <bool MayThrowOnCall = true, bool MayThrowOnCopy = true, bool MayThrowO
 struct NoOp {
     NoOp() = default;
 
-    NoOp(const NoOp&) noexcept(!MayThrowOnCopy) { // NOLINT(modernize-use-equals-default)
+    constexpr NoOp(const NoOp&) noexcept(!MayThrowOnCopy) { // NOLINT(modernize-use-equals-default)
     }
 
-    NoOp(NoOp&&) noexcept(!MayThrowOnMove) {
+    constexpr NoOp(NoOp&&) noexcept(!MayThrowOnMove) {
     }
 
-    NoOp& operator=(const NoOp&) noexcept(!MayThrowOnCopy) { // NOLINT(modernize-use-equals-default)
+    constexpr NoOp& operator=(const NoOp&) noexcept(!MayThrowOnCopy) { // NOLINT(modernize-use-equals-default)
         return *this;
     }
 
-    NoOp& operator=(NoOp&&) noexcept(!MayThrowOnMove) {
+    constexpr NoOp& operator=(NoOp&&) noexcept(!MayThrowOnMove) {
         return *this;
     }
 
     ~NoOp() = default;
 
     template <typename... Args>
-    KOKKOS_FUNCTION void operator()(Args&&...) const noexcept(!MayThrowOnCall) {
+    KOKKOS_FUNCTION constexpr void operator()(Args&&...) const noexcept(!MayThrowOnCall) {
     }
 };
 

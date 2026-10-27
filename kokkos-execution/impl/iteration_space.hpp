@@ -27,7 +27,7 @@ concept execution_policy_or_iteration_space = Kokkos::ExecutionPolicy<T> || iter
 
 //! Make a valid iteration space from a work count.
 template <std::integral T>
-auto make_iter_space(const T work_count) noexcept -> Kokkos::dims<1, T> {
+constexpr auto make_iter_space(const T work_count) noexcept -> Kokkos::dims<1, T> {
     return Kokkos::dims<1, T>{work_count};
 }
 
