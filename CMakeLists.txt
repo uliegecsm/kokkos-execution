@@ -141,6 +141,7 @@ target_sources(
             kokkos-execution/impl/domain.hpp
             kokkos-execution/impl/empty.hpp
             kokkos-execution/impl/env.hpp
+            kokkos-execution/impl/fixed_string.hpp
             kokkos-execution/impl/get_exec.hpp
             kokkos-execution/impl/event.hpp
             kokkos-execution/impl/HIP/dependency.hpp

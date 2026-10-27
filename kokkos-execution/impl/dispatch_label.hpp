@@ -7,28 +7,9 @@
 
 #include "Kokkos_Core.hpp"
 
+#include "kokkos-execution/impl/fixed_string.hpp"
+
 namespace Kokkos::Execution::Impl {
-
-template <size_t N>
-struct FixedString {
-    char data[N]{};
-
-    consteval FixedString(const char (&str)[N]) noexcept { // NOLINT(google-explicit-constructor)
-        std::copy_n(str, N, data);
-    }
-
-    consteval auto size() const {
-        return N - 1;
-    }
-
-    consteval auto begin() const {
-        return data;
-    }
-
-    consteval auto end() const {
-        return data + N - 1;
-    }
-};
 
 //! Get the dispatch label from @p Exec and @p Suffix.
 template <Kokkos::ExecutionSpace Exec, FixedString Suffix>
