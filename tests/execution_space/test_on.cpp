@@ -35,7 +35,7 @@ class OnTest
     using recorder_listener_t = RecorderListener<
         EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
-        BeginParallelForEvent,
+        BeginSingleEvent,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
@@ -66,9 +66,9 @@ TEST_F(OnTest, on_same_execution_space_instance) {
     ASSERT_THAT(
         Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 3);
@@ -105,32 +105,32 @@ TEST_F(OnTest, on_another_execution_space_instance_same_type) {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec_A, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec_A),
                 MATCHER_FOR_WAIT_EXEC_EVENT(exec_B, recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec_B, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec_B),
                 MATCHER_FOR_WAIT_EXEC_EVENT(exec_A, recorded_events.at(4)),
-                MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec_A, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
     } else {
         if (Tests::Utils::are_same_instances(exec_A, exec_B)) {
             ASSERT_THAT(
                 recorded_events,
                 testing::ElementsAre(
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_SINGLE(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_SINGLE(exec_B, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_SINGLE(exec_A, dispatch_label(exec, "then")),
                     MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
         } else {
             ASSERT_THAT(
                 recorded_events,
                 testing::ElementsAre(
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_SINGLE(exec_A, dispatch_label(exec, "then")),
                     MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "dependency")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_B, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_SINGLE(exec_B, dispatch_label(exec, "then")),
                     MATCHER_FOR_BEGIN_FENCE(exec_B, dispatch_label(exec, "dependency")),
-                    MATCHER_FOR_BEGIN_PFOR(exec_A, dispatch_label(exec, "then")),
+                    MATCHER_FOR_BEGIN_SINGLE(exec_A, dispatch_label(exec, "then")),
                     MATCHER_FOR_BEGIN_FENCE(exec_A, dispatch_label(exec, "sync_wait"))));
         }
     }
@@ -166,9 +166,9 @@ TEST_F(OnTest, many_execution_space_instances_of_different_type) {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec_h, dispatch_label(exec_h, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     } else if constexpr (
         Kokkos::Execution::Impl::has_exec_wait_event<TEST_EXECUTION_SPACE>
@@ -176,23 +176,23 @@ TEST_F(OnTest, many_execution_space_instances_of_different_type) {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_WAIT_EXEC_EVENT(exec_h, recorded_events.at(1)),
-                MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec_h, dispatch_label(exec_h, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec_h),
                 MATCHER_FOR_WAIT_EXEC_EVENT(exec, recorded_events.at(4)),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     } else {
         ASSERT_THAT(
             recorded_events,
             testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "dependency")),
-                MATCHER_FOR_BEGIN_PFOR(exec_h, dispatch_label(exec_h, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec_h, dispatch_label(exec_h, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec_h, dispatch_label(exec_h, "dependency")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
     }
 

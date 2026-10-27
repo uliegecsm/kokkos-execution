@@ -45,7 +45,7 @@ class AnySenderTest
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
     using recorder_listener_t =
-        RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginParallelForEvent>;
+        RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent, BeginSingleEvent>;
 };
 
 //! @test Check when synchronization happens.
@@ -90,10 +90,10 @@ TEST_F(AnySenderTest, then) {
     ASSERT_THAT(
         Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(extended_chain)),
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
 
     ASSERT_EQ(data(), 3);

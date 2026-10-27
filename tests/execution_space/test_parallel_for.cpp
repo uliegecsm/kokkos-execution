@@ -41,6 +41,7 @@ class TEST_CATEGORY(ParallelForTest)
         EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
         BeginParallelForEvent,
+        BeginSingleEvent,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
@@ -262,7 +263,7 @@ TEST_F(TEST_CATEGORY(ParallelForTest), two_parallel_regions) {
         Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello from pfor")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "hello again from pfor")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 

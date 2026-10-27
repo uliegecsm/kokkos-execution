@@ -37,7 +37,7 @@ class ThenTest
     using recorder_listener_t = RecorderListener<
         EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
-        BeginParallelForEvent,
+        BeginSingleEvent,
         AllocateDataEvent,
         DeallocateDataEvent,
         Kokkos::Execution::Impl::RecordEvent,
@@ -64,10 +64,6 @@ consteval bool test_sndr_traits() {
 
     //! Does not model the dispatching sender concept.
     static_assert(!Kokkos::Execution::Impl::dispatching_sender<then_sndr_t>);
-
-    //! The policy used in the parallel for created by the @c then sender has the expected launch bounds.
-    using policy_t = typename then_sndr_t::closure_t::policy_t;
-    static_assert(std::same_as<typename policy_t::launch_bounds, Kokkos::LaunchBounds<1>>);
 
     return true;
 }
@@ -110,8 +106,8 @@ TEST_F(ThenTest, then_schedule) {
     ASSERT_THAT(
         Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 2);
@@ -172,14 +168,14 @@ TEST_F(ThenTest, then_starts_on) {
     ASSERT_THAT(recorded_events, [&]() {
         if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
             return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_WAIT_EVENT(recorded_events.at(2)));
         } else {
             return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());
@@ -215,8 +211,8 @@ TEST_F(ThenTest, error_propagates) {
                     testing::HasSubstr("ThrowsWhenCopied: Throwing in copy constructor!")));
         }),
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")), // Increment: succeeds
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")), // ThrowsWhenCopied: throws on copy
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")), // Increment: succeeds
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")), // ThrowsWhenCopied: throws on copy
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 1);
@@ -268,8 +264,8 @@ TEST_F(ThenTest, then_lifetime) {
                     &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
                     testing::Field(
                         &Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("data - shared space")))),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")),
             Kokkos::utils::callbacks::ADeallocateDataEvent(
                 testing::Field(
@@ -337,12 +333,12 @@ TEST_F(ThenTest, forwarding_env) {
     ASSERT_THAT(recorded_events, [&]() {
         if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
             return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_WAIT_EVENT(recorded_events.at(1)));
         } else {
             return testing::ElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")));
         }
     }());

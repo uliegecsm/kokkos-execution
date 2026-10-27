@@ -38,7 +38,7 @@ class SplitTest
     using recorder_listener_t = RecorderListener<
         EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
-        BeginParallelForEvent,
+        BeginSingleEvent,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
@@ -107,7 +107,8 @@ TEST_F(SplitTest, within) {
     if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
         ASSERT_THAT(recorded_events, ::testing::SizeIs(8));
         ASSERT_THAT(
-            recorded_events, ::testing::Contains(MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then"))).Times(4));
+            recorded_events,
+            ::testing::Contains(MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then"))).Times(4));
         ASSERT_THAT(recorded_events, ::testing::Contains(MATCHER_FOR_RECORD_EVENT(exec)).Times(2));
         std::ranges::for_each(
             recorded_events | std::views::filter([](const auto& event) -> bool {
@@ -120,11 +121,11 @@ TEST_F(SplitTest, within) {
         ASSERT_THAT(
             recorded_events,
             testing::UnorderedElementsAre(
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch"))));
     }
 
