@@ -12,8 +12,12 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
+#if defined(__cpp_impl_reflection)
+using Utils::operator<<;
+#endif
+
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is created.
-struct GraphCreateEvent {
+struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphCreateEvent {
     void* graph = nullptr;
     void* root_node = nullptr;
     uint32_t dev_id = 0;
@@ -21,10 +25,12 @@ struct GraphCreateEvent {
 
     constexpr auto operator<=>(const GraphCreateEvent&) const = default;
 
+#if !defined(__cpp_impl_reflection)
     friend std::ostream& operator<<(std::ostream& out, const GraphCreateEvent& event) {
         return out << "GraphCreateEvent: {graph = " << event.graph << ", root_node = " << event.root_node
                    << ", dev_id = " << event.dev_id << ", event_id = " << event.event_id << '}';
     }
+#endif
 };
 
 /**
@@ -32,7 +38,7 @@ struct GraphCreateEvent {
  *
  * @todo Store the dispatch tag.
  */
-struct GraphAddNodeEvent {
+struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphAddNodeEvent {
     std::string name{};
     void* graph = nullptr;
     void* predecessor = nullptr;
@@ -41,49 +47,57 @@ struct GraphAddNodeEvent {
 
     constexpr auto operator<=>(const GraphAddNodeEvent&) const = default;
 
+#if !defined(__cpp_impl_reflection)
     friend std::ostream& operator<<(std::ostream& out, const GraphAddNodeEvent& event) {
         return out << "GraphAddNodeEvent: {name = " << event.name << ", graph = " << event.graph
                    << ", predecessor = " << event.predecessor << ", node = " << event.node
                    << ", dev_id = " << event.dev_id << '}';
     }
+#endif
 };
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph aggregate node is added.
-struct GraphAddAggregateNodeEvent {
+struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphAddAggregateNodeEvent {
     void* graph = nullptr;
     std::vector<void*> predecessors{};
     void* node = nullptr;
 
     constexpr auto operator<=>(const GraphAddAggregateNodeEvent&) const = default;
 
+#if !defined(__cpp_impl_reflection)
     friend std::ostream& operator<<(std::ostream& out, const GraphAddAggregateNodeEvent& event) {
         using Kokkos::Execution::Utils::operator<<;
         return out << "GraphAddAggregateNodeEvent: {graph = " << event.graph
                    << ", predecessors = " << event.predecessors << ", node = " << event.node << '}';
     }
+#endif
 };
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is instantiated.
-struct GraphInstantiateEvent {
+struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphInstantiateEvent {
     void* graph = nullptr;
 
     constexpr auto operator<=>(const GraphInstantiateEvent&) const = default;
 
+#if !defined(__cpp_impl_reflection)
     friend std::ostream& operator<<(std::ostream& out, const GraphInstantiateEvent& event) {
         return out << "GraphInstantiateEvent: {graph = " << event.graph << '}';
     }
+#endif
 };
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is submitted.
-struct GraphSubmitEvent {
+struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphSubmitEvent {
     void* graph = nullptr;
     uint32_t dev_id = 0;
 
     constexpr auto operator<=>(const GraphSubmitEvent&) const = default;
 
+#if !defined(__cpp_impl_reflection)
     friend std::ostream& operator<<(std::ostream& out, const GraphSubmitEvent& event) {
         return out << "GraphSubmitEvent: {graph = " << event.graph << ", dev_id = " << event.dev_id << '}';
     }
+#endif
 };
 
 //! Constrain a type that is a specialization of @c Kokkos::Experimental::GraphNodeRef.

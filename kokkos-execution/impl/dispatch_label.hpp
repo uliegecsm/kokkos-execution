@@ -3,6 +3,10 @@
 
 #include <algorithm>
 #include <array>
+#if defined(__cpp_impl_reflection)
+#    include <meta>
+#endif
+#include <ranges>
 #include <string_view>
 
 #include "stdexec/__detail/__config.hpp"
@@ -13,6 +17,7 @@
 
 namespace Kokkos::Execution::Impl {
 
+#if !defined(__cpp_impl_reflection)
 namespace detail {
 
 template <Kokkos::ExecutionSpace Exec, FixedString Suffix>
@@ -34,6 +39,19 @@ template <Kokkos::ExecutionSpace Exec, FixedString Suffix>
 consteval auto dispatch_label()
     STDEXEC_AUTO_RETURN(std::string_view{dispatch_label_v<Exec, Suffix>.data(), dispatch_label_v<Exec, Suffix>.size()})
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#    define KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(_exec_, _suffix_)                                                     \
+        Kokkos::Execution::Impl::dispatch_label<KOKKOS_IMPL_STRIP_PARENS(_exec_), _suffix_>()
+#else
+//! See @cite P3491R3.
+template <Kokkos::ExecutionSpace Exec>
+consteval auto dispatch_label(std::string_view suffix) noexcept {
+    return std::define_static_string(std::views::concat(std::meta::display_string_of(^^Exec), suffix));
+}
+
+#    define KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(_exec_, _suffix_)                                                     \
+        Kokkos::Execution::Impl::dispatch_label<KOKKOS_IMPL_STRIP_PARENS(_exec_)>(_suffix_)
+#endif
 } // namespace Kokkos::Execution::Impl
 
 #endif // KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL_HPP

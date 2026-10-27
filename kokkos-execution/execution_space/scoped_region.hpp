@@ -13,6 +13,7 @@
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/type_info.hpp"
 #include "kokkos-execution/impl/type_traits.hpp"
 
 /**
@@ -45,7 +46,7 @@ struct RegionReceiver {
         schd.state->exec.fence(
             std::format(
                 "{}: {}",
-                Kokkos::Impl::TypeInfo<typename Schd::execution_space>::name(),
+                Impl::display_string_of<typename Schd::execution_space>(),
                 kind == Kind::PUSH ? "push" : "pop"));
 
         if constexpr (kind == Kind::PUSH) {

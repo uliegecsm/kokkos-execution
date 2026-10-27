@@ -82,7 +82,7 @@ concept sync_policy = std::derived_from<Policy, SyncPolicyTag>;
  */
 template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr>
 struct CompletionSignal<SyncPolicy::InlineFenceExec, Exec, Rcvr> {
-    static constexpr auto label = Impl::dispatch_label<Exec, ": after dispatch">();
+    static constexpr auto label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(Exec, ": after dispatch");
 
     Rcvr rcvr;
 

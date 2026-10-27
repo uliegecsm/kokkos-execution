@@ -81,7 +81,7 @@ struct TransformSenderFor<stdexec::then_t> {
         const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
         return trnsfrmd_sndr_t<Env, Functor, Sndr>{
-            {.label = Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
+            {.label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": then"),
              .functor = std::forward<Functor>(functor),
              .policy = policy_t<Sndr, Env>(schd.state->exec)},
             std::forward<Sndr>(sndr)

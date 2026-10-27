@@ -42,7 +42,7 @@ struct TransformSenderFor<stdexec::bulk_t> {
             .clsr =
                 {.node_props = Kokkos::Experimental::node_props(
                      Kokkos::Experimental::get_device_handle(schd.state->exec),
-                       std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">())),
+                       std::string(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk"))),
                        .functor = stdexec::__forward_like<Data>(functor),
                        .policy_or_iter_space =
                      Impl::policy_for_bulk_t<Env, Data, Sndr>(0, stdexec::__forward_like<Data>(shape))},

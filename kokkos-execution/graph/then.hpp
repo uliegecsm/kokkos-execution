@@ -88,7 +88,7 @@ struct TransformSenderFor<stdexec::then_t> {
             .clsr =
                 {.node_props = Kokkos::Experimental::node_props(
                      Kokkos::Experimental::get_device_handle(schd.state->exec),
-                       std::string(Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">())),
+                       std::string(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": then"))),
                        .functor = std::forward<Functor>(functor)},
             .sndr = std::forward<Sndr>(sndr)
         };

@@ -30,7 +30,7 @@ concept has_exec_wait_event = HasExecWaitEvent<Exec>::value;
 template <Kokkos::ExecutionSpace ExecTo, Kokkos::ExecutionSpace ExecFrom>
 struct Dependency {
     Dependency(const ExecTo&, const ExecFrom& exec_from) {
-        exec_from.fence(std::string(Impl::dispatch_label<ExecFrom, ": dependency">()));
+        exec_from.fence(std::string(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(ExecFrom, ": dependency")));
     }
 };
 
@@ -39,7 +39,7 @@ requires(!has_exec_wait_event<Exec>)
 struct Dependency<Exec, Exec> {
     Dependency(const Exec& exec_to, const Exec& exec_from) {
         if (exec_from != exec_to) {
-            exec_from.fence(std::string(Impl::dispatch_label<Exec, ": dependency">()));
+            exec_from.fence(std::string(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(Exec, ": dependency")));
         }
     }
 };

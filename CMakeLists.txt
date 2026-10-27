@@ -11,6 +11,7 @@ project(kokkos-execution VERSION ${KokkosExecution_VERSION} LANGUAGES CXX)
 
 # Options.
 option(KokkosExecution_ENABLE_CLANG_TIDY "Enable clang-tidy checks" OFF)
+option(KokkosExecution_ENABLE_CXX26_REFLECTION "Enable C++26 reflection" OFF)
 option(KokkosExecution_ENABLE_DEBUG_LOGGING "Enable debug logging" OFF)
 option(KokkosExecution_ENABLE_DOCS "Enable documentation" OFF)
 option(KokkosExecution_ENABLE_EXAMPLES "Enable examples" ON)
@@ -42,6 +43,15 @@ endif()
 
 # Support for constexpr exceptions.
 include(cmake/modules/constexpr_exception.cmake)
+
+# Support for reflection.
+include(cmake/modules/reflection.cmake)
+if(KokkosExecution_ENABLE_CXX26_REFLECTION)
+  if(NOT CXX_COMPILER_SUPPORTS_CXX26_REFLECTION)
+    message(FATAL_ERROR "C++26 reflection is not supported by ${CMAKE_CXX_COMPILER} (${CMAKE_CXX_COMPILER_VERSION}).")
+  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection")
+endif()
 
 if(KokkosExecution_ENABLE_CLANG_TIDY)
   # Setup clang-tidy configuration.
@@ -168,6 +178,7 @@ target_sources(
             kokkos-execution/impl/state.hpp
             kokkos-execution/impl/submitted.hpp
             kokkos-execution/impl/sync_wait.hpp
+            kokkos-execution/impl/type_info.hpp
             kokkos-execution/impl/type_traits.hpp
             kokkos-execution/utils/ignore_warnings.hpp
             kokkos-execution/utils/streamers.hpp

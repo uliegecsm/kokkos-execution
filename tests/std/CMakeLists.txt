@@ -7,3 +7,7 @@ if(CXX_COMPILER_SUPPORTS_CXX26_CONSTEXPR_EXCEPTION)
     "error: uncaught exception of type 'std::invalid_argument'\\; 'what\\(\\)': 'escaping'"
   )
 endif()
+
+if(CXX_COMPILER_SUPPORTS_CXX26_REFLECTION)
+  add_one_basic_test(NAME reflection CXX_STANDARD 26)
+endif()

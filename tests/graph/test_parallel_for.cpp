@@ -173,11 +173,12 @@ TEST_F(TEST_CATEGORY(ParallelForTest), parallel_for_schedule) {
 
     const context_t gctx{exec};
 
-    auto sndr = stdexec::schedule(gctx.get_scheduler())
-              | Kokkos::Execution::parallel_for(
-                    std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                    size,
-                    Tests::Utils::Functors::SumIndices{.data = data});
+    auto sndr =
+        stdexec::schedule(gctx.get_scheduler())
+        | Kokkos::Execution::parallel_for(
+            std::format("{}: hello from pfor", Kokkos::Execution::Impl::display_string_of<TEST_EXECUTION_SPACE>()),
+            size,
+            Tests::Utils::Functors::SumIndices{.data = data});
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
@@ -199,11 +200,12 @@ TEST_F(TEST_CATEGORY(ParallelForTest), parallel_for_starts_on) {
 
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
-    auto chain = stdexec::just()
-               | Kokkos::Execution::parallel_for(
-                     std::format("{}: hello from pfor", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
-                     Tests::Utils::Functors::SumIndices{.data = data});
+    auto chain =
+        stdexec::just()
+        | Kokkos::Execution::parallel_for(
+            std::format("{}: hello from pfor", Kokkos::Execution::Impl::display_string_of<TEST_EXECUTION_SPACE>()),
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+            Tests::Utils::Functors::SumIndices{.data = data});
 
     using chain_t = decltype(chain);
 

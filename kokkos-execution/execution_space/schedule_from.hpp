@@ -89,7 +89,9 @@ struct ScheduleFromOpState
         try {
             this->query(Impl::get_exec)
                 .get()
-                .fence(std::string(Impl::dispatch_label<Impl::exec_of_t<decltype(*this)>, ": schedule_from">()));
+                .fence(
+                    std::string(
+                        KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<decltype(*this)>), ": schedule_from")));
         } catch (...) {
             stdexec::set_error(std::move(this->rcvr), std::current_exception());
             return;

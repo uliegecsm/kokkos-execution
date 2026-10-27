@@ -36,7 +36,7 @@ struct TransformSenderFor<stdexec::bulk_t> {
         const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
 
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.label = Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": bulk">(),
+            {.label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk"),
              .functor = stdexec::__forward_like<Data>(functor),
              .policy =
                  Impl::policy_for_bulk_t<Env, Data, Sndr>(schd.state->exec, 0, stdexec::__forward_like<Data>(shape))},
