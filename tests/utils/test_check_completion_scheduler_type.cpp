@@ -27,7 +27,7 @@ PRAGMA_DIAGNOSTIC_POP
 namespace Tests {
 
 using run_loop_scheduler_t = stdexec::run_loop::scheduler;
-using static_thread_pool_scheduler_t = experimental::execution::_pool_::_static_thread_pool::scheduler;
+using static_thread_pool_scheduler_t = experimental::execution::_pool::_static_thread_pool::scheduler;
 
 //! @test Start scheduler.
 TEST(check_completion_scheduler, default) {
