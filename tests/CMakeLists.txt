@@ -2,7 +2,51 @@
 include(${CMAKE_SOURCE_DIR}/cmake/functions/path.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/modules/kokkos_exec_mapping.cmake)
 
-# Function to add a test (common steps).
+# Function to add a basic test.
+function(add_one_basic_test)
+
+  cmake_parse_arguments(aost_args "" "NAME;CXX_STANDARD" "ADDITIONAL_LINK_LIBRARIES" ${ARGN})
+
+  # Set executable name and primary source file.
+  cmake_path(SET SOURCE_FILE "test_${aost_args_NAME}.cpp")
+  cmake_path(ABSOLUTE_PATH SOURCE_FILE)
+
+  get_parent_relpath_repr(DIRECTORY "${PROJECT_SOURCE_DIR}" FILENAME "${SOURCE_FILE}")
+
+  set(aost_args_EXECUTABLE_NAME "${gprr_PARENT_RELPATH_REPR}_${aost_args_NAME}")
+
+  # Create test executable.
+  add_executable(${aost_args_EXECUTABLE_NAME})
+
+  # Add the source file to the executable.
+  target_sources(${aost_args_EXECUTABLE_NAME} PRIVATE ${SOURCE_FILE})
+
+  # Link the executable to 'gtest'.
+  target_link_libraries(${aost_args_EXECUTABLE_NAME} PRIVATE GTest::gtest_main)
+
+  # Add additional libraries if required.
+  if(DEFINED aost_args_ADDITIONAL_LINK_LIBRARIES)
+    target_link_libraries(${aost_args_EXECUTABLE_NAME} PRIVATE ${aost_args_ADDITIONAL_LINK_LIBRARIES})
+  endif()
+
+  # Set the CXX standard if required.
+  if(DEFINED aost_args_CXX_STANDARD)
+    set_target_properties(
+      ${aost_args_EXECUTABLE_NAME} PROPERTIES CXX_STANDARD ${aost_args_CXX_STANDARD} CXX_STANDARD_REQUIRED ON
+    )
+  endif()
+
+  add_test(NAME ${aost_args_EXECUTABLE_NAME} COMMAND $<TARGET_FILE:${aost_args_EXECUTABLE_NAME}>)
+
+  # Labels.
+  set_tests_properties(${aost_args_EXECUTABLE_NAME} PROPERTIES LABELS "unittests")
+
+  # Ensure that GTest will shuffle the tests.
+  set_property(TEST ${aost_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_SHUFFLE=1")
+  set_property(TEST ${aost_args_EXECUTABLE_NAME} APPEND PROPERTY ENVIRONMENT "GTEST_RANDOM_SEED=0")
+endfunction()
+
+# Function to add a test linking to kokkos-execution, using devices, and so on.
 function(add_one_test)
 
   cmake_parse_arguments(aot_args "" "NAME" "ADDITIONAL_LINK_LIBRARIES" ${ARGN})
@@ -79,6 +123,7 @@ target_link_libraries(test_common PUBLIC GTest::gtest Kokkos::kokkoscore)
 add_subdirectory(execution_space)
 add_subdirectory(graph)
 add_subdirectory(impl)
+add_subdirectory(std)
 add_subdirectory(stdexec)
 add_subdirectory(utils)
 
