@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 
 #include "kokkos-execution/impl/dispatch_label.hpp"
+#include "kokkos-execution/impl/type_info.hpp"
 
 /**
  * @addtogroup unittests
@@ -17,14 +18,15 @@ namespace Tests::Impl {
 
 constexpr char suffix[] = " with the given suffix";
 
-constexpr std::string_view label_of_exec = Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name();
+constexpr std::string_view label_of_exec = Kokkos::Execution::Impl::display_string_of<TEST_EXECUTION_SPACE>();
 
-constexpr auto label_as_array = Kokkos::Execution::Impl::dispatch_label_v<TEST_EXECUTION_SPACE, suffix>;
+constexpr std::string_view label_as_view = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(TEST_EXECUTION_SPACE, suffix);
 
-constexpr std::string_view label_as_view = Kokkos::Execution::Impl::dispatch_label<TEST_EXECUTION_SPACE, suffix>();
-
+#if !defined(__cpp_impl_reflection)
 //! @test Check that @ref Kokkos::Execution::Impl::dispatch_label_v works as expected.
 consteval bool test_dispatch_label_v() {
+    constexpr auto label_as_array = Kokkos::Execution::Impl::dispatch_label_v<TEST_EXECUTION_SPACE, suffix>;
+
     static_assert(
         std::same_as<decltype(label_as_array), const std::array<char, label_of_exec.size() + sizeof(suffix) - 1>>);
 
@@ -32,6 +34,7 @@ consteval bool test_dispatch_label_v() {
 }
 
 static_assert(test_dispatch_label_v());
+#endif
 
 //! @test Check that @ref Kokkos::Execution::Impl::dispatch_label works as expected.
 consteval bool test_dispatch_label() {
@@ -47,20 +50,27 @@ static_assert(test_dispatch_label());
 
 //! @test Check whether @ref Kokkos::Execution::Impl::dispatch_label is @c noexcept.
 consteval bool test_dispatch_label_noexcept() {
-    static_assert(noexcept(Kokkos::Execution::Impl::dispatch_label<TEST_EXECUTION_SPACE, suffix>()));
+    static_assert(noexcept(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(TEST_EXECUTION_SPACE, suffix)));
 
     return true;
 }
 
 static_assert(test_dispatch_label_noexcept());
 
-//! Because we need at least one discoverable runtime test per unit.
-TEST(DispatchLabelTest, debug) {
-    std::ostringstream oss_of_exec, oss_as_view;
-    oss_of_exec << label_of_exec;
-    oss_as_view << label_as_view;
+constexpr std::string_view view_a = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(TEST_EXECUTION_SPACE, suffix);
+constexpr std::string_view view_b = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(TEST_EXECUTION_SPACE, suffix);
 
-    ASSERT_EQ(oss_as_view.str(), oss_of_exec.str() + suffix);
+/**
+ * @test Check that @ref Kokkos::Execution::Impl::dispatch_label does not create duplicated static storage strings
+ *       for the same arguments.
+ *
+ * @note According to the possible implementation given in @cite P3491R3 (§3.4),
+ *       two evaluatations of @c std::define_static_string with equal contents point to the same storage.
+ */
+TEST(DispatchLabelTest, deduplicate) {
+    static_assert(static_cast<const void*>(view_a.data()) == static_cast<const void*>(view_b.data()));
+
+    ASSERT_EQ(static_cast<const void*>(view_a.data()), static_cast<const void*>(view_b.data()));
 }
 
 } // namespace Tests::Impl

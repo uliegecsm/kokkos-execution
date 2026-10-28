@@ -45,7 +45,7 @@ template <Kokkos::ExecutionSpace Exec, typename HasErrorPtr = std::false_type, t
 struct Receiver {
     using receiver_concept = SubmittedReceiverTag;
 
-    static constexpr auto label = Impl::dispatch_label<Exec, ": sync_wait">();
+    static constexpr auto label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(Exec, ": sync_wait");
 
     Impl::State<Exec> const * state;
     State<HasErrorPtr>* runloop_state;

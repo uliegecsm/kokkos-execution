@@ -124,4 +124,37 @@ TEST_F(EventsTest, create_and_add_nodes) {
                 recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1)), "my label")));
 }
 
+//! @test Check that @c operator<< works as expected for @ref Kokkos::Execution::GraphImpl::GraphCreateEvent.
+TEST(GraphCreateEvent, streaming_operator) {
+    const Kokkos::Execution::GraphImpl::GraphCreateEvent event{
+        .graph = reinterpret_cast<void*>(0x7f3a2b4c8000),
+        .root_node = reinterpret_cast<void*>(0x7f6d9e1a5000),
+        .dev_id = 8,
+        .event_id = 666};
+
+    std::ostringstream oss;
+    oss << event;
+
+    ASSERT_EQ(
+        oss.str(),
+        "GraphCreateEvent: {graph = 0x7f3a2b4c8000, root_node = 0x7f6d9e1a5000, dev_id = 8, event_id = 666}");
+}
+
+//! @test Check that @c operator<< works as expected for @ref Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent.
+TEST(GraphAddAggregateNodeEvent, streaming_operator) {
+    const Kokkos::Execution::GraphImpl::GraphAddAggregateNodeEvent event{
+        .graph = reinterpret_cast<void*>(0x7f3a2b4c8000),
+        .predecessors = {reinterpret_cast<void*>(0x7f6d9e1a5000), reinterpret_cast<void*>(0x7f6d9e1a5500)},
+        .node = reinterpret_cast<void*>(0x7f7d9e1a5000)
+    };
+
+    std::ostringstream oss;
+    oss << event;
+
+    ASSERT_EQ(
+        oss.str(),
+        "GraphAddAggregateNodeEvent: {graph = 0x7f3a2b4c8000, predecessors = [0x7f6d9e1a5000, 0x7f6d9e1a5500], node = "
+        "0x7f7d9e1a5000}");
+}
+
 } // namespace Tests::GraphImpl

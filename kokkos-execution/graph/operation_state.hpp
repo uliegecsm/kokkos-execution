@@ -24,6 +24,7 @@
 #include "kokkos-execution/impl/receiver.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/submitted.hpp"
+#include "kokkos-execution/impl/type_info.hpp"
 
 namespace Kokkos::Execution::GraphImpl {
 
@@ -217,9 +218,9 @@ struct OpState
         , node{add_nodes(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Operation state graph composition policy is "
-                  << Kokkos::Impl::TypeInfo<graph_composition_policy_t>::name() << ", the receiver is of type "
-                  << Kokkos::Impl::TypeInfo<Rcvr>::name() << " and the inner operation state is of type "
-                  << Kokkos::Impl::TypeInfo<inner_op_state_t>::name() << '.';
+                  << Impl::display_string_of<graph_composition_policy_t>() << ", the receiver is of type "
+                  << Impl::display_string_of<Rcvr>() << " and the inner operation state is of type "
+                  << Impl::display_string_of<inner_op_state_t>() << '.';
 #endif
     }
 

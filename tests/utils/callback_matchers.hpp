@@ -8,6 +8,8 @@
 
 #include "kokkos-utils/callbacks/Helpers.hpp"
 
+#include "kokkos-execution/impl/type_info.hpp"
+
 /**
  * @file
  *
@@ -46,9 +48,14 @@
 // NOLINTEND(cppcoreguidelines-macro-usage)
 
 //! Get the dispatch label from @p Exec and @p label.
-template <Kokkos::ExecutionSpace Exec, std::convertible_to<std::string_view> Label>
-constexpr std::string dispatch_label(const Exec&, Label&& label) {
-    return std::string(Kokkos::Impl::TypeInfo<Exec>::name()).append(": ").append(std::forward<Label>(label));
+template <Kokkos::ExecutionSpace Exec>
+constexpr std::string dispatch_label(const Exec&, const std::string_view label) {
+    constexpr std::string_view prefix{Kokkos::Execution::Impl::display_string_of<Exec>()};
+
+    std::string result;
+    result.reserve(prefix.size() + 2 + label.size());
+    result.append(prefix).append(": ").append(label);
+    return result;
 }
 
 #if defined(KOKKOS_EXECUTION_IMPL_EVENT_HPP)

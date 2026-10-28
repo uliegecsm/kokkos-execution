@@ -360,20 +360,22 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), two_parallel_regions) {
 
     const context_t esc{exec};
 
-    auto chain = stdexec::schedule(esc.get_scheduler())
-               | Kokkos::Execution::parallel_reduce(
-                     std::format("{}: hello from pred", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
-                     Tests::Utils::Functors::ReduceIndices{},
-                     target)
-               | stdexec::then(
-                     Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{
-                         .prev = size / 2 * (size - 1), .value = 0, .data = target.data()})
-               | Kokkos::Execution::parallel_reduce(
-                     std::format("{}: hello again from pred", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 2 * size),
-                     Tests::Utils::Functors::ReduceIndices{},
-                     target);
+    auto chain =
+        stdexec::schedule(esc.get_scheduler())
+        | Kokkos::Execution::parallel_reduce(
+            std::format("{}: hello from pred", Kokkos::Execution::Impl::display_string_of<TEST_EXECUTION_SPACE>()),
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+            Tests::Utils::Functors::ReduceIndices{},
+            target)
+        | stdexec::then(
+            Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{
+                .prev = size / 2 * (size - 1), .value = 0, .data = target.data()})
+        | Kokkos::Execution::parallel_reduce(
+            std::format(
+                "{}: hello again from pred", Kokkos::Execution::Impl::display_string_of<TEST_EXECUTION_SPACE>()),
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 2 * size),
+            Tests::Utils::Functors::ReduceIndices{},
+            target);
 
     ASSERT_THAT(
         Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)),
@@ -392,12 +394,13 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), starts_on_parallel_region) {
 
     const view_s_t target(Kokkos::view_alloc(exec, "data - shared space"));
 
-    auto chain = stdexec::just()
-               | Kokkos::Execution::parallel_reduce(
-                     std::format("{}: hello from pred", Kokkos::Impl::TypeInfo<TEST_EXECUTION_SPACE>::name()),
-                     Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
-                     Tests::Utils::Functors::ReduceIndices{},
-                     target);
+    auto chain =
+        stdexec::just()
+        | Kokkos::Execution::parallel_reduce(
+            std::format("{}: hello from pred", Kokkos::Execution::Impl::display_string_of<TEST_EXECUTION_SPACE>()),
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+            Tests::Utils::Functors::ReduceIndices{},
+            target);
 
     using chain_t = decltype(chain);
 
