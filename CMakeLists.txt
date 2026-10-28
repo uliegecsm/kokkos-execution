@@ -40,6 +40,9 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD "${Kokkos_CXX_STANDARD}")
 endif()
 
+# Support for constexpr exceptions.
+include(cmake/modules/constexpr_exception.cmake)
+
 if(KokkosExecution_ENABLE_CLANG_TIDY)
   # Setup clang-tidy configuration.
   configure_file(${CMAKE_SOURCE_DIR}/.clang-tidy ${CMAKE_BINARY_DIR}/.clang-tidy @ONLY)
