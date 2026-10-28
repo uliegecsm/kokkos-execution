@@ -11,26 +11,64 @@
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-//! Inspired by https://github.com/kokkos/kokkos/blob/69273c3a4e7b6adeb95066341ca201d62fe1e698/core/src/impl/Kokkos_GraphNodeThenImpl.hpp#L28.
-template <typename Functor>
-requires(std::same_as<void, std::invoke_result_t<Functor>>)
-struct ThenWrapper {
-    Functor functor; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+struct ThenClosure {
+    static_assert(Kokkos::Impl::is_specialization_of_v<ExecPolicy, SinglePolicy>);
 
-    template <std::integral T>
-    KOKKOS_FUNCTION void operator()(const T) const {
-        functor();
+    using policy_t = ExecPolicy;
+    using execution_space = typename policy_t::execution_space;
+
+    void submit() const & {
+        if constexpr (std::convertible_to<Label, std::string>) {
+            Kokkos::single(label, policy, functor);
+        } else {
+            Kokkos::single(std::string{label}, policy, functor);
+        }
     }
+
+    const policy_t& get_policy() const & noexcept {
+        return policy;
+    }
+
+    Label label;
+    Functor functor;
+    policy_t policy;
+};
+
+//! Deduction guide to store by-value.
+template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+ThenClosure(Label, Functor, ExecPolicy) -> ThenClosure<Label, Functor, ExecPolicy>;
+
+template <typename Tag, stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+struct ThenSender {
+    using sender_concept = stdexec::sender_tag;
+
+    using closure_t = ThenClosure<Label, Functor, ExecPolicy>;
+    using execution_space = typename closure_t::execution_space;
+
+    closure_t clsr;
+    Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+
+    KOKKOS_EXECUTION_COMPL_SIGS_ADD(ThenSender, Sndr, stdexec::set_error_t(std::exception_ptr))
+
+    template <stdexec::receiver Rcvr>
+    constexpr auto connect(Rcvr rcvr) && noexcept(noexcept(make_op_state_t<Sndr, Rcvr, closure_t>{}(
+        std::declval<Sndr>(),
+        std::declval<Rcvr>(),
+        std::declval<closure_t>()))) -> op_state_t<Sndr, Rcvr, closure_t> {
+        return make_op_state_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
+    }
+
+    KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 };
 
 template <>
 struct TransformSenderFor<stdexec::then_t> {
     template <typename Sndr, typename Env>
-    using policy_t = Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>, Kokkos::LaunchBounds<1>>;
+    using policy_t = Kokkos::SinglePolicy<Impl::exec_of_t<Sndr, Env>>;
 
     template <typename Env, typename Functor, typename Sndr>
-    using trnsfrmd_sndr_t =
-        ParallelForSender<stdexec::then_t, Sndr, std::string_view, ThenWrapper<Functor>, policy_t<Sndr, Env>>;
+    using trnsfrmd_sndr_t = ThenSender<stdexec::then_t, Sndr, std::string_view, Functor, policy_t<Sndr, Env>>;
 
     template <typename Env, typename Functor, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
@@ -44,8 +82,8 @@ struct TransformSenderFor<stdexec::then_t> {
 
         return trnsfrmd_sndr_t<Env, Functor, Sndr>{
             {.label = Impl::dispatch_label<Impl::exec_of_t<Sndr, Env>, ": then">(),
-             .functor = ThenWrapper<Functor>{std::forward<Functor>(functor)},
-             .policy = policy_t<Sndr, Env>(schd.state->exec, 0, 1)},
+             .functor = std::forward<Functor>(functor),
+             .policy = policy_t<Sndr, Env>(schd.state->exec)},
             std::forward<Sndr>(sndr)
         };
     }

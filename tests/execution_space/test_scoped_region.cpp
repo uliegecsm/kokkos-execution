@@ -32,7 +32,7 @@ class ScopedRegionTest
     using recorder_listener_t = RecorderListener<
         EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
-        BeginParallelForEvent,
+        BeginSingleEvent,
         PushRegionEvent,
         PopRegionEvent,
         Kokkos::Execution::Impl::RecordEvent,
@@ -75,8 +75,8 @@ TEST_F(ScopedRegionTest, many) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
                 MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
@@ -85,8 +85,8 @@ TEST_F(ScopedRegionTest, many) {
             return testing::ElementsAre(
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "push")),
                 MATCHER_FOR_PUSH_REGION("the name of my nice scoped region"),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
-                MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+                MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "pop")),
                 MATCHER_FOR_POP_REGION());

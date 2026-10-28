@@ -37,7 +37,7 @@ class InterOpTest
     using recorder_listener_t = RecorderListener<
         EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
-        BeginParallelForEvent,
+        BeginSingleEvent,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
@@ -67,7 +67,7 @@ TEST_F(InterOpTest, transition_to_inline_scheduler) {
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 8);
@@ -97,7 +97,7 @@ TEST_F(InterOpTest, transition_from_inline_scheduler) {
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 8);
@@ -130,7 +130,7 @@ TEST_F(InterOpTest, transition_from_inline_scheduler_and_back) {
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 12);
@@ -162,7 +162,7 @@ TEST_F(InterOpTest, transition_to_static_thread_pool) {
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 8);
@@ -196,7 +196,7 @@ TEST_F(InterOpTest, transition_from_static_thread_pool) {
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 8);
@@ -233,7 +233,7 @@ TEST_F(InterOpTest, transition_from_static_thread_pool_and_back) {
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 
     ASSERT_EQ(data(), 12);
@@ -270,9 +270,9 @@ TEST_F(InterOpTest, transition_to_static_thread_pool_and_back) {
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 12);

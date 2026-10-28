@@ -39,6 +39,7 @@ class TEST_CATEGORY(RepeatEffectUntilTest)
         EventDiscardMatcher<TEST_EXECUTION_SPACE>,
         BeginFenceEvent,
         BeginParallelForEvent,
+        BeginSingleEvent,
         Kokkos::Execution::Impl::RecordEvent,
         Kokkos::Execution::Impl::WaitEvent
     >;
@@ -61,13 +62,13 @@ TEST_F(TEST_CATEGORY(RepeatEffectUntilTest), works) {
                     | stdexec::then([&guard]() -> bool { return (++guard) >= 3; })));
         }),
         testing::ElementsAre(
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
-            MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
 

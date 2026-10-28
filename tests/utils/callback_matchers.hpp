@@ -32,6 +32,8 @@
 #define MATCHER_FOR_BEGIN_PRED(_exec_, _label_)                                                                        \
     ABeginParallelReduceEvent(                                                                                         \
         MATCHER_FOR_NAME(BeginParallelReduce, _label_), MATCHER_FOR_DEV_ID(BeginParallelReduce, _exec_))
+#define MATCHER_FOR_BEGIN_SINGLE(_exec_, _label_)                                                                      \
+    ABeginSingleEvent(MATCHER_FOR_NAME(BeginSingle, _label_), MATCHER_FOR_DEV_ID(BeginSingle, _exec_))
 #define MATCHER_FOR_PUSH_REGION(_label_) APushRegionEventWithName(::testing::StrEq(_label_))
 #define MATCHER_FOR_POP_REGION()         APopRegionEvent()
 
