@@ -76,32 +76,27 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     >;
 
     template <typename Env, typename Data, typename Sndr>
+    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
+    auto operator()(const Env&, Kokkos::Execution::parallel_for_t, Data&&, Sndr&&) const noexcept {
+        return no_execution_space_scheduler_in_env<parallel_for_t, Sndr, Env>();
+    }
+
+    template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
     auto operator()(
         const Env& env,
         Kokkos::Execution::parallel_for_t,
         Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
         Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.label = stdexec::__forward_like<Data>(data.label),
-             .functor = stdexec::__forward_like<Data>(data.functor),
-             .policy = Impl::make_policy(schd.state->exec, stdexec::__forward_like<Data>(data.policy_or_iter_space))},
-            std::forward<Sndr>(sndr)
-        };
-    }
-
-    template <typename Env, typename Data, typename Sndr>
-    requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
-    auto operator()(const Env&, Kokkos::Execution::parallel_for_t, Data&&, Sndr&&) const noexcept {
-        return no_execution_space_scheduler_in_env<parallel_for_t, Sndr, Env>();
-    }
+        STDEXEC_AUTO_RETURN(
+            trnsfrmd_sndr_t<Env, Data, Sndr>{
+                {.label = stdexec::__forward_like<Data>(data.label),
+                 .functor = stdexec::__forward_like<Data>(data.functor),
+                 .policy = Impl::make_policy(
+                     stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env).state->exec,
+                 stdexec::__forward_like<Data>(data.policy_or_iter_space))},
+                std::forward<Sndr>(sndr)
+    })
 };
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl

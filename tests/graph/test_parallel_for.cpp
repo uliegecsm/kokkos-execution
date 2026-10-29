@@ -98,7 +98,8 @@ consteval bool test_sndr_traits() {
                   stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
                   Kokkos::Execution::GraphImpl::ParallelForSender<
                       schd_sndr_t,
-                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, label_t>,
+                      label_t,
+                      Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
                       functor_t,
                       policy_t
                   >
@@ -114,12 +115,8 @@ template <typename Sndr, typename Exec, typename Label, typename Functor, typena
 using generic_t = Kokkos::Execution::Impl::ParallelForSender<Sndr, Label, Functor, Policy>;
 
 template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy>
-using impl_t = Kokkos::Execution::GraphImpl::ParallelForSender<
-    Sndr,
-    Kokkos::Execution::GraphImpl::node_props_t<Exec, Label>,
-    Functor,
-    Policy
->;
+using impl_t =
+    Kokkos::Execution::GraphImpl::ParallelForSender<Sndr, Label, Kokkos::Impl::DeviceHandle<Exec>, Functor, Policy>;
 
 static_assert(test_sndr_traits<generic_t, true>());
 static_assert(test_sndr_traits<impl_t, false>());
@@ -131,12 +128,14 @@ consteval bool test_closure_traits() {
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using iter_space_t = Kokkos::dims<1, int>;
     using closure_policy_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        std::string,
+        Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
         functor_t,
         policy_t
     >;
     using closure_iter_space_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        std::string,
+        Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
         functor_t,
         iter_space_t
     >;

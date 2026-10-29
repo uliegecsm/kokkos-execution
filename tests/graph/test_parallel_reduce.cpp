@@ -98,7 +98,8 @@ consteval bool test_sndr_traits() {
                   stdexec::transform_sender_result_t<pred_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
                   Kokkos::Execution::GraphImpl::ParallelReduceSender<
                       schd_sndr_t,
-                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, label_t>,
+                      label_t,
+                      Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
                       functor_t,
                       policy_t,
                       reducer_t
@@ -117,7 +118,8 @@ using generic_t = Kokkos::Execution::Impl::ParallelReduceSender<Sndr, Label, Fun
 template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy, typename Reducer>
 using impl_t = Kokkos::Execution::GraphImpl::ParallelReduceSender<
     Sndr,
-    Kokkos::Execution::GraphImpl::node_props_t<Exec, Label>,
+    Label,
+    Kokkos::Impl::DeviceHandle<Exec>,
     Functor,
     Policy,
     Reducer
@@ -134,13 +136,15 @@ consteval bool test_closure_traits() {
     using iter_space_t = Kokkos::dims<1, int>;
     using reducer_t = ViewType;
     using closure_policy_t = Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        std::string,
+        Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
         functor_t,
         policy_t,
         reducer_t
     >;
     using closure_iter_space_t = Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
+        std::string,
+        Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>,
         functor_t,
         iter_space_t,
         reducer_t
