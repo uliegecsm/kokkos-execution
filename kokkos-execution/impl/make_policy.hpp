@@ -5,20 +5,34 @@
 
 namespace Kokkos::Execution::Impl {
 
-template <Kokkos::ExecutionSpace Exec, extents Extents>
+template <Kokkos::ExecutionSpace Exec, extents Extents, typename... Properties>
 requires(Extents::rank() == 1)
-auto make_policy(const Exec& exec, const Extents& extents) -> Kokkos::RangePolicy<Exec> {
+auto make_policy(const Extents& extents, const Properties&...) noexcept -> Kokkos::RangePolicy<Exec, Properties...> {
+    return {0, extents.extent(0)};
+}
+
+template <Kokkos::ExecutionSpace Exec, extents Extents, typename... Properties>
+requires(Extents::rank() == 0)
+auto make_policy(const Exec& exec, const Extents&, const Properties&...) noexcept
+    -> Kokkos::SinglePolicy<Exec, Properties...> {
+    return {exec};
+}
+
+template <Kokkos::ExecutionSpace Exec, extents Extents, typename... Properties>
+requires(Extents::rank() == 1)
+auto make_policy(const Exec& exec, const Extents& extents, const Properties&...) noexcept
+    -> Kokkos::RangePolicy<Exec, Properties...> {
     return {exec, 0, extents.extent(0)};
 }
 
 template <Kokkos::ExecutionSpace Exec, range_slice_with_default_stride RangeSlice>
-auto make_policy(const Exec& exec, const RangeSlice& rgsl) -> Kokkos::RangePolicy<Exec> {
+auto make_policy(const Exec& exec, const RangeSlice& rgsl) noexcept -> Kokkos::RangePolicy<Exec> {
     return {exec, rgsl.first, rgsl.last};
 }
 
 template <Kokkos::ExecutionSpace Exec, typename ExecPolicy>
 requires Kokkos::ExecutionPolicy<std::remove_cvref_t<ExecPolicy>>
-auto make_policy(const Exec& exec, ExecPolicy&& policy) -> std::remove_cvref_t<ExecPolicy> {
+auto make_policy(const Exec& exec, ExecPolicy&& policy) noexcept -> std::remove_cvref_t<ExecPolicy> {
     static_assert(
         std::same_as<Exec, typename std::remove_cvref_t<ExecPolicy>::execution_space>,
         "Only the execution space instance, not its type, can be bound late.");
@@ -27,6 +41,16 @@ auto make_policy(const Exec& exec, ExecPolicy&& policy) -> std::remove_cvref_t<E
 
 template <Kokkos::ExecutionSpace Exec, typename... Args>
 using make_policy_t = decltype(make_policy(std::declval<const Exec&>(), std::declval<Args>()...));
+
+template <Kokkos::ExecutionSpace Exec>
+struct MakePolicy {
+    const Exec& exec; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+
+    template <typename ExecPolicyOrIterSpace>
+    requires Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>
+    auto operator()(ExecPolicyOrIterSpace&& policy_or_iter_space) const
+        STDEXEC_AUTO_RETURN(Impl::make_policy(exec, std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)))
+};
 
 } // namespace Kokkos::Execution::Impl
 
