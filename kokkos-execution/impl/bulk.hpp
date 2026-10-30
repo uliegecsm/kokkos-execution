@@ -3,6 +3,8 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "kokkos-execution/impl/make_policy.hpp"
+
 namespace Kokkos::Execution::Impl {
 
 //! See https://github.com/NVIDIA/stdexec/blob/16076a81efa4477513e6ede9c2741fd034ecef99/include/stdexec/__detail/__bulk.hpp#L100.
@@ -31,9 +33,14 @@ using bulk_traits = BulkTraits<std::remove_cvref_t<Data>>;
  *
  * See also https://github.com/NVIDIA/stdexec/pull/2359.
  */
-template <typename Env, typename Data, typename Sndr>
-using policy_for_bulk_t =
-    Kokkos::RangePolicy<Impl::exec_of_t<Sndr, Env>, Kokkos::IndexType<typename bulk_traits<Data>::shape_t>>;
+template <Kokkos::ExecutionSpace Exec, typename Data>
+using make_policy_for_bulk_t = Impl::make_policy_t<Exec, Kokkos::IndexType<typename Impl::bulk_traits<Data>::shape_t>>;
+
+template <typename Data>
+using functor_for_bulk_t = typename Impl::bulk_traits<Data>::functor_t;
+
+template <typename Data>
+using iter_space_for_bulk_t = Kokkos::dims<1, typename Impl::bulk_traits<Data>::shape_t>;
 
 } // namespace Kokkos::Execution::Impl
 

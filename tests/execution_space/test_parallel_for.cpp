@@ -51,17 +51,18 @@ class TEST_CATEGORY(ParallelForTest)
  * @test Check traits of sender returned by @ref Kokkos::Execution::parallel_for either uncustomized
  *       or customized for @ref Kokkos::Execution::ExecutionSpaceContext.
  */
-template <template <typename...> class SndrAdptr, bool IsDispatchingSender, typename... Args>
+template <template <typename...> class SndrAdptr, bool IsDispatchingSender>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
 
     //! Parallel for sender.
-    using label_t = Kokkos::Execution::Impl::Label<std::string>;
+    using label_t = std::string;
     using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using pfor_data_t = Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, label_t>;
-    using pfor_sndr_t = SndrAdptr<Args..., schd_sndr_t, pfor_data_t>;
+    using pfor_data_t =
+        Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<label_t>>;
+    using pfor_sndr_t = SndrAdptr<schd_sndr_t, TEST_EXECUTION_SPACE, label_t, functor_t, policy_t>;
 
     //! Models the execution space completing sender concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<pfor_sndr_t>);
@@ -96,6 +97,7 @@ consteval bool test_sndr_traits() {
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
                       Kokkos::Execution::parallel_for_t,
                       schd_sndr_t,
+                      TEST_EXECUTION_SPACE,
                       pfor_data_t
                   >
     >);
@@ -106,12 +108,22 @@ consteval bool test_sndr_traits() {
     return true;
 }
 
-static_assert(test_sndr_traits<Kokkos::Execution::Impl::ParallelForSender, true>());
-static_assert(test_sndr_traits<
-              Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender,
-              false,
-              Kokkos::Execution::parallel_for_t
->());
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy>
+using pfor_generic_t = Kokkos::Execution::Impl::ParallelForSender<
+    Sndr,
+    Kokkos::Execution::Impl::ParallelForData<Functor, Policy, Kokkos::Execution::Impl::Label<Label>>
+>;
+
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy>
+using pfor_impl_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
+    Kokkos::Execution::parallel_for_t,
+    Sndr,
+    Exec,
+    Kokkos::Execution::Impl::ParallelForData<Functor, Policy, Kokkos::Execution::Impl::Label<Label>>
+>;
+
+static_assert(test_sndr_traits<pfor_generic_t, true>());
+static_assert(test_sndr_traits<pfor_impl_t, false>());
 
 //! @test Check that @ref Kokkos::Execution::Impl::ParallelForSender is transformable with @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
 consteval bool test_sndr_is_transformable() {
@@ -137,6 +149,40 @@ consteval bool test_sndr_is_transformable() {
 
 static_assert(test_sndr_is_transformable());
 
+//! @test Check that the generic sender transforms into a transformed sender with a @c Kokkos::RangePolicy.
+template <typename IterSpace>
+consteval bool test_pfor_sndr_with_index_space_transforms_into_pfor_sndr_with_range_policy() {
+    //! Schedule sender.
+    using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
+
+    //! Parallel for sender.
+    using label_t = Kokkos::Execution::Impl::Label<std::string>;
+    using functor_t = Tests::Utils::Functors::SumIndices<typename TEST_CATEGORY(ParallelForTest)::view_s_t>;
+    using pfor_data_t = Kokkos::Execution::Impl::ParallelForData<functor_t, IterSpace, label_t>;
+    using pfor_sndr_t = Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, pfor_data_t>;
+
+    static_assert(stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain,
+                  stdexec::set_value_t,
+                  pfor_sndr_t&&,
+                  stdexec::env<>
+    >);
+
+    //! The transformed sender has a @c Kokkos::RangePolicy.
+    static_assert(
+        std::same_as<
+            decltype(std::declval<typename stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env<>>::closure_t>()
+                         .get_policy()),
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+        >);
+
+    return true;
+}
+
+static_assert(
+    test_pfor_sndr_with_index_space_transforms_into_pfor_sndr_with_range_policy<Kokkos::range_slice<size_t, size_t>>());
+static_assert(test_pfor_sndr_with_index_space_transforms_into_pfor_sndr_with_range_policy<Kokkos::dims<1>>());
+
 //! @test Check traits of @ref Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure.
 template <typename ViewType>
 consteval bool test_closure_traits() {
@@ -144,7 +190,7 @@ consteval bool test_closure_traits() {
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_data_t =
         Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<std::string_view>>;
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<pfor_data_t>;
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<TEST_EXECUTION_SPACE, pfor_data_t>;
 
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);
