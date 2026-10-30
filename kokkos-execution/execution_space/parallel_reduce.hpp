@@ -69,7 +69,10 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
     template <typename Env, typename Data, typename Sndr>
     using data_t = Impl::parallel_reduce_data_from_t<
         typename std::remove_cvref_t<Data>::functor_t,
-        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>,
+        Impl::make_policy_result_t<
+            Impl::exec_of_t<Sndr, Env>,
+            typename std::remove_cvref_t<Data>::policy_or_iter_space_t
+        >,
         typename std::remove_cvref_t<Data>::reducer_t,
         typename std::remove_cvref_t<Data>::properties_t
     >;
@@ -84,20 +87,16 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
         Kokkos::Execution::parallel_reduce_t,
         Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
         Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.data = std::forward<Data>(data).transform_policy_or_iter_space(
-                 [&]<typename T>(T&& pol) { // NOLINT(cppcoreguidelines-missing-std-forward)
-                     return Impl::make_policy(schd.state->exec, std::forward<T>(pol));
-                 })},
-            std::forward<Sndr>(sndr)};
-    }
+        STDEXEC_AUTO_RETURN(
+            trnsfrmd_sndr_t<Env, Data, Sndr>{
+                {.data = std::forward<Data>(data).transform_policy_or_iter_space(
+                     [exec_ref = Impl::ExecutionSpaceRef(
+                          stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
+                              .state->exec)](auto&& pol) noexcept {
+                         return Impl::make_policy<Impl::exec_of_t<Sndr, Env>>(
+                             exec_ref.get(), std::forward<decltype(pol)>(pol));
+                     })},
+                std::forward<Sndr>(sndr)})
 
     template <typename Env, typename Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>

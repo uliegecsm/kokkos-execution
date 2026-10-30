@@ -17,7 +17,11 @@ struct TransformSenderFor<stdexec::bulk_t> {
     template <typename Env, typename Data, typename Sndr>
     using data_t = Impl::ParallelForData<
         typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t,
-        Impl::policy_for_bulk_t<Env, Data, Sndr>,
+        Impl::make_policy_result_t<
+            Impl::exec_of_t<Sndr, Env>,
+            Impl::properties<Kokkos::IndexType<typename Impl::bulk_traits<Data>::shape_t>>,
+            Kokkos::dims<1, typename Impl::bulk_traits<Data>::shape_t>
+        >,
         Impl::Label<std::string_view>
     >;
 
@@ -26,23 +30,24 @@ struct TransformSenderFor<stdexec::bulk_t> {
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
-    auto operator()(const Env& env, stdexec::bulk_t, Data&& data, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        auto&& [parallel_policy, shape, functor] = std::forward<Data>(data);
-
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.data =
-                 {{Impl::Label{KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk")}},
-                  stdexec::__forward_like<Data>(functor),
-                  Impl::policy_for_bulk_t<Env, Data, Sndr>(schd.state->exec, 0, stdexec::__forward_like<Data>(shape))}},
-            std::forward<Sndr>(sndr)};
-    }
+    auto operator()(
+        const Env& env,
+        stdexec::bulk_t,
+        Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
+        Sndr&& sndr) const
+        STDEXEC_AUTO_RETURN(
+            trnsfrmd_sndr_t<Env, Data, Sndr>{
+                {.data =
+                     {{Impl::Label{KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk")}},
+                      stdexec::__forward_like<Data>(data.__fun_),
+                      Impl::make_policy<
+                          Impl::exec_of_t<Sndr, Env>,
+                          Kokkos::IndexType<typename Impl::bulk_traits<Data>::shape_t>
+                      >(stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
+                            .state->exec,
+                        Kokkos::dims<1, typename Impl::bulk_traits<Data>::shape_t>{
+                            stdexec::__forward_like<Data>(data.__shape_)})}},
+                std::forward<Sndr>(sndr)})
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
