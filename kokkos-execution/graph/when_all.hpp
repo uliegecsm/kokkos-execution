@@ -35,7 +35,7 @@ template <Kokkos::ExecutionSpace Exec, stdexec::receiver Rcvr, stdexec::sender..
 struct WhenAllOpState
     : public Impl::Immovable
     , public OpStateBase<Exec, Rcvr> {
-    using operation_state_concept = stdexec::operation_state_tag;
+    using operation_state_concept = Impl::SubmittedOperationStateTag;
 
     using base_t = OpStateBase<Exec, Rcvr>;
     using execution_space = Exec;

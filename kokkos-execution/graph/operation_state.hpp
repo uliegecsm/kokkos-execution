@@ -222,6 +222,9 @@ struct OpState
                   << Impl::display_string_of<Rcvr>() << " and the inner operation state is of type "
                   << Impl::display_string_of<inner_op_state_t>() << '.';
 #endif
+        std::cout << "Operation state graph composition policy is "
+                  << Impl::display_string_of<graph_composition_policy_t>() << ", the receiver is of type "
+                  << Impl::display_string_of<Sndr>() << " and the inner operation state is of type " << std::endl;
     }
 
     /**
