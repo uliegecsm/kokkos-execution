@@ -102,6 +102,16 @@ KeepEmptyLines:
   AtStartOfFile: true
 LambdaBodyIndentation: Signature
 LineEnding: LF
+Macros:
+  - 'STDEXEC_AUTO_RETURN(a)=-> decltype(auto) { return a; }'
+  - 'STDEXEC_AUTO_RETURN(a, b)=-> decltype(auto) { return a, b; }'
+  - 'STDEXEC_AUTO_RETURN(a, b, c)=-> decltype(auto) { return a, b, c; }'
+  - 'STDEXEC_AUTO_RETURN(a, b, c, d)=-> decltype(auto) { return a, b, c, d; }'
+  - 'STDEXEC_AUTO_RETURN(a, b, c, d, e)=-> decltype(auto) { return a, b, c, d, e; }'
+  - 'STDEXEC_AUTO_RETURN(a, b, c, d, e, f)=-> decltype(auto) { return a, b, c, d, e, f; }'
+  - 'STDEXEC_AUTO_RETURN(a, b, c, d, e, f, g)=-> decltype(auto) { return a, b, c, d, e, f, g; }'
+  - 'STDEXEC_AUTO_RETURN(a, b, c, d, e, f, g, h)=-> decltype(auto) { return a, b, c, d, e, f, g, h; }'
+  - 'STDEXEC_EXPLICIT_THIS_BEGIN(decl)=decl'
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
 PackConstructorInitializers: Never
@@ -178,6 +188,8 @@ SpacesInParensOptions:
   Other: false
 SpacesInSquareBrackets: false
 Standard: c++20
+StatementMacros:
+  - 'STDEXEC_EXPLICIT_THIS_END'
 TabWidth: 0
 TypenameMacros: []
 UseTab: Never

@@ -6,6 +6,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/iteration_space.hpp"
 #include "kokkos-execution/impl/label.hpp"
+#include "kokkos-execution/impl/macros.hpp"
 #include "kokkos-execution/impl/properties.hpp"
 
 namespace Kokkos::Execution {
@@ -38,49 +39,43 @@ struct ParallelForSender;
 struct parallel_for_t {
     template <typename Label, typename Functor, typename ExecPolicy>
     requires(Impl::label<std::remove_cvref_t<Label>> && Kokkos::ExecutionPolicy<std::remove_cvref_t<ExecPolicy>>)
-    constexpr auto operator()(Label&& label, ExecPolicy&& policy, Functor&& functor) const
-        noexcept(stdexec::__nothrow_decay_copyable<Functor, ExecPolicy>) {
-        return stdexec::__closure(
+    constexpr auto operator()(Label&& label, ExecPolicy&& policy, Functor&& functor) const STDEXEC_AUTO_RETURN(
+        stdexec::__closure(
             *this,
             std::forward<ExecPolicy>(policy),
             std::forward<Functor>(functor),
-            Impl::Label{std::forward<Label>(label)});
-    }
+            Impl::Label{std::forward<Label>(label)}))
 
     template <typename Functor, typename ExecPolicyOrIterSpace>
     requires Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>
-    constexpr auto operator()(ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor) const {
-        return stdexec::__closure(
-            *this, std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space), std::forward<Functor>(functor));
-    }
+    constexpr auto operator()(ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor) const STDEXEC_AUTO_RETURN(
+        stdexec::__closure(
+            *this, std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space), std::forward<Functor>(functor)))
 
     template <typename Label, typename Functor, std::integral T>
     requires Impl::label<std::remove_cvref_t<Label>>
-    constexpr auto operator()(Label&& label, const T work_count, Functor&& functor) const {
-        return stdexec::__closure(
+    constexpr auto operator()(Label&& label, const T work_count, Functor&& functor) const STDEXEC_AUTO_RETURN(
+        stdexec::__closure(
             *this,
             Impl::make_iter_space(work_count),
             std::forward<Functor>(functor),
-            Impl::Label{std::forward<Label>(label)});
-    }
+            Impl::Label{std::forward<Label>(label)}))
 
     template <typename Functor, std::integral T>
-    constexpr auto operator()(const T work_count, Functor&& functor) const {
-        return stdexec::__closure(*this, Impl::make_iter_space(work_count), std::forward<Functor>(functor));
-    }
+    constexpr auto operator()(const T work_count, Functor&& functor) const STDEXEC_AUTO_RETURN(
+        stdexec::__closure(*this, Impl::make_iter_space(work_count), std::forward<Functor>(functor)))
 
     template <stdexec::sender Sndr, typename Label, typename Functor, typename ExecPolicyOrIterSpace>
     requires(
         Impl::label<std::remove_cvref_t<Label>>
         && Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>)
     constexpr auto
-        operator()(Sndr&& sndr, Label&& label, ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor) const {
-        return this->operator()(
-            std::forward<Sndr>(sndr),
-            std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
-            std::forward<Functor>(functor),
-            Impl::Label{std::forward<Label>(label)});
-    }
+        operator()(Sndr&& sndr, Label&& label, ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor) const STDEXEC_AUTO_RETURN(
+            this->operator()(
+                std::forward<Sndr>(sndr),
+                std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
+                std::forward<Functor>(functor),
+                Impl::Label{std::forward<Label>(label)}))
 
     template <typename Functor, typename ExecPolicyOrIterSpace, typename... Properties>
     using parallel_for_data_t = Impl::ParallelForData<
@@ -96,18 +91,16 @@ struct parallel_for_t {
         ExecPolicyOrIterSpace&& policy_or_iter_space,
         Functor&& functor,
         Properties&&... properties) const
-        noexcept(stdexec::__nothrow_decay_copyable<Sndr, Functor, ExecPolicyOrIterSpace>)
-            -> Impl::ParallelForSender<Sndr, parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>> {
-        using data_t = parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>;
-        return {
-            {parallel_for_t{},
-             data_t{
-                 std::forward<Properties>(properties)...,
-                 std::forward<Functor>(functor),
-                 std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)},
-             std::forward<Sndr>(sndr)}
-        };
-    }
+        KOKKOS_EXECUTION_AUTO_RETURN_AS(
+            (Impl::ParallelForSender<Sndr, parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>>),
+            Impl::ParallelForSender<Sndr, parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>>{
+                {parallel_for_t{},
+                 parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>{
+                     std::forward<Properties>(properties)...,
+                     std::forward<Functor>(functor),
+                     std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)},
+                 std::forward<Sndr>(sndr)}
+    })
 };
 
 namespace Impl {
@@ -136,7 +129,8 @@ struct ParallelForData : Properties... {
             >{stdexec::__forward_like<Self>(detail::as_base<Properties>(self))...,
               stdexec::__forward_like<Self>(self.functor),
               std::forward<UnaryOp>(unary_op)(stdexec::__forward_like<Self>(self.policy_or_iter_space))})
-            STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
+
+    STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
 };
 
 //! @name Get the @ref ParallelForData type from its components.

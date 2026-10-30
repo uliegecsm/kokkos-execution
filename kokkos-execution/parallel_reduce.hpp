@@ -6,6 +6,7 @@
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/iteration_space.hpp"
 #include "kokkos-execution/impl/label.hpp"
+#include "kokkos-execution/impl/macros.hpp"
 #include "kokkos-execution/impl/properties.hpp"
 
 namespace Kokkos::Execution {
@@ -45,43 +46,39 @@ struct ParallelReduceSender;
 struct parallel_reduce_t {
     template <typename Label, typename Functor, typename ExecPolicy, typename Reducer>
     requires(Impl::label<std::remove_cvref_t<Label>> && Kokkos::ExecutionPolicy<std::remove_cvref_t<ExecPolicy>>)
-    constexpr auto operator()(Label&& label, ExecPolicy&& policy, Functor&& functor, Reducer&& reducer) const
-        noexcept(stdexec::__nothrow_decay_copyable<Functor, ExecPolicy, Reducer>) {
-        return stdexec::__closure(
-            *this,
-            std::forward<ExecPolicy>(policy),
-            std::forward<Functor>(functor),
-            std::forward<Reducer>(reducer),
-            Impl::Label{std::forward<Label>(label)});
-    }
+    constexpr auto
+        operator()(Label&& label, ExecPolicy&& policy, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
+            stdexec::__closure(
+                *this,
+                std::forward<ExecPolicy>(policy),
+                std::forward<Functor>(functor),
+                std::forward<Reducer>(reducer),
+                Impl::Label{std::forward<Label>(label)}))
 
     template <typename ExecPolicyOrIterSpace, typename Functor, typename Reducer>
     requires Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>
-    constexpr auto
-        operator()(ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor, Reducer&& reducer) const {
-        return stdexec::__closure(
+    constexpr auto operator()(ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
+        stdexec::__closure(
             *this,
             std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
             std::forward<Functor>(functor),
-            std::forward<Reducer>(reducer));
-    }
+            std::forward<Reducer>(reducer)))
 
     template <typename Label, typename Functor, std::integral T, typename Reducer>
     requires Impl::label<std::remove_cvref_t<Label>>
-    constexpr auto operator()(Label&& label, const T work_count, Functor&& functor, Reducer&& reducer) const {
-        return stdexec::__closure(
-            *this,
-            Impl::make_iter_space(work_count),
-            std::forward<Functor>(functor),
-            std::forward<Reducer>(reducer),
-            Impl::Label{std::forward<Label>(label)});
-    }
+    constexpr auto
+        operator()(Label&& label, const T work_count, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
+            stdexec::__closure(
+                *this,
+                Impl::make_iter_space(work_count),
+                std::forward<Functor>(functor),
+                std::forward<Reducer>(reducer),
+                Impl::Label{std::forward<Label>(label)}))
 
     template <typename Functor, std::integral T, typename Reducer>
-    constexpr auto operator()(const T work_count, Functor&& functor, Reducer&& reducer) const {
-        return stdexec::__closure(
-            *this, Impl::make_iter_space(work_count), std::forward<Functor>(functor), std::forward<Reducer>(reducer));
-    }
+    constexpr auto operator()(const T work_count, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
+        stdexec::__closure(
+            *this, Impl::make_iter_space(work_count), std::forward<Functor>(functor), std::forward<Reducer>(reducer)))
 
     template <typename Functor, typename ExecPolicyOrIterSpace, typename Reducer, typename... Properties>
     using parallel_reduce_data_t = Impl::ParallelReduceData<
@@ -105,22 +102,23 @@ struct parallel_reduce_t {
         Functor&& functor,
         Reducer&& reducer,
         Properties&&... properties) const
-        noexcept(stdexec::__nothrow_decay_copyable<Sndr, Functor, ExecPolicyOrIterSpace, Reducer>)
-            -> Impl::ParallelReduceSender<
+        KOKKOS_EXECUTION_AUTO_RETURN_AS(
+            (Impl::ParallelReduceSender<
                 Sndr,
                 parallel_reduce_data_t<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>
-            > {
-        using data_t = parallel_reduce_data_t<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>;
-        return {
-            {parallel_reduce_t{},
-             data_t{
-                 std::forward<Properties>(properties)...,
-                 std::forward<Functor>(functor),
-                 std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
-                 std::forward<Reducer>(reducer)},
-             std::forward<Sndr>(sndr)}
-        };
-    }
+            >),
+            Impl::ParallelReduceSender<
+                Sndr,
+                parallel_reduce_data_t<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>
+            >{
+                parallel_reduce_t{},
+                parallel_reduce_data_t<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>{
+                                  std::forward<Properties>(properties)...,
+                                  std::forward<Functor>(functor),
+                                  std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
+                                  std::forward<Reducer>(reducer)},
+                std::forward<Sndr>(sndr)
+    })
 };
 
 namespace Impl {
@@ -157,7 +155,9 @@ struct ParallelReduceData : Properties... {
             >{stdexec::__forward_like<Self>(detail::as_base<Properties>(self))...,
               stdexec::__forward_like<Self>(self.functor),
               std::forward<UnaryOp>(unary_op)(stdexec::__forward_like<Self>(self.policy_or_iter_space)),
-              stdexec::__forward_like<Self>(self.reducer)}) STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
+              stdexec::__forward_like<Self>(self.reducer)})
+
+    STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
 };
 
 //! @name Get the @ref ParallelReduceData type from its components.
