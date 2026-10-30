@@ -163,10 +163,12 @@ target_sources(
             kokkos-execution/impl/HPX/event.hpp
             kokkos-execution/impl/immovable.hpp
             kokkos-execution/impl/iteration_space.hpp
+            kokkos-execution/impl/label.hpp
             kokkos-execution/impl/make_op_state.hpp
             kokkos-execution/impl/make_policy.hpp
             kokkos-execution/impl/optional_ref.hpp
             kokkos-execution/impl/optional_storage.hpp
+            kokkos-execution/impl/properties.hpp
             kokkos-execution/impl/queryable.hpp
             kokkos-execution/impl/receiver.hpp
             kokkos-execution/impl/sender_concepts.hpp

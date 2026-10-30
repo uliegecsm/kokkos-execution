@@ -30,7 +30,9 @@ consteval bool test_op_state_traits() {
     //! Parallel for closure.
     using functor_t = Tests::Utils::Functors::SumIndices<typename OpStateTest::view_s_t>;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
-    using clsr_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<std::string, functor_t, policy_t>;
+    using clsr_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<std::string_view>>
+    >;
 
     //! Receiver.
     using rcvr_t = Tests::Utils::SinkReceiver;
@@ -61,7 +63,7 @@ static_assert(test_op_state_traits());
 constexpr bool test_op_state_passed_by_const_ref() {
     using sndr_t = decltype(Kokkos::Execution::parallel_for(
         stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
-        "hello from pfor",
+        Kokkos::Execution::label("hello from pfor"),
         Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
         Tests::Utils::Functors::Labeled<'a'>{}));
 
@@ -70,18 +72,19 @@ constexpr bool test_op_state_passed_by_const_ref() {
     //! Connect the sender as a @c const reference.
     using op_state_from_sndr_const_ref_t = stdexec::connect_result_t<const sndr_t&, Tests::Utils::SinkReceiver>;
 
-    static_assert(std::same_as<
-                  op_state_from_sndr_const_ref_t,
-                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
-                      const typename OpStateTest::schedule_sender_t&,
-                      Tests::Utils::SinkReceiver,
-                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-                          std::string,
-                          Tests::Utils::Functors::Labeled<'a'>,
-                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-                      >
-                  >
-    >);
+    static_assert(
+        std::same_as<
+            op_state_from_sndr_const_ref_t,
+            Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                const typename OpStateTest::schedule_sender_t&,
+                Tests::Utils::SinkReceiver,
+                Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
+                    Tests::Utils::Functors::Labeled<'a'>,
+                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+                    Kokkos::Execution::Impl::Label<std::string_view>
+                >>
+            >
+        >);
 
     return true;
 }
@@ -96,8 +99,15 @@ TEST_F(OpStateTest, construct_query_and_start) {
 
     const context_t esc{exec};
 
-    Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure clsr{
-        "hello from pfor", Tests::Utils::Functors::SumIndices{.data = witness}, Kokkos::RangePolicy(exec, 2, size)};
+    using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
+
+    Kokkos::Execution::Impl::ParallelForData<
+        functor_t,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+        Kokkos::Execution::Impl::Label<std::string>
+    >
+        pfor_data{{"hello from pfor"}, functor_t{.data = witness}, Kokkos::RangePolicy(exec, 2, size)};
+    Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure clsr{.data = std::move(pfor_data)};
 
     auto op_state = Kokkos::Execution::ExecutionSpaceImpl::OpState{
         stdexec::schedule(esc.get_scheduler()), Tests::Utils::SinkReceiver{}, std::move(clsr)};
@@ -124,16 +134,16 @@ consteval bool test_op_state_flattened_from_two() {
 
     using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
 
-    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-        std::string,
+    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
         Tests::Utils::Functors::Labeled<'a'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-    >;
-    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-        std::string,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+        Kokkos::Execution::Impl::Label<std::string>
+    >>;
+    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
         Tests::Utils::Functors::Labeled<'b'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-    >;
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+        Kokkos::Execution::Impl::Label<std::string>
+    >>;
 
     static_assert(std::same_as<
                   op_state_t,
@@ -172,21 +182,21 @@ consteval bool test_op_state_flattened_from_three() {
 
     using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
 
-    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-        std::string,
+    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
         Tests::Utils::Functors::Labeled<'a'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-    >;
-    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-        std::string,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+        Kokkos::Execution::Impl::Label<std::string>
+    >>;
+    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
         Tests::Utils::Functors::Labeled<'b'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-    >;
-    using clsr_2_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-        std::string,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+        Kokkos::Execution::Impl::Label<std::string>
+    >>;
+    using clsr_2_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
         Tests::Utils::Functors::Labeled<'c'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
-    >;
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+        Kokkos::Execution::Impl::Label<std::string>
+    >>;
 
     static_assert(std::same_as<
                   op_state_t,
@@ -215,7 +225,6 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
         stdexec::bulk(
             Kokkos::Execution::parallel_for(
                 stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
-                "hello from pfor",
                 Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<size_t>>(0, 10),
                 Tests::Utils::Functors::Labeled<'a'>{}),
             stdexec::par,
@@ -225,16 +234,15 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
 
     using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
 
-    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-        std::string,
+    using clsr_0_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
         Tests::Utils::Functors::Labeled<'a'>,
         Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<size_t>>
-    >;
-    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
-        std::string_view,
+    >>;
+    using clsr_1_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
         Tests::Utils::Functors::Labeled<'b'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<char>>
-    >;
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<char>>,
+        Kokkos::Execution::Impl::Label<std::string_view>
+    >>;
     using clsr_2_t = Kokkos::Execution::ExecutionSpaceImpl::ThenClosure<
         std::string_view,
         Tests::Utils::Functors::Labeled<'c'>,

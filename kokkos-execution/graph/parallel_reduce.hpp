@@ -36,8 +36,8 @@ struct ParallelReduceClosure {
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        auto [device_handle, label] = std::tuple<device_handle_t, std::string>{
-            Kokkos::Execution::GraphImpl::get_properties<device_handle_t, std::string>(node_props)};
+        const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
+        const auto label = get_label_or_display_string_of<Functor>(node_props);
 #endif
         auto node = predecessor.then_parallel_reduce(
             std::move(node_props),
@@ -84,7 +84,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t = ParallelReduceSender<
         Sndr,
-        node_props_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::label_t>,
+        make_node_props_t<Impl::exec_of_t<Sndr, Env>, Data>,
         typename std::remove_cvref_t<Data>::functor_t,
         typename std::remove_cvref_t<Data>::policy_or_iter_space_t,
         typename std::remove_cvref_t<Data>::reducer_t
@@ -106,11 +106,9 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
 
         return trnsfrmd_sndr_t<Env, Data, Sndr>{
             .clsr =
-                {.node_props = Kokkos::Experimental::node_props(
-                     Kokkos::Experimental::get_device_handle(schd.state->exec),
-                       stdexec::__forward_like<Data>(data.label)),
-                       .functor = stdexec::__forward_like<Data>(data.functor),
-                       .policy_or_iter_space = stdexec::__forward_like<Data>(data.policy_or_iter_space),
+                {.node_props = make_node_props(schd.state->exec, std::forward<Data>(data)),
+                       .functor = stdexec::__forward_like<Data>(data.functor), // NOLINT(bugprone-use-after-move)
+                 .policy_or_iter_space = stdexec::__forward_like<Data>(data.policy_or_iter_space),
                        .reducer = stdexec::__forward_like<Data>(data.reducer)},
             .sndr = std::forward<Sndr>(sndr)
         };

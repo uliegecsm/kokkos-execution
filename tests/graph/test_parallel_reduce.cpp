@@ -112,10 +112,13 @@ consteval bool test_sndr_traits() {
 }
 
 template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy, typename Reducer>
-using generic_t = Kokkos::Execution::Impl::ParallelReduceSender<Sndr, Label, Functor, Policy, Reducer>;
+using pred_generic_t = Kokkos::Execution::Impl::ParallelReduceSender<
+    Sndr,
+    Kokkos::Execution::Impl::ParallelReduceData<Functor, Policy, Reducer, Kokkos::Execution::Impl::Label<Label>>
+>;
 
 template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy, typename Reducer>
-using impl_t = Kokkos::Execution::GraphImpl::ParallelReduceSender<
+using pred_impl_t = Kokkos::Execution::GraphImpl::ParallelReduceSender<
     Sndr,
     Kokkos::Execution::GraphImpl::node_props_t<Exec, Label>,
     Functor,
@@ -123,8 +126,8 @@ using impl_t = Kokkos::Execution::GraphImpl::ParallelReduceSender<
     Reducer
 >;
 
-static_assert(test_sndr_traits<generic_t, true>());
-static_assert(test_sndr_traits<impl_t, false>());
+static_assert(test_sndr_traits<pred_generic_t, true>());
+static_assert(test_sndr_traits<pred_impl_t, false>());
 
 //! @test Check traits of @ref Kokkos::Execution::GraphImpl::ParallelReduceClosure.
 template <typename ViewType>

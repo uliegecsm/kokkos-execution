@@ -45,7 +45,7 @@ consteval auto dispatch_label()
 #else
 //! See @cite P3491R3.
 template <Kokkos::ExecutionSpace Exec>
-consteval auto dispatch_label(std::string_view suffix) noexcept {
+consteval std::string_view dispatch_label(std::string_view suffix) noexcept {
     return std::define_static_string(std::views::concat(std::meta::display_string_of(^^Exec), suffix));
 }
 
