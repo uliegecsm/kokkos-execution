@@ -163,6 +163,10 @@ TEST_F(TEST_CATEGORY(ForkJoinTest), three_branches) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         std::move(sndr)); // NOLINT(performance-move-const-arg)
 
+    for (const auto& event: recorded_events)
+        std::visit([](const auto& value) { std::cout << value << std::endl; }, event);
+
+
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
@@ -452,6 +456,16 @@ TEST_F(TEST_CATEGORY(ForkJoinTest), nested) {
  *
  * It creates a graph for the before-fork segment of the sender.
  */
+template <typename F>
+struct Wrapper {
+    F functor;
+
+    template <std::integral T>
+    KOKKOS_FUNCTION constexpr void operator()(const T) const noexcept(noexcept(functor())) {
+        functor();
+    }
+};
+
 TEST_F(TEST_CATEGORY(ForkJoinTest), mixed_branches) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
@@ -459,15 +473,22 @@ TEST_F(TEST_CATEGORY(ForkJoinTest), mixed_branches) {
     exec::single_thread_context stc{};
 
     using functor_t = Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>;
+    using wrapper_t = Wrapper<functor_t>;
     using rcvr_t = Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>;
 
     auto sndr = stdexec::schedule(gctx.get_scheduler())
-              | stdexec::then(functor_t{.prev = 0, .value = 4, .data = data.data()})
+              | Kokkos::Execution::parallel_for(
+                    "before fork",
+                    1,
+                    wrapper_t{
+                        functor_t{.prev = 0, .value = 4, .data = data.data()}
+    })
               | exec::fork_join(
                     stdexec::continues_on(stc.get_scheduler()) | THEN_INCREMENT_ATOMIC(System, data)
                         | stdexec::continues_on(gctx.get_scheduler()),
                     THEN_INCREMENT_ATOMIC(System, data))
-              | stdexec::then(functor_t{.prev = 6, .value = 5, .data = data.data()});
+              | Kokkos::Execution::parallel_for(
+                    "after join", 1, wrapper_t{functor_t{.prev = 6, .value = 5, .data = data.data()}});
 
     using sndr_t = decltype(sndr);
 
@@ -487,22 +508,23 @@ TEST_F(TEST_CATEGORY(ForkJoinTest), mixed_branches) {
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         std::move(sndr)); // NOLINT(performance-move-const-arg)
 
-    for (const auto& event: recorded_events)
-        std::visit([](const auto& value) { std::cout << value << std::endl; }, event);
-
     ASSERT_THAT(
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
-                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0))),
+                recorded_events.at(0),
+                device_handle,
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(0)),
+                "before fork"),
             MATCHER_FOR_GRAPH_CREATE(default_device_handle),
             MATCHER_FOR_GRAPH_ADDNODE(
-                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
-            MATCHER_FOR_GRAPH_ADD_AGGREGATE_NODE(
-                recorded_events.at(0), MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(3))),
+                recorded_events.at(2),
+                device_handle,
+                MATCHER_FOR_GRAPH_ROOT_NODE_OF(recorded_events.at(2)),
+                dispatch_label(exec, "then")),
             MATCHER_FOR_GRAPH_ADDNODE(
-                recorded_events.at(0), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(1))),
+                recorded_events.at(2), device_handle, MATCHER_FOR_GRAPH_NODE_OF(recorded_events.at(3)), "after join"),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(0)),
             MATCHER_FOR_GRAPH_SUBMIT(TEST_EXECUTION_SPACE{}, recorded_events.at(2)),
             MATCHER_FOR_BEGIN_FENCE(TEST_EXECUTION_SPACE{}, dispatch_label(TEST_EXECUTION_SPACE{}, "sync_wait"))));

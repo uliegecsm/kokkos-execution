@@ -25,7 +25,7 @@ struct LoadCheckAdd {
         }
 
         if (*data != prev) {
-            KOKKOS_IF_ON_HOST(Kokkos::abort("Unexpected value on host.");)
+            KOKKOS_IF_ON_HOST(Kokkos::abort(std::format("Expecting {} on host, but got {}.", prev, *data).c_str());)
             KOKKOS_IF_ON_DEVICE(Kokkos::abort("Unexpected value on device.");)
         }
         *data += value;

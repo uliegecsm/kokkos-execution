@@ -49,7 +49,13 @@ struct CacheSender {
             stdexec::set_value(std::move(rcvr));
         }
 
+        [[nodiscard]]
+        constexpr auto query(Impl::get_exec_t) const -> Impl::ExecutionSpaceRef<Exec> {
+            return Impl::ExecutionSpaceRef{env.state->exec};
+        }
+
         Rcvr rcvr;
+        Scheduler<Exec>::Sender::Attributes env;
     };
 
     template <typename Self, typename... Env>
@@ -59,7 +65,7 @@ struct CacheSender {
 
     template <stdexec::receiver Rcvr>
     constexpr auto connect(Rcvr rcvr) && noexcept(std::is_nothrow_move_constructible_v<Rcvr>) -> CacheOpState<Rcvr> {
-        return {std::move(rcvr)};
+        return {std::move(rcvr), std::move(env)};
     }
 
     [[nodiscard]]
@@ -221,20 +227,22 @@ struct ForkJoinOpState
         // #endif
         std::cout << "ForkJoinOpState uses the graph composition policy "
                   << Kokkos::Impl::TypeInfo<graph_composition_policy_t>::name() << std::endl;
-        std::cout << "\tbecause its fork_opstate_t is " << Kokkos::Impl::TypeInfo<fork_opstate_t>::name() << std::endl;
+        // std::cout << "\tbecause its fork_opstate_t is " << Kokkos::Impl::TypeInfo<fork_opstate_t>::name() << std::endl;
     }
 
     const fork_node_t& get_fork_node() const noexcept {
         if constexpr (std::same_as<graph_composition_policy_t, GraphComposition::Create>) {
             return state.get_root_node();
-        } else if constexpr (stdexec::__queryable_with<fork_opstate_t, get_node_t>) {
+        } else if constexpr (stdexec::__queryable_with<fork_opstate_t, get_node_t> /*&& join_opstate_t::as_one*/) {
             return fork_opstate.query(get_node);
         } else {
             return this->completion_signal.rcvr.query(get_node);
         }
     }
 
-    const auto& query(get_node_t) const & noexcept {
+    // if the when all is not as one, the fork and before connect connect to the when all because
+    // of the graph cannot guaranteee ordering
+    const auto& query(get_node_t) const & noexcept /*requires (join_opstate_t::as_one)*/ {
         return join_opstate.query(get_node);
     }
 
@@ -248,6 +256,7 @@ struct ForkJoinOpState
     }
 
     void start() & noexcept {
+        std::cout << "> fork_join is starting and starts the fork_opstate." << std::endl;
         stdexec::start(fork_opstate);
     }
 
@@ -258,12 +267,17 @@ struct ForkJoinOpState
         if constexpr (std::same_as<graph_composition_policy_t, GraphComposition::Create>) {
             submit_graph(state.graph, state.get_device_handle().m_exec);
         }
+        std::cout << "> fork_join: starting join_opstate" << std::endl;
         stdexec::start(join_opstate);
+        std::cout << "> fork_join: join_opstate finished" << std::endl;
     }
 
     void complete(stdexec::set_value_t) noexcept {
+        std::cout << "> fork_join complete on set_value" << std::endl;
         this->submit();
-        stdexec::set_value(std::move(this->completion_signal.rcvr));
+        std::cout << "> fork_join: set_value on completion_signal" << std::endl;
+        // stdexec::set_value(std::move(this->completion_signal.rcvr));
+        this->completion_signal.propagate(Impl::get_exec(*this).get());
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
