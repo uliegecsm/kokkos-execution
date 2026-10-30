@@ -39,6 +39,7 @@ struct WhenAllOpState
 
     using base_t = OpStateBase<Exec, Rcvr>;
     using execution_space = Exec;
+
     using predecessor_t = GraphComposition::node_t<Exec, Rcvr>;
 
     //! Receiver for a child of @c stdexec::when_all.
@@ -160,14 +161,6 @@ struct WhenAllOpState
         }
     }
 
-    const predecessor_t& get_predecessor() const noexcept {
-        if constexpr (std::same_as<graph_composition_policy_t, GraphComposition::Create>) {
-            return state.get_root_node();
-        } else {
-            return this->completion_signal.rcvr.query(get_node);
-        }
-    }
-
     [[nodiscard]]
     auto query(get_node_t) const & noexcept -> const node_t& requires Impl::not_empty<node_t>
     {
@@ -262,11 +255,6 @@ struct WhenAllOpState
             return;
         }
         this->completion_signal.propagate(state.get_device_handle().m_exec);
-    }
-
-    void submit_graph() & noexcept requires std::same_as<graph_composition_policy_t, GraphComposition::Attach>
-    {
-        this->completion_signal.propagate(execution_space{});
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)
