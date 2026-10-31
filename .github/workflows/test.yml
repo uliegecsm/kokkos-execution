@@ -90,7 +90,7 @@ jobs:
               version: 15
             cxxflags: -fsanitize=thread -Wno-error=tsan
             env: {OMP_NUM_THREADS: 1}
-            # https://github.com/uliegecsm/kokkos-execution/pull/370
+            # Seccomp is required for ThreadSanitizer, see also https://github.com/uliegecsm/kokkos-execution/pull/370.
             docker_run_args: --security-opt seccomp=unconfined
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, extra_type_checking: true}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}}
