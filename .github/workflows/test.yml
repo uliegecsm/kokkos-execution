@@ -84,7 +84,14 @@ jobs:
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 16}, cmake_build_type: Release, cxxstd: 26, cxxreflection: true}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=address"}
           - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=leak"}
-          - {kokkos_backends: [OpenMP], compiler: {family: gnu, version: 15}, cxxflags: "-fsanitize=thread -Wno-error=tsan", env: {OMP_NUM_THREADS: 1}}
+          - kokkos_backends: [OpenMP]
+            compiler:
+              family: gnu
+              version: 15
+            cxxflags: -fsanitize=thread -Wno-error=tsan
+            env: {OMP_NUM_THREADS: 1}
+            # https://github.com/uliegecsm/kokkos-execution/pull/370
+            docker_run_args: --security-opt seccomp=unconfined
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, extra_type_checking: true}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}}
           - {kokkos_backends: [OpenMP], compiler: {family: clang, version: 23}, cxxstd: "20", cmake_build_type: Debug}
