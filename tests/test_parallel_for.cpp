@@ -242,6 +242,16 @@ consteval bool test_parallel_for_noexcept_contract() {
         std::declval<Tests::Utils::Functors::NoOp<false, false, false>>())));
 
     static_assert(!noexcept(Kokkos::Execution::parallel_for(
+        std::declval<const label_t&>(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_for(
+        std::declval<const char*>(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_for(
         std::declval<label_t>(),
         std::declval<policy_t>(),
         std::declval<Tests::Utils::Functors::NoOp<false, true, false>&>())));
@@ -257,6 +267,28 @@ consteval bool test_parallel_for_noexcept_contract() {
             std::declval<label_t>(),
             std::declval<policy_t>(),
             std::declval<Tests::Utils::Functors::NoOp<false, false, false>>())));
+
+    static_assert(!noexcept(
+        stdexec::just()
+        | Kokkos::Execution::parallel_for(
+            std::declval<const label_t&>(),
+            std::declval<policy_t>(),
+            std::declval<Tests::Utils::Functors::NoOp<false, false, false>>())));
+
+    //! With @ref Kokkos::Execution::Impl::Label directly.
+    using label_of_string_t = Kokkos::Execution::Impl::Label<std::string>;
+
+    static_assert(noexcept(Kokkos::Execution::parallel_for(
+        stdexec::just(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
+        std::declval<label_of_string_t>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_for(
+        stdexec::just(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
+        std::declval<const label_of_string_t&>())));
 
     return true;
 }

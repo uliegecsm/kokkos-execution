@@ -102,6 +102,8 @@ KeepEmptyLines:
   AtStartOfFile: true
 LambdaBodyIndentation: Signature
 LineEnding: LF
+Macros:
+  - 'STDEXEC_EXPLICIT_THIS_BEGIN(decl)=decl'
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
 PackConstructorInitializers: Never
@@ -178,6 +180,10 @@ SpacesInParensOptions:
   Other: false
 SpacesInSquareBrackets: false
 Standard: c++20
+StatementMacros:
+  - 'KOKKOS_EXECUTION_RETURNS_BRACED'
+  - 'STDEXEC_AUTO_RETURN'
+  - 'STDEXEC_EXPLICIT_THIS_END'
 TabWidth: 0
 TypenameMacros: []
 UseTab: Never

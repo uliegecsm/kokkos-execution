@@ -67,12 +67,11 @@ concept labeled = has_property<Data, Label>();
  */
 template <typename T>
 requires std::convertible_to<T, std::string>
-constexpr auto as_convertible_to_string(T&& value) STDEXEC_AUTO_RETURN(std::forward<T>(value));
+constexpr auto as_convertible_to_string(T&& value) STDEXEC_AUTO_RETURN(std::forward<T>(value))
 
 template <typename T>
 requires(!std::convertible_to<T, std::string>)
-constexpr auto
-    as_convertible_to_string(T&& value) STDEXEC_AUTO_RETURN(static_cast<std::string>(std::forward<T>(value)));
+constexpr auto as_convertible_to_string(T&& value) STDEXEC_AUTO_RETURN(static_cast<std::string>(std::forward<T>(value)))
 
 } // namespace Impl
 

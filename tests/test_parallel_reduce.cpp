@@ -266,6 +266,18 @@ consteval bool test_parallel_reduce_noexcept_contract() {
         std::declval<reducer_t>())));
 
     static_assert(!noexcept(Kokkos::Execution::parallel_reduce(
+        std::declval<const label_t&>(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
+        std::declval<reducer_t>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_reduce(
+        std::declval<const char*>(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
+        std::declval<reducer_t>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_reduce(
         std::declval<label_t>(),
         std::declval<policy_t>(),
         std::declval<Tests::Utils::Functors::NoOp<false, true, false>&>(),
@@ -284,6 +296,31 @@ consteval bool test_parallel_reduce_noexcept_contract() {
             std::declval<policy_t>(),
             std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
             std::declval<reducer_t>())));
+
+    static_assert(!noexcept(
+        stdexec::just()
+        | Kokkos::Execution::parallel_reduce(
+            std::declval<const label_t&>(),
+            std::declval<policy_t>(),
+            std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
+            std::declval<reducer_t>())));
+
+    //! With @ref Kokkos::Execution::Impl::Label directly.
+    using label_of_string_t = Kokkos::Execution::Impl::Label<std::string>;
+
+    static_assert(noexcept(Kokkos::Execution::parallel_reduce(
+        stdexec::just(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
+        std::declval<reducer_t>(),
+        std::declval<label_of_string_t>())));
+
+    static_assert(!noexcept(Kokkos::Execution::parallel_reduce(
+        stdexec::just(),
+        std::declval<policy_t>(),
+        std::declval<Tests::Utils::Functors::NoOp<false, false, false>>(),
+        std::declval<reducer_t>(),
+        std::declval<const label_of_string_t&>())));
 
     return true;
 }

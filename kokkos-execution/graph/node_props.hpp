@@ -17,11 +17,11 @@ requires(Impl::labeled<std::remove_cvref_t<Data>>)
 constexpr auto make_node_props(const Exec& exec, Data&& data) STDEXEC_AUTO_RETURN(
     Kokkos::Experimental::node_props(
         Kokkos::Experimental::get_device_handle(exec),
-        Impl::as_convertible_to_string(Impl::get_property<Impl::Label>(std::forward<Data>(data)))));
+        Impl::as_convertible_to_string(Impl::get_property<Impl::Label>(std::forward<Data>(data)))))
 
 template <Kokkos::ExecutionSpace Exec, typename Data>
 constexpr auto make_node_props(const Exec& exec, Data&&)
-    STDEXEC_AUTO_RETURN(Kokkos::Experimental::node_props(Kokkos::Experimental::get_device_handle(exec)));
+    STDEXEC_AUTO_RETURN(Kokkos::Experimental::node_props(Kokkos::Experimental::get_device_handle(exec)))
 
 template <Kokkos::ExecutionSpace Exec, typename Data>
 using make_node_props_t = decltype(make_node_props(std::declval<const Exec&>(), std::declval<Data&&>()));
@@ -55,6 +55,7 @@ constexpr auto get_properties(PropsContainer&& props) { // NOLINT(cppcoreguideli
     if constexpr (std::is_lvalue_reference_v<PropsContainer>) {
         return std::tie(Kokkos::Impl::get_property<Props>(props)...);
     } else {
+
         return std::tuple<Props...>{
             Kokkos::Impl::forward_like<PropsContainer>(Kokkos::Impl::get_property<Props>(props))...};
     }
