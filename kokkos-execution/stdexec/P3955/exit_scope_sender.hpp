@@ -1,3 +1,4 @@
+// NOLINTBEGIN
 /*
  * SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  *                         Copyright (c) 2025 Robert Leahy. All rights reserved.
@@ -20,31 +21,23 @@
 
 #include <type_traits>
 
-#include "../stdexec/execution.hpp"
+#include "stdexec/execution.hpp"
 
 namespace experimental::execution {
 
-template<typename Sender>
-concept exit_scope_sender =
-  ::STDEXEC::sender<Sender> &&
-  std::is_nothrow_constructible_v<
-    std::remove_cvref_t<Sender>,
-    Sender> &&
-  std::is_nothrow_move_constructible_v<
-    std::remove_cvref_t<Sender>>;
+template <typename Sender>
+concept exit_scope_sender = ::STDEXEC::sender<Sender>
+                         && std::is_nothrow_constructible_v<std::remove_cvref_t<Sender>, Sender>
+                         && std::is_nothrow_move_constructible_v<std::remove_cvref_t<Sender>>;
 
-template<typename Sender, typename Env>
-concept exit_scope_sender_in =
-  exit_scope_sender<Sender> &&
-  ::STDEXEC::sender_in<Sender, Env> &&
-  ::STDEXEC::__nothrow_connectable<
-    Sender,
-    ::STDEXEC::__receiver_archetype<Env>> &&
-  std::is_same_v<
-    ::STDEXEC::completion_signatures<
-      ::STDEXEC::set_value_t()>,
-    ::STDEXEC::completion_signatures_of_t<
-      Sender,
-      Env>>;
+template <typename Sender, typename Env>
+concept exit_scope_sender_in = exit_scope_sender<Sender> && ::STDEXEC::sender_in<Sender, Env>
+                            && ::STDEXEC::__nothrow_connectable<Sender, ::STDEXEC::__receiver_archetype<Env>>
+                            && std::is_same_v<
+                                   ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>,
+                                   ::STDEXEC::completion_signatures_of_t<Sender, Env>
+                            >;
 
-}  // namespace exec
+} // namespace experimental::execution
+
+// NOLINTEND

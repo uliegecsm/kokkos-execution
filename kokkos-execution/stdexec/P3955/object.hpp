@@ -1,3 +1,4 @@
+// NOLINTBEGIN
 /*
  * SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  *                         Copyright (c) 2025 Robert Leahy. All rights reserved.
@@ -26,40 +27,26 @@
 
 namespace experimental::execution {
 
-template<typename Object>
-concept object =
-  std::constructible_from<
-    std::remove_cvref_t<Object>,
-    Object> &&
-  std::move_constructible<
-    std::remove_cvref_t<Object>> &&
-  std::is_object_v<
-    typename std::remove_cvref_t<Object>::type> &&
-  requires(Object o) {
-    {
-      std::invoke(
-        (Object&&)o,
-        (typename std::remove_cvref_t<Object>::type*)nullptr) }
-          -> enter_scope_sender;
-  };
+template <typename Object>
+concept object = std::constructible_from<std::remove_cvref_t<Object>, Object>
+              && std::move_constructible<std::remove_cvref_t<Object>>
+              && std::is_object_v<typename std::remove_cvref_t<Object>::type> && requires(Object o) {
+                     {
+                         std::invoke((Object&&) o, (typename std::remove_cvref_t<Object>::type*) nullptr)
+                     } -> enter_scope_sender;
+                 };
 
-template<typename Object, typename Env>
-concept object_in =
-  object<Object> &&
-  requires(Object o) {
-    {
-      std::invoke(
-        (Object&&)o,
-        (typename std::remove_cvref_t<Object>::type*)nullptr) }
-          -> enter_scope_sender_in<Env>;
-  };
+template <typename Object, typename Env>
+concept object_in = object<Object> && requires(Object o) {
+    { std::invoke((Object&&) o, (typename std::remove_cvref_t<Object>::type*) nullptr) } -> enter_scope_sender_in<Env>;
+};
 
-template<object Object>
+template <object Object>
 using type_of_object_t = std::remove_cvref_t<Object>::type;
 
-template<object Object>
-using enter_scope_sender_of_object_t = std::invoke_result_t<
-  Object,
-  type_of_object_t<Object>*>;
+template <object Object>
+using enter_scope_sender_of_object_t = std::invoke_result_t<Object, type_of_object_t<Object>*>;
 
-}  // namespace exec
+} // namespace experimental::execution
+
+// NOLINTEND

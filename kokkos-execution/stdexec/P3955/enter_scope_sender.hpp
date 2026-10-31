@@ -1,3 +1,4 @@
+// NOLINTBEGIN
 /*
  * SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  *                         Copyright (c) 2025 Robert Leahy. All rights reserved.
@@ -23,59 +24,55 @@
 #include <utility>
 
 #include "exit_scope_sender.hpp"
-#include "../stdexec/execution.hpp"
+#include "stdexec/execution.hpp"
 
 namespace experimental::execution {
 
-template<typename Sender>
+template <typename Sender>
 concept enter_scope_sender = ::STDEXEC::sender<Sender>;
 
 namespace detail::exit_scope_sender_of {
 
-template<typename Env, typename... Args>
+template <typename Env, typename... Args>
 struct transform_set_value_impl;
-template<typename Env, ::exec::exit_scope_sender_in<Env> Sender>
+
+template <typename Env, ::exec::exit_scope_sender_in<Env> Sender>
 struct transform_set_value_impl<Env, Sender> {
-  using type = ::STDEXEC::completion_signatures<
-    ::STDEXEC::set_value_t(Sender)>;
+    using type = ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Sender)>;
 };
 
-template<typename Env>
+template <typename Env>
 struct transform_set_value {
-  template<typename... Args>
-  using fn = transform_set_value_impl<Env, Args...>::type;
+    template <typename... Args>
+    using fn = transform_set_value_impl<Env, Args...>::type;
 };
 
-template<typename T>
+template <typename T>
 using transform_set_error = ::STDEXEC::completion_signatures<>;
 
-template<typename Signatures>
+template <typename Signatures>
 struct impl;
-template<typename Sender>
-struct impl<
-  ::STDEXEC::completion_signatures<
-    ::STDEXEC::set_value_t(Sender)>>
-{
-  using type = Sender;
+
+template <typename Sender>
+struct impl<::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Sender)>> {
+    using type = Sender;
 };
 
-}
+} // namespace detail::exit_scope_sender_of
 
-template<enter_scope_sender Constructor, typename Env>
-using exit_scope_sender_of_t = detail::exit_scope_sender_of::impl<
-  ::STDEXEC::transform_completion_signatures<
+template <enter_scope_sender Constructor, typename Env>
+using exit_scope_sender_of_t = detail::exit_scope_sender_of::impl<::STDEXEC::transform_completion_signatures<
     ::STDEXEC::completion_signatures_of_t<Constructor, Env>,
     ::STDEXEC::completion_signatures<>,
     detail::exit_scope_sender_of::transform_set_value<Env>::template fn,
     detail::exit_scope_sender_of::transform_set_error,
-    ::STDEXEC::completion_signatures<>>>::type;
+    ::STDEXEC::completion_signatures<>
+>>::type;
 
-template<typename Sender, typename Env>
-concept enter_scope_sender_in =
-  enter_scope_sender<Sender> &&
-  ::STDEXEC::sender_in<Sender, Env> &&
-  requires {
-    typename exit_scope_sender_of_t<Sender, Env>;
-  };
+template <typename Sender, typename Env>
+concept enter_scope_sender_in = enter_scope_sender<Sender> && ::STDEXEC::sender_in<Sender, Env>
+                             && requires { typename exit_scope_sender_of_t<Sender, Env>; };
 
-}  // namespace exec
+} // namespace experimental::execution
+
+// NOLINTEND
