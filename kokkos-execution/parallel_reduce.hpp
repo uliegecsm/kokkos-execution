@@ -102,15 +102,12 @@ struct parallel_reduce_t {
         Functor&& functor,
         Reducer&& reducer,
         Properties&&... properties) const
-        KOKKOS_EXECUTION_AUTO_RETURN_AS(
+        KOKKOS_EXECUTION_RETURNS_BRACED(
             (Impl::ParallelReduceSender<
                 Sndr,
                 parallel_reduce_data_t<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>
             >),
-            Impl::ParallelReduceSender<
-                Sndr,
-                parallel_reduce_data_t<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>
-            >{
+            {
                 parallel_reduce_t{},
                 parallel_reduce_data_t<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>{
                                   std::forward<Properties>(properties)...,

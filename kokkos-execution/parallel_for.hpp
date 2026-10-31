@@ -91,15 +91,15 @@ struct parallel_for_t {
         ExecPolicyOrIterSpace&& policy_or_iter_space,
         Functor&& functor,
         Properties&&... properties) const
-        KOKKOS_EXECUTION_AUTO_RETURN_AS(
+        KOKKOS_EXECUTION_RETURNS_BRACED(
             (Impl::ParallelForSender<Sndr, parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>>),
-            Impl::ParallelForSender<Sndr, parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>>{
-                {parallel_for_t{},
-                 parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>{
-                     std::forward<Properties>(properties)...,
-                     std::forward<Functor>(functor),
-                     std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)},
-                 std::forward<Sndr>(sndr)}
+            {
+                parallel_for_t{},
+                parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Properties...>{
+                               std::forward<Properties>(properties)...,
+                               std::forward<Functor>(functor),
+                               std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)},
+                std::forward<Sndr>(sndr)
     })
 };
 
