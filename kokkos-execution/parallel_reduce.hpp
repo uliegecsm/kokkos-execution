@@ -57,12 +57,13 @@ struct parallel_reduce_t {
 
     template <typename ExecPolicyOrIterSpace, typename Functor, typename Reducer>
     requires Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>
-    constexpr auto operator()(ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
-        stdexec::__closure(
-            *this,
-            std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
-            std::forward<Functor>(functor),
-            std::forward<Reducer>(reducer)))
+    constexpr auto operator()(ExecPolicyOrIterSpace&& policy_or_iter_space, Functor&& functor, Reducer&& reducer) const
+        STDEXEC_AUTO_RETURN(
+            stdexec::__closure(
+                *this,
+                std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
+                std::forward<Functor>(functor),
+                std::forward<Reducer>(reducer)))
 
     template <typename Label, typename Functor, std::integral T, typename Reducer>
     requires Impl::label<std::remove_cvref_t<Label>>
@@ -78,7 +79,10 @@ struct parallel_reduce_t {
     template <typename Functor, std::integral T, typename Reducer>
     constexpr auto operator()(const T work_count, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
         stdexec::__closure(
-            *this, Impl::make_iter_space(work_count), std::forward<Functor>(functor), std::forward<Reducer>(reducer)))
+            *this,
+            Impl::make_iter_space(work_count),
+            std::forward<Functor>(functor),
+            std::forward<Reducer>(reducer)))
 
     template <typename Functor, typename ExecPolicyOrIterSpace, typename Reducer, typename... Properties>
     using parallel_reduce_data_t = Impl::ParallelReduceData<
@@ -153,7 +157,6 @@ struct ParallelReduceData : Properties... {
               stdexec::__forward_like<Self>(self.functor),
               std::forward<UnaryOp>(unary_op)(stdexec::__forward_like<Self>(self.policy_or_iter_space)),
               stdexec::__forward_like<Self>(self.reducer)})
-
     STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
 };
 
