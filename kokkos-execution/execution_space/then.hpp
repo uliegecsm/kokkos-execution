@@ -62,28 +62,23 @@ struct ThenSender {
 template <>
 struct TransformSenderFor<stdexec::then_t> {
     template <typename Sndr, typename Env>
-    using policy_t = Kokkos::SinglePolicy<Impl::exec_of_t<Sndr, Env>>;
+    using policy_t = Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, Kokkos::dims<0>>;
 
     template <typename Env, typename Functor, typename Sndr>
-    using trnsfrmd_sndr_t = ThenSender<stdexec::then_t, Sndr, std::string_view, Functor, policy_t<Sndr, Env>>;
+    using trnsfrmd_sndr_t =
+        ThenSender<stdexec::then_t, Sndr, std::string_view, std::remove_cvref_t<Functor>, policy_t<Sndr, Env>>;
 
     template <typename Env, typename Functor, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
-    auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Functor, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Functor, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Functor, Sndr>{
+    auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const STDEXEC_AUTO_RETURN(
+        trnsfrmd_sndr_t<Env, Functor, Sndr>{
             {.label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": then"),
              .functor = std::forward<Functor>(functor),
-             .policy = policy_t<Sndr, Env>(schd.state->exec)},
+             .policy = Impl::make_policy(
+                 stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env).state->exec,
+             Kokkos::dims<0>{})},
             std::forward<Sndr>(sndr)
-        };
-    }
+    })
 
     template <typename Env, typename Functor, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>

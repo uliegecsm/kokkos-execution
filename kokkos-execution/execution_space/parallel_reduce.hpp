@@ -84,20 +84,13 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
         Kokkos::Execution::parallel_reduce_t,
         Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
         Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.data = std::forward<Data>(data).transform_policy_or_iter_space(
-                 [&]<typename T>(T&& pol) { // NOLINT(cppcoreguidelines-missing-std-forward)
-                     return Impl::make_policy(schd.state->exec, std::forward<T>(pol));
-                 })},
-            std::forward<Sndr>(sndr)};
-    }
+        STDEXEC_AUTO_RETURN(
+            trnsfrmd_sndr_t<Env, Data, Sndr>{
+                {.data = std::forward<Data>(data).transform_policy_or_iter_space(
+                     Impl::MakePolicy{
+                         stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
+                             .state->exec})},
+                std::forward<Sndr>(sndr)})
 
     template <typename Env, typename Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
