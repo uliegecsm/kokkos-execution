@@ -164,6 +164,7 @@ target_sources(
             kokkos-execution/impl/immovable.hpp
             kokkos-execution/impl/iteration_space.hpp
             kokkos-execution/impl/label.hpp
+            kokkos-execution/impl/macros.hpp
             kokkos-execution/impl/make_op_state.hpp
             kokkos-execution/impl/make_policy.hpp
             kokkos-execution/impl/optional_ref.hpp
