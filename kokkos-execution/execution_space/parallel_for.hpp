@@ -29,10 +29,10 @@ struct ParallelForClosure {
 
     [[nodiscard]]
     auto get_policy() const & noexcept {
-        return Impl::make_policy(exec_ref.get(), data.policy_or_iter_space);
+        return Impl::make_policy(state->exec, data.policy_or_iter_space);
     }
 
-    ExecutionSpaceRef<Exec> exec_ref;
+    const State<Exec>* state;
     Data data;
 };
 
@@ -62,7 +62,8 @@ struct ParallelForSender {
 template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
-    using trnsfrmd_sndr_t = ParallelForSender<parallel_for_t, Sndr, Impl::exec_of_t<Sndr, Env>, data_t<Env, Data, Sndr>>;
+    using trnsfrmd_sndr_t =
+        ParallelForSender<parallel_for_t, Sndr, Impl::exec_of_t<Sndr, Env>, data_t<Env, Data, Sndr>>;
 
     template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
@@ -73,9 +74,7 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
         Sndr&& sndr) const
         STDEXEC_AUTO_RETURN(
             trnsfrmd_sndr_t<Env, Data, Sndr>{
-                {.exec_ref = {stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
-                             .state->exec},
-                 .data = std::forward<Data>(data)},
+                {.state = &state, .data = std::forward<Data>(data)},
                 std::forward<Sndr>(sndr)
     })
 
