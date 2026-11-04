@@ -19,6 +19,7 @@
 #include "kokkos-execution/impl/diagnostics.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
+#include "kokkos-execution/impl/macros.hpp"
 #include "kokkos-execution/impl/queryable.hpp"
 #include "kokkos-execution/impl/sender_concepts.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
@@ -323,10 +324,8 @@ struct WhenAllSender {
     }
 
     template <stdexec::receiver Rcvr>
-    stdexec::operation_state auto connect(Rcvr rcvr) && noexcept(
-        std::is_nothrow_constructible_v<WhenAllOpState<Exec, Rcvr, Sndrs...>, sndrs_t&&, Rcvr&&>) {
-        return WhenAllOpState<Exec, Rcvr, Sndrs...>(std::move(sndrs), std::move(rcvr));
-    }
+        auto connect(Rcvr rcvr)
+        && KOKKOS_EXECUTION_RETURNS_BRACED((WhenAllOpState<Exec, Rcvr, Sndrs...>), std::move(sndrs), std::move(rcvr));
 
     constexpr auto get_env() const noexcept -> attrs {
         return {};
