@@ -15,6 +15,14 @@ template <typename ParentOp, typename Env = stdexec::env_of_t<ParentOp>>
 struct ContinuesOnReceiver : public Impl::Receiver<ParentOp, Env> {
     using exec_env_policy_t = typename ParentOp::exec_env_policy_t;
 
+    using Impl::Receiver<ParentOp, Env>::submitted;
+
+    template <Kokkos::ExecutionSpace... Execs>
+    requires(sizeof...(Execs) > 0)
+    void submitted(Impl::OptionalConstEventRef<Execs>... deps) && noexcept {
+        this->parent_op->submit(deps...);
+    }
+
     [[nodiscard]]
     constexpr auto
         get_env() const noexcept -> join_env_with_exec_t<exec_env_policy_t, Env, typename ParentOp::execution_space> {
@@ -99,6 +107,24 @@ struct ContinuesOnOpState
         const auto& exec_to = Impl::get_exec(*this).get();
         try {
             this->dependency.emplace(exec_to, exec_from);
+        } catch (...) {
+            stdexec::set_error(std::move(this->rcvr), std::current_exception());
+            return;
+        }
+        if constexpr (std::same_as<completion_signal_policy_t, Impl::SubmittedPolicy::OrderOnExec>) {
+            std::move(this->rcvr).submitted();
+        } else {
+            static_assert(std::same_as<completion_signal_policy_t, Impl::SyncPolicy::InlineFenceExec>);
+            stdexec::set_value(std::move(this->rcvr));
+        }
+    }
+
+    template <Kokkos::ExecutionSpace... Execs>
+    requires(sizeof...(Execs) > 0)
+    void submit(Impl::OptionalConstEventRef<Execs>... deps) noexcept {
+        const auto& exec_to = Impl::get_exec(*this).get();
+        try {
+            Impl::depend_on(exec_to, deps...);
         } catch (...) {
             stdexec::set_error(std::move(this->rcvr), std::current_exception());
             return;
