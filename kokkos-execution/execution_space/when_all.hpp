@@ -71,20 +71,41 @@ struct __sexpr_impl<Kokkos::Execution::ExecutionSpaceImpl::when_all_t> : stdexec
         };
 
     /**
+     * Needed by @ref __get_completion_signatures, adapted from
+     * https://github.com/NVIDIA/stdexec/blob/2184dd714f82df1e00d39961817be97f31c02744/include/stdexec/__detail/__when_all.hpp#L633
+     * to support the tag @ref Kokkos::Execution::ExecutionSpaceImpl::when_all_t.
+     */
+    template <class CpCvref>
+    static constexpr auto mk_fold_cmplsigs_fn() noexcept {
+        return []<class... Child>(__sexpr<Kokkos::Execution::ExecutionSpaceImpl::when_all_t, __, Child...> const *) {
+            return __fold_cmplsigs(STDEXEC::get_completion_signatures<__mcall1<CpCvref, Child>>()...);
+        };
+    }
+
+    /**
+     * Needed by @ref __get_completion_signatures, adapted from
+     * https://github.com/NVIDIA/stdexec/blob/2184dd714f82df1e00d39961817be97f31c02744/include/stdexec/__detail/__when_all.hpp#L643
+     * to support the tag @ref Kokkos::Execution::ExecutionSpaceImpl::when_all_t.
+     */
+    template <class CpCvref, class Env>
+    static constexpr auto mk_fold_cmplsigs_fn() noexcept {
+        return []<class... Child>(__sexpr<Kokkos::Execution::ExecutionSpaceImpl::when_all_t, __, Child...> const *) {
+            using env_t = __when_all::__env_t<Env, __mcall1<CpCvref, Child>...>;
+            return __fold_cmplsigs(STDEXEC::get_completion_signatures<__mcall1<CpCvref, Child>, env_t>()...);
+        };
+    }
+
+    /**
      * This code reproduces the implementation of @c __get_completion_signatures of @c stdexec::when_all, except that it
      * does not statically assert that the tag is @c stdexec::when_all_t. This workaround is necessary because this sender
      * uses the tag @ref Kokkos::Execution::ExecutionSpaceImpl::when_all_t to distinguish from @c stdexec::when_all_t.
      *
      * See:
-     * - https://github.com/NVIDIA/stdexec/blob/56613d3498bc39724dfbae0914cff2aaf3f9dcc6/include/stdexec/__detail/__when_all.hpp#L435
+     * - https://github.com/NVIDIA/stdexec/blob/2184dd714f82df1e00d39961817be97f31c02744/include/stdexec/__detail/__when_all.hpp#L662
      */
     template <typename Self, typename... Envs>
     static consteval auto __get_completion_signatures() { // NOLINT(bugprone-reserved-identifier)
-        if constexpr (stdexec::__minvocable_q<stdexec::__when_all::__when_all_impl::__completions_t, Self, Envs...>) {
-            return stdexec::__when_all::__when_all_impl::__completions_t<Self, Envs...>{};
-        } else if constexpr (sizeof...(Envs) == 0) {
-            return stdexec::__throw_dependent_sender_error<Self>();
-        }
+        return mk_fold_cmplsigs_fn<stdexec::__copy_cvref_fn<Self>, Envs...>()(std::add_pointer_t<Self>());
     }
 };
 
