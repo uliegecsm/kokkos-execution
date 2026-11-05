@@ -3,7 +3,14 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#include "Kokkos_Graph.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+import kokkos.graph;
+#else
+#    include "Kokkos_Core.hpp"
+#    include "Kokkos_Graph.hpp"
+#endif
 
 #include "kokkos-execution/graph/node_props.hpp"
 #include "kokkos-execution/graph/parallel_for.hpp"

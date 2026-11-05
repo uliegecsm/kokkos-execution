@@ -1,7 +1,8 @@
 set -ex
 
 COMPILER_FAMILY=$1
-CMAKE_PRESET=$2
+CXX_MODULES=$2
+CMAKE_PRESET=$3
 
 CPM_VERSION=$(python3 -c 'import json; print(json.load(open("dependencies.json"))["github"]["cpm"])')
 
@@ -40,10 +41,23 @@ find_package(KokkosExecution CONFIG REQUIRED)
 add_executable(install_test)
 target_sources(install_test PRIVATE install_test.cpp)
 target_link_libraries(install_test PRIVATE Kokkos::Execution)
+
+# Even though the Kokkos::kokkoscore and Kokkos::Execution::mdspan target modules may probably be inherited transitively
+# through Kokkos::Execution, it doesn't for now.
+# See also:
+#   * https://discourse.cmake.org/t/issues-with-transitive-usage-of-c-modules/15586
+if(Kokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES)
+    target_link_libraries(install_test PRIVATE Kokkos::kokkoscore Kokkos::Execution::mdspan)
+endif()
 EOF
 
 cat << EOF > ${WORK_DIR}/install_test.cpp
-#include "Kokkos_Core.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #include "kokkos-execution/execution_space.hpp"
 #include "kokkos-execution/graph.hpp"
@@ -66,15 +80,19 @@ EOF
 
 cd "$WORK_DIR"
 
-if [ "${COMPILER_FAMILY}" = "clang" ];then
-    export CXX=clang++
-elif [ "${COMPILER_FAMILY}" = "rocm" ];then
-    export CXX=hipcc
-elif [ "${COMPILER_FAMILY}" = "intel" ];then
-    export CXX=icpx
+if [ "${CXX_MODULES}" = "ON" ]; then
+    CMAKE_CONFIGURE="-GNinja"
+else
+    CMAKE_CONFIGURE=""
 fi
 
-cmake -S . -B build --warn-uninitialized
+TOOLCHAIN=/opt/toolchain.cmake
+test -f ${TOOLCHAIN}
+cat ${TOOLCHAIN}
+
+cmake -S . -B build \
+    --toolchain ${TOOLCHAIN} \
+    -LA ${CMAKE_CONFIGURE} --warn-uninitialized
 
 cmake --build build -j4 --verbose
 

@@ -1,6 +1,11 @@
 #ifndef KOKKOS_EXECUTION_PARALLEL_REDUCE_HPP
 #define KOKKOS_EXECUTION_PARALLEL_REDUCE_HPP
 
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core_impl;
+#endif
+
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/env.hpp"

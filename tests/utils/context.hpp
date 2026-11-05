@@ -5,7 +5,12 @@
 
 #include "kokkos-execution/stdexec.hpp"
 
-#include "Kokkos_Core.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Core.hpp"
+#endif
 
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
 #    include "plog/Formatters/TxtFormatter.h"

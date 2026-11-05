@@ -193,6 +193,24 @@ target_compile_definitions(kokkosexecution INTERFACE KOKKOS_IMPL_PUBLIC_INCLUDE)
 
 target_link_libraries(kokkosexecution INTERFACE Kokkos::kokkoscore STDEXEC::stdexec)
 
+# To be removed when either Kokkos properly ships mdspan as a module, or when Kokkos supports an external mdspan, see
+# also https://github.com/kokkos/kokkos/issues/9545.
+if(Kokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES)
+  add_library(kokkosexecutionmdspan)
+  add_library(Kokkos::Execution::mdspan ALIAS kokkosexecutionmdspan)
+  target_sources(
+    kokkosexecutionmdspan PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES kokkos-execution/impl/mdspan.cppm
+  )
+  target_link_libraries(kokkosexecutionmdspan PUBLIC Kokkos::kokkoscore)
+  target_link_libraries(kokkosexecution INTERFACE kokkosexecutionmdspan)
+  install(
+    TARGETS kokkosexecutionmdspan
+    EXPORT KokkosExecutionTargets
+    FILE_SET cxx_modules
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/KokkosExecution/src
+  )
+endif()
+
 # Fix for the same issue as in https://github.com/kokkos/kokkos/issues/8977.
 if(HPX IN_LIST Kokkos_DEVICES)
   target_link_options(kokkosexecution INTERFACE -latomic)
@@ -245,12 +263,22 @@ install(
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(
-  EXPORT KokkosExecutionTargets
-  FILE KokkosExecutionTargets.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/KokkosExecution
-  NAMESPACE Kokkos::
-)
+if(Kokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES)
+  install(
+    EXPORT KokkosExecutionTargets
+    FILE KokkosExecutionTargets.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/KokkosExecution
+    NAMESPACE Kokkos::
+    CXX_MODULES_DIRECTORY .
+  )
+else()
+  install(
+    EXPORT KokkosExecutionTargets
+    FILE KokkosExecutionTargets.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/KokkosExecution
+    NAMESPACE Kokkos::
+  )
+endif()
 
 # Find Google Test.
 if(KokkosExecution_ENABLE_EXAMPLES OR KokkosExecution_ENABLE_TESTS OR KokkosExecution_ENABLE_DOCS)

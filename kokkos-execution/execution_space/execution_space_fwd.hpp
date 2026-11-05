@@ -1,7 +1,12 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_EXECUTION_SPACE_FWD_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_EXECUTION_SPACE_FWD_HPP
 
-#include "Kokkos_Concepts.hpp"
+#include "Kokkos_Macros.hpp"
+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+import kokkos.core;
+#else
+#    include "Kokkos_Concepts.hpp"
+#endif
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
