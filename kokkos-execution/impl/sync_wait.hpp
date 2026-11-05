@@ -66,7 +66,6 @@ struct Receiver {
     }
 
     void set_stopped() && noexcept {
-        state->exec.fence(std::string(label));
         runloop_state->loop.finish();
     }
 

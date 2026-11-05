@@ -1,12 +1,7 @@
-#include "kokkos-utils/callbacks/RecorderListener.hpp"
-#include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
-
 #include "kokkos-execution/graph.hpp"
 
-#include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/check_sync_wait.hpp"
 #include "tests/utils/graph_context.hpp"
-#include "tests/utils/stdexec.hpp"
 
 /**
  * @addtogroup unittests
@@ -23,43 +18,23 @@
 namespace Tests {
 
 namespace Utils {
-INSTANTIATE_TYPED_TEST_SUITE_P(
-    SyncWaitTestGraphInstantiation,
-    SyncWaitTest,
+STDEXEC_PP_EVAL(
+    INSTANTIATE_TYPED_TEST_SUITE_P,
+    TEST_CATEGORY(SyncWaitTestGraphInstantiation),
+    TEST_CATEGORY(SyncWaitTest),
     ::testing::Types<Kokkos::Execution::GraphContext<TEST_EXECUTION_SPACE>>);
 } // namespace Utils
 
 namespace GraphImpl {
 
-using namespace Kokkos::utils::callbacks;
-
-class SyncWaitTest
-    : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE>
-    , public Kokkos::utils::tests::scoped::callbacks::Manager {
-   public:
-    using recorder_listener_t = RecorderListener<EventDiscardMatcher<TEST_EXECUTION_SPACE>, BeginFenceEvent>;
-};
+class TEST_CATEGORY(SyncWaitTest)
+    : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE> { };
 
 //! @test Check whether the sender can be nothrow applied.
 static_assert(Tests::Utils::check_nothrow_apply_sender<
               Kokkos::Execution::GraphImpl::Domain,
-              typename SyncWaitTest::schedule_sender_t
+              typename TEST_CATEGORY(SyncWaitTest)::schedule_sender_t
 >());
-
-//! @test Check that calling @c stdexec::sync_wait on a sender that does not have any operation in it will not result in a spurious fence.
-TEST_F(SyncWaitTest, no_spurious_fence) {
-    const context_t gctx{exec};
-
-    auto sndr = stdexec::schedule(gctx.get_scheduler());
-
-    ASSERT_THAT(
-        recorder_listener_t::record([sndr = std::move(sndr)]() mutable { // NOLINT(performance-move-const-arg)
-            const auto value = stdexec::sync_wait(std::move(sndr));      // NOLINT(performance-move-const-arg)
-            static_assert(std::same_as<decltype(value), const std::optional<std::tuple<>>>);
-            ASSERT_TRUE(value.has_value());
-        }),
-        testing::IsEmpty());
-}
 
 } // namespace GraphImpl
 

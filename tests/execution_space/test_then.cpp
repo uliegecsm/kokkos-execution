@@ -10,6 +10,7 @@
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/just_stopped.hpp"
+#include "tests/utils/schedulers/stopped.hpp"
 #include "tests/utils/stdexec.hpp"
 #include "tests/utils/sync_wait.hpp"
 #include "tests/utils/tracking_allocator.hpp"
@@ -347,6 +348,29 @@ TEST_F(ThenTest, forwarding_env) {
 
     ASSERT_EQ(value, 42);
     ASSERT_EQ(count, 1);
+}
+
+//! @test Ensure that once on the @c stdexec::set_stopped channel, no operation is dispatched anymore.
+TEST_F(ThenTest, set_stopped_will_not_dispatch_operation) {
+    const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec};
+
+    stdexec::sender auto sndr = stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data)
+                              | stdexec::continues_on(Tests::Utils::Schedulers::Stopped{})
+                              | stdexec::continues_on(esc.get_scheduler()) | THEN_INCREMENT(data);
+
+    ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
+
+    ASSERT_THAT(
+        recorded_events,
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
+
+    ASSERT_EQ(data(), 1);
 }
 
 } // namespace Tests::ExecutionSpaceImpl
