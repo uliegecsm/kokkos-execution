@@ -22,6 +22,7 @@ import kokkos.graph;
 #include "kokkos-execution/graph/operation_state.hpp"
 #include "kokkos-execution/graph/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
+#include "kokkos-execution/impl/compile_time_optional.hpp"
 #include "kokkos-execution/impl/completion_signatures.hpp"
 #include "kokkos-execution/impl/diagnostics.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
@@ -74,6 +75,19 @@ struct WhenAllOpState
         stdexec::__many_of<stdexec::__q<Impl::queryable_for<get_node_t>::type>>,
         children_op_states_t
     >::value;
+
+    //! Number of branches.
+    static constexpr std::size_t num_branches = sizeof...(Sndrs);
+
+    //! Determine how many branches remain on graph (and how many don't).
+    static constexpr std::size_t num_branches_remaining_on_graph = stdexec::__mapply<
+        stdexec::__mcount_if<stdexec::__mbind_back_q<RemainsOnGraphFor, Exec>>,
+        children_op_states_t
+    >::value;
+    static constexpr std::size_t num_branches_not_remaining_on_graph = num_branches - num_branches_remaining_on_graph;
+
+    static_assert(
+        (as_one && num_branches_not_remaining_on_graph == 0) || (!as_one && num_branches_not_remaining_on_graph > 0));
 
     /**
      * @brief Join the nodes of all operation states into one aggregate node.
@@ -138,7 +152,8 @@ struct WhenAllOpState
     [[no_unique_address]]
     node_t node;
     PRAGMA_DIAGNOSTIC_POP
-    std::atomic<size_t> count = sizeof...(Sndrs);
+    [[no_unique_address]]
+    Impl::CompileTimeOptional<!as_one, std::atomic<size_t>> count{num_branches_not_remaining_on_graph};
 
     //! @warning Unconditionally **not** @c noexcept because both graph and node construction may throw.
     WhenAllOpState(stdexec::__tuple<Sndrs...>&& sndrs_, Rcvr&& rcvr_)
@@ -154,8 +169,11 @@ struct WhenAllOpState
               stdexec::__apply(
                   [this](auto&&... children) -> children_op_states_t {
                       static_assert((std::same_as<decltype(children), Sndrs&&> && ...));
+                      PRAGMA_DIAGNOSTIC_PUSH
+                      PRAGMA_DIAGNOSTIC_IGNORED("-Wmissing-braces")
                       return children_op_states_t{
                           stdexec::connect(std::forward<Sndrs>(children), WhenAllChildReceiver{this})...};
+                      PRAGMA_DIAGNOSTIC_POP
                   },
                   std::move(sndrs_)))
         , node(JoinOpStateNodes{}(children_op_states)) {
@@ -183,10 +201,9 @@ struct WhenAllOpState
     }
 
     /**
-     * Each branch calls this method if @ref as_one is @c false.
+     * Each branch that does not remain on graph calls this method if @ref as_one is @c false.
      * Once the counter decreases to zero, the graph is submitted.
-     * It is intended, because there is no strong check on the branch content if @ref as_one is @c false.
-     * Indeed, one of the branches may start with operations that are not part of the graph,
+     * This allows branches that may start with operations that are not part of the graph,
      * implying that the graph cannot be submitted by one of the other branches.
      *
      * The following schematic illustrates such a situation.
@@ -201,14 +218,12 @@ struct WhenAllOpState
      * the graph will be submitted before the branch 1 is started, leading to operations of
      * the graph in branch 1 potentially running before the "thread".
      *
-     * @todo Add a test for the above schematic.
-     *
-     * In the future, a solution could be to create one graph per branch in such a setting, but it would
-     * require introspecting the sender type of each branch, recursively.
+     * @note In the future, a solution could be to create one graph per branch in such a setting, but it would
+     *       require introspecting the sender type of each branch, recursively.
      */
     void submit() & noexcept requires(!as_one)
     {
-        if (count.fetch_sub(1) == 1) {
+        if (count.value.fetch_sub(1) == 1) {
             this->submit_graph();
         }
     }
@@ -233,7 +248,23 @@ struct WhenAllOpState
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Starting all branches before submission.";
 #endif
-        stdexec::__apply([](auto&... ops) -> void { (stdexec::start(ops), ...); }, children_op_states);
+#if defined(__cpp_expansion_statements) && __cpp_expansion_statements >= 202506L
+        template for (auto& op: children_op_states) {
+            if constexpr (!remains_on_graph_for<std::remove_cvref_t<decltype(op)>, Exec>)
+                stdexec::start(op);
+        }
+#else
+        stdexec::__apply(
+            []<typename... ChildOpStates>([[maybe_unused]] ChildOpStates&... ops) noexcept {
+                (
+                    [&] {
+                        if constexpr (!remains_on_graph_for<ChildOpStates, Exec>)
+                            stdexec::start(ops);
+                    }(),
+                    ...);
+            },
+            children_op_states);
+#endif
     }
 
     //! If @ref as_one is @c true, there is no need to start the branches.
@@ -359,7 +390,10 @@ struct TransformSenderFor<stdexec::when_all_t> {
 
             //! Ensure that all senders are on the same execution space type.
             if constexpr ((std::same_as<Impl::exec_of_t<Sndrs, Env>, execution_space> && ...)) {
+                PRAGMA_DIAGNOSTIC_PUSH
+                PRAGMA_DIAGNOSTIC_IGNORED("-Wmissing-braces")
                 return trnsfrmd_sndr_t<Env, Sndrs...>{.sndrs = {std::forward<Sndrs>(sndrs)...}};
+                PRAGMA_DIAGNOSTIC_POP
             } else {
                 //! From https://github.com/NVIDIA/stdexec/blob/da7640aa1002cfcd665254f03434d3c949844361/include/nvexec/stream/when_all.cuh#L550-L554.
                 STDEXEC_CONSTEXPR_LOCAL bool map[] = {

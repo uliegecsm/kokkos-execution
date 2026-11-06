@@ -195,6 +195,23 @@ consteval bool test_sndr_cannot_mix_execution_space_type() {
 
 static_assert(test_sndr_cannot_mix_execution_space_type<TEST_EXECUTION_SPACE, Kokkos::DefaultHostExecutionSpace>());
 
+//! @test Check that when all branches remain on graph, @ref Kokkos::Execution::GraphImpl::WhenAllOpState::count is empty.
+consteval bool test_count_is_empty_when_as_one() {
+    using scheduler_t = typename TEST_CATEGORY(WhenAllTest)::scheduler_t;
+
+    using when_all_t = decltype(stdexec::when_all(
+        stdexec::schedule(std::declval<scheduler_t>()), stdexec::schedule(std::declval<scheduler_t>())));
+    using rcvr_t = Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE, std::true_type>;
+
+    using op_state_t = stdexec::connect_result_t<when_all_t, rcvr_t>;
+
+    static_assert(std::is_empty_v<decltype(std::declval<op_state_t>().count)>);
+
+    return true;
+}
+
+static_assert(test_count_is_empty_when_as_one());
+
 /**
  * @test A @c stdexec::when_all with two branches that contain only schedule senders
  *       for @ref Kokkos::Execution::GraphContext.
