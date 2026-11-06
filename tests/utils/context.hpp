@@ -20,6 +20,7 @@ import kokkos.core;
 
 #include "kokkos-utils/tests/scoped/ExecutionSpace.hpp"
 
+#include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/kokkos.hpp"
 
 namespace Tests::Utils {
@@ -60,19 +61,40 @@ struct ContextTest
  * Therefore, @ref Kokkos::Execution::ExecutionSpaceContext gives the same user experience as raw @c Kokkos: calling
  * a parallel dispatch from another thread will throw.
  */
+#    define KOKKOS_EXECUTION_THREADS_THROWS_WHAT "Called by a worker thread, can only be called by the master process."
+
+#    define KOKKOS_EXECUTION_THREADS_THROWS_SKIP_MSG                                                                   \
+        "Kokkos::Threads parallel regions must be launched from the thread that initialized Kokkos."
+
 #    define KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT(_sndr_)                                                \
         ASSERT_THAT(                                                                                                   \
             Tests::Utils::Functors::MutableMoveToSyncWait{.sndr = std::move(_sndr_)},                                  \
-            ::testing::ThrowsMessage<std::runtime_error>(                                                              \
-                ::testing::HasSubstr("Called by a worker thread, can only be called by the master process.")));
+            ::testing::ThrowsMessage<std::runtime_error>(::testing::HasSubstr(KOKKOS_EXECUTION_THREADS_THROWS_WHAT)));
+
 #    define KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(_sndr_)                                       \
         if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::Threads>) {                                           \
             KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT(_sndr_)                                                \
-            GTEST_SKIP()                                                                                               \
-                << "Kokkos::Threads parallel regions must be launched from the thread that initialized " "Kokkos.";    \
+            GTEST_SKIP() << KOKKOS_EXECUTION_THREADS_THROWS_SKIP_MSG;                                                  \
+        }
+
+#    define KOKKOS_EXECUTION_RECORD_EVENTS_BUT_THREADS_MAY_THROW_ON_SYNC_WAIT_SKIP(_recorder_listener_type_, _sndr_)   \
+        std::deque<typename _recorder_listener_type_::event_variant_t> recorded_events;                                \
+        try {                                                                                                          \
+            recorded_events = Tests::Utils::record_sync_wait<_recorder_listener_type_>(std::move(_sndr_));             \
+        } catch (const std::runtime_error& err) {                                                                      \
+            if constexpr (std::same_as<TEST_EXECUTION_SPACE, Kokkos::Threads>) {                                       \
+                ASSERT_THAT(err.what(), testing::HasSubstr(KOKKOS_EXECUTION_THREADS_THROWS_WHAT));                     \
+                GTEST_SKIP() << KOKKOS_EXECUTION_THREADS_THROWS_SKIP_MSG;                                              \
+            } else {                                                                                                   \
+                throw;                                                                                                 \
+            }                                                                                                          \
         }
 #else
 #    define KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(_sndr_)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#    define KOKKOS_EXECUTION_RECORD_EVENTS_BUT_THREADS_MAY_THROW_ON_SYNC_WAIT_SKIP(_recorder_listener_type_, _sndr_)   \
+        const auto recorded_events = Tests::Utils::record_sync_wait<_recorder_listener_type_>(std::move(_sndr_));
 #endif
 
 } // namespace Tests::Utils

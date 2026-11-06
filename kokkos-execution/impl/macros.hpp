@@ -19,6 +19,7 @@
  *
  * @note Prefer @c STDEXEC_AUTO_RETURN whenever the return type can be deduced from the expression.
  *       Use this macro only when it cannot, that is, when the return type must be stated explicitly.
+ * @note Another use case of this macro arises when the list-initializer contains members of a type.
  */ // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define KOKKOS_EXECUTION_RETURNS_BRACED(_type_, ...)                                                                   \
     noexcept(noexcept(KOKKOS_IMPL_STRIP_PARENS(_type_){__VA_ARGS__}))->KOKKOS_IMPL_STRIP_PARENS(_type_) {              \

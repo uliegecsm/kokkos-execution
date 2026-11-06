@@ -1,6 +1,8 @@
 #ifndef KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_LOAD_CHECK_ADD_HPP
 #define KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_LOAD_CHECK_ADD_HPP
 
+#include <format>
+
 #include "Kokkos_Macros.hpp"
 #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
 import kokkos.core;
@@ -30,7 +32,7 @@ struct LoadCheckAdd {
         }
 
         if (*data != prev) {
-            KOKKOS_IF_ON_HOST(Kokkos::abort("Unexpected value on host.");)
+            KOKKOS_IF_ON_HOST(Kokkos::abort(std::format("Expecting {} on host, but got {}.", prev, *data).c_str());)
             KOKKOS_IF_ON_DEVICE(Kokkos::abort("Unexpected value on device.");)
         }
         *data += value;
