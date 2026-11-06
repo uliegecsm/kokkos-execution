@@ -62,6 +62,7 @@ consteval bool test_sndr_traits() {
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
                       stdexec::bulk_t,
                       schd_sndr_t,
+                      TEST_EXECUTION_SPACE,
                       Kokkos::Execution::Impl::ParallelForData<
                           functor_t,
                           Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>,
@@ -104,6 +105,19 @@ consteval bool test_sndr_nothrow_transformable() {
                   stdexec::env<>
     >);
 
+    using sndr_bulk_maythrow_on_copy_t =
+        decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 1, Tests::Utils::Functors::NoOp<false, true, false>{}));
+
+    static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain,
+                  stdexec::set_value_t,
+                  const sndr_bulk_maythrow_on_copy_t&,
+                  stdexec::env<>
+    >);
+
+    static_assert(
+        !noexcept(stdexec::transform_sender(std::declval<const sndr_bulk_maythrow_on_copy_t&>(), stdexec::env<>{})));
+
     return true;
 }
 
@@ -134,19 +148,21 @@ constexpr bool test_op_state_passed_by_const_ref() {
     //! Connect the sender as a @c const reference.
     using op_state_from_sndr_const_ref_t = stdexec::connect_result_t<const sndr_t&, Tests::Utils::SinkReceiver>;
 
-    static_assert(
-        std::same_as<
-            op_state_from_sndr_const_ref_t,
-            Kokkos::Execution::ExecutionSpaceImpl::OpState<
-                const typename BulkTest::schedule_sender_t&,
-                Tests::Utils::SinkReceiver,
-                Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<Kokkos::Execution::Impl::ParallelForData<
-                    Tests::Utils::Functors::Labeled<'a'>,
-                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>,
-                    Kokkos::Execution::Impl::Label<std::string_view>
-                >>
-            >
-        >);
+    static_assert(std::same_as<
+                  op_state_from_sndr_const_ref_t,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                      const typename BulkTest::schedule_sender_t&,
+                      Tests::Utils::SinkReceiver,
+                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          TEST_EXECUTION_SPACE,
+                          Kokkos::Execution::Impl::ParallelForData<
+                              Tests::Utils::Functors::Labeled<'a'>,
+                              Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>,
+                              Kokkos::Execution::Impl::Label<std::string_view>
+                          >
+                      >
+                  >
+    >);
 
     return true;
 }

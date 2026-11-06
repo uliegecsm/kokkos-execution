@@ -15,34 +15,33 @@
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-template <Impl::parallel_for_data Data>
+template <Kokkos::ExecutionSpace Exec, Impl::parallel_for_data Data>
 struct ParallelForClosure {
-    using policy_t = typename Data::policy_or_iter_space_t;
-    static_assert(Kokkos::ExecutionPolicy<policy_t>);
-    using execution_space = typename policy_t::execution_space;
+    using execution_space = Exec;
 
     void submit() const & {
         if constexpr (Impl::labeled<Data>) {
-            Kokkos::parallel_for(Impl::get_property<Impl::Label>(data), data.policy_or_iter_space, data.functor);
+            Kokkos::parallel_for(Impl::get_property<Impl::Label>(data), this->get_policy(), data.functor);
         } else {
-            Kokkos::parallel_for(data.policy_or_iter_space, data.functor);
+            Kokkos::parallel_for(this->get_policy(), data.functor);
         }
     }
 
     [[nodiscard]]
-    const policy_t& get_policy() const & noexcept {
-        return data.policy_or_iter_space;
+    auto get_policy() const & noexcept {
+        return Impl::make_policy<execution_space>(state->exec, data.policy_or_iter_space);
     }
 
+    const Impl::State<execution_space>* state;
     Data data;
 };
 
-template <typename Tag, stdexec::sender Sndr, Impl::parallel_for_data Data>
+template <typename Tag, stdexec::sender Sndr, Kokkos::ExecutionSpace Exec, Impl::parallel_for_data Data>
 struct ParallelForSender {
     using sender_concept = stdexec::sender_tag;
 
-    using closure_t = ParallelForClosure<Data>;
-    using execution_space = typename closure_t::execution_space;
+    using execution_space = Exec;
+    using closure_t = ParallelForClosure<execution_space, Data>;
 
     closure_t clsr;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
@@ -63,14 +62,8 @@ struct ParallelForSender {
 template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
-    using data_t = Impl::parallel_for_data_from_t<
-        typename std::remove_cvref_t<Data>::functor_t,
-        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>,
-        typename std::remove_cvref_t<Data>::properties_t
-    >;
-
-    template <typename Env, typename Data, typename Sndr>
-    using trnsfrmd_sndr_t = ParallelForSender<parallel_for_t, Sndr, data_t<Env, Data, Sndr>>;
+    using trnsfrmd_sndr_t =
+        ParallelForSender<parallel_for_t, Sndr, Impl::exec_of_t<Sndr, Env>, std::remove_cvref_t<Data>>;
 
     template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
@@ -79,20 +72,12 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
         Kokkos::Execution::parallel_for_t,
         Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
         Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.data = std::forward<Data>(data).transform_policy_or_iter_space(
-                 [&]<typename T>(T&& pol) { // NOLINT(cppcoreguidelines-missing-std-forward)
-                     return Impl::make_policy(schd.state->exec, std::forward<T>(pol));
-                 })},
-            std::forward<Sndr>(sndr)};
-    }
+        STDEXEC_AUTO_RETURN(
+            trnsfrmd_sndr_t<Env, Data, Sndr>{
+                {.state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env).state,
+                 .data = std::forward<Data>(data)},
+                std::forward<Sndr>(sndr)
+    })
 
     template <typename Env, typename Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>

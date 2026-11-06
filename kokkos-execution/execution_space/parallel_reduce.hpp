@@ -15,38 +15,37 @@
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-template <Impl::parallel_reduce_data Data>
+template <Kokkos::ExecutionSpace Exec, Impl::parallel_reduce_data Data>
 struct ParallelReduceClosure {
-    using policy_t = typename Data::policy_or_iter_space_t;
-    static_assert(Kokkos::ExecutionPolicy<policy_t>);
-    using execution_space = typename policy_t::execution_space;
+    using execution_space = Exec;
 
     void submit() const & {
         if constexpr (Impl::labeled<Data>) {
             Kokkos::parallel_reduce(
                 Impl::as_convertible_to_string(Impl::get_property<Impl::Label>(data)),
-                data.policy_or_iter_space,
+                this->get_policy(),
                 data.functor,
                 data.reducer);
         } else {
-            Kokkos::parallel_reduce(data.policy_or_iter_space, data.functor, data.reducer);
+            Kokkos::parallel_reduce(this->get_policy(), data.functor, data.reducer);
         }
     }
 
     [[nodiscard]]
-    const policy_t& get_policy() const & noexcept {
-        return data.policy_or_iter_space;
+    auto get_policy() const & noexcept {
+        return Impl::make_policy<execution_space>(state->exec, data.policy_or_iter_space);
     }
 
+    const Impl::State<execution_space>* state;
     Data data;
 };
 
-template <typename Tag, stdexec::sender Sndr, Impl::parallel_reduce_data Data>
+template <typename Tag, stdexec::sender Sndr, Kokkos::ExecutionSpace Exec, Impl::parallel_reduce_data Data>
 struct ParallelReduceSender {
     using sender_concept = stdexec::sender_tag;
 
-    using closure_t = ParallelReduceClosure<Data>;
-    using execution_space = typename closure_t::execution_space;
+    using execution_space = Exec;
+    using closure_t = ParallelReduceClosure<execution_space, Data>;
 
     closure_t clsr;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
@@ -67,15 +66,8 @@ struct ParallelReduceSender {
 template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
     template <typename Env, typename Data, typename Sndr>
-    using data_t = Impl::parallel_reduce_data_from_t<
-        typename std::remove_cvref_t<Data>::functor_t,
-        Impl::make_policy_t<Impl::exec_of_t<Sndr, Env>, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>,
-        typename std::remove_cvref_t<Data>::reducer_t,
-        typename std::remove_cvref_t<Data>::properties_t
-    >;
-
-    template <typename Env, typename Data, typename Sndr>
-    using trnsfrmd_sndr_t = ParallelReduceSender<parallel_reduce_t, Sndr, data_t<Env, Data, Sndr>>;
+    using trnsfrmd_sndr_t =
+        ParallelReduceSender<parallel_reduce_t, Sndr, Impl::exec_of_t<Sndr, Env>, std::remove_cvref_t<Data>>;
 
     template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
@@ -84,20 +76,12 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
         Kokkos::Execution::parallel_reduce_t,
         Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
         Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            {.data = std::forward<Data>(data).transform_policy_or_iter_space(
-                 [&]<typename T>(T&& pol) { // NOLINT(cppcoreguidelines-missing-std-forward)
-                     return Impl::make_policy(schd.state->exec, std::forward<T>(pol));
-                 })},
-            std::forward<Sndr>(sndr)};
-    }
+        STDEXEC_AUTO_RETURN(
+            trnsfrmd_sndr_t<Env, Data, Sndr>{
+                {.state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env).state,
+                 .data = std::forward<Data>(data)},
+                std::forward<Sndr>(sndr)
+    })
 
     template <typename Env, typename Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>

@@ -11,37 +11,31 @@
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+template <Kokkos::ExecutionSpace Exec, typename Label, typename Functor>
 struct ThenClosure {
-    static_assert(Kokkos::Impl::is_specialization_of_v<ExecPolicy, SinglePolicy>);
-
-    using policy_t = ExecPolicy;
-    using execution_space = typename policy_t::execution_space;
+    using execution_space = Exec;
 
     void submit() const & {
-        Kokkos::single(Impl::as_convertible_to_string(label), policy, functor);
+        Kokkos::single(Impl::as_convertible_to_string(label), this->get_policy(), functor);
     }
 
+    //! @todo Implement policy update for the single policy in kokkos.
     [[nodiscard]]
-    const policy_t& get_policy() const & noexcept {
-        return policy;
+    auto get_policy() const & noexcept {
+        return Kokkos::SinglePolicy<execution_space>{state->exec};
     }
 
+    const Impl::State<execution_space>* state;
     Label label;
     Functor functor;
-    policy_t policy;
 };
 
-//! Deduction guide to store by-value.
-template <typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
-ThenClosure(Label, Functor, ExecPolicy) -> ThenClosure<Label, Functor, ExecPolicy>;
-
-template <typename Tag, stdexec::sender Sndr, typename Label, typename Functor, Kokkos::ExecutionPolicy ExecPolicy>
+template <typename Tag, stdexec::sender Sndr, Kokkos::ExecutionSpace Exec, typename Label, typename Functor>
 struct ThenSender {
     using sender_concept = stdexec::sender_tag;
 
-    using closure_t = ThenClosure<Label, Functor, ExecPolicy>;
-    using execution_space = typename closure_t::execution_space;
+    using execution_space = Exec;
+    using closure_t = ThenClosure<execution_space, Label, Functor>;
 
     closure_t clsr;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
@@ -61,29 +55,32 @@ struct ThenSender {
 
 template <>
 struct TransformSenderFor<stdexec::then_t> {
-    template <typename Sndr, typename Env>
-    using policy_t = Kokkos::SinglePolicy<Impl::exec_of_t<Sndr, Env>>;
-
     template <typename Env, typename Functor, typename Sndr>
-    using trnsfrmd_sndr_t = ThenSender<stdexec::then_t, Sndr, std::string_view, Functor, policy_t<Sndr, Env>>;
+    struct Transformer {
+        using execution_space = Impl::exec_of_t<Sndr, Env>;
+
+        using sndr_t =
+            ThenSender<stdexec::then_t, Sndr, execution_space, std::string_view, std::remove_cvref_t<Functor>>;
+
+        auto operator()(const Env& env, std::remove_reference_t<Functor>& functor, std::remove_reference_t<Sndr>& sndr)
+            const STDEXEC_AUTO_RETURN(
+                sndr_t{
+                    {.state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
+                                  .state,
+                     .label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(execution_space, ": then"),
+                     .functor = std::forward<Functor>(functor)},
+                    std::forward<Sndr>(sndr)
+        })
+    };
 
     template <typename Env, typename Functor, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
-    auto operator()(const Env& env, stdexec::then_t, Functor&& functor, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Functor, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Functor, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Functor, Sndr>{
-            {.label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": then"),
-             .functor = std::forward<Functor>(functor),
-             .policy = policy_t<Sndr, Env>(schd.state->exec)},
-            std::forward<Sndr>(sndr)
-        };
-    }
+    auto operator()(
+        const Env& env,
+        stdexec::then_t,
+        Functor&& functor, // NOLINT(cppcoreguidelines-missing-std-forward)
+        Sndr&& sndr        // NOLINT(cppcoreguidelines-missing-std-forward)
+    ) const STDEXEC_AUTO_RETURN(Transformer<Env, Functor, Sndr>{}(env, functor, sndr))
 
     template <typename Env, typename Functor, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>

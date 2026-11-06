@@ -139,22 +139,6 @@ struct ParallelForData : Properties... {
     STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
 };
 
-//! @name Get the @ref ParallelForData type from its components.
-///@{
-template <typename Functor, typename ExecPolicyOrIterSpace, typename... Properties>
-struct parallel_for_data_from {
-    using type = ParallelForData<Functor, ExecPolicyOrIterSpace, Properties...>;
-};
-
-template <typename Functor, typename ExecPolicyOrIterSpace, typename... Properties>
-struct parallel_for_data_from<Functor, ExecPolicyOrIterSpace, properties<Properties...>> {
-    using type = ParallelForData<Functor, ExecPolicyOrIterSpace, Properties...>;
-};
-
-template <typename Functor, typename ExecPolicyOrIterSpace, typename... Properties>
-using parallel_for_data_from_t = typename parallel_for_data_from<Functor, ExecPolicyOrIterSpace, Properties...>::type;
-///@}
-
 template <stdexec::sender Sndr, Impl::parallel_for_data Data>
 struct ParallelForSender : stdexec::__tuple<parallel_for_t, Data, Sndr> {
     using sender_concept = stdexec::sender_tag;

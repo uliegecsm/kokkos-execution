@@ -53,18 +53,23 @@ class TEST_CATEGORY(ParallelReduceTest)
  * @test Check traits of sender returned by @ref Kokkos::Execution::parallel_reduce either uncustomized
  *       or customized for @ref Kokkos::Execution::ExecutionSpaceContext.
  */
-template <template <typename...> class SndrAdptr, bool IsDispatchingSender, typename... Args>
+template <template <typename...> class SndrAdptr, bool IsDispatchingSender>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t;
 
     //! Parallel reduce sender.
-    using label_t = Kokkos::Execution::Impl::Label<std::string>;
+    using label_t = std::string;
     using functor_t = Tests::Utils::Functors::ReduceIndices;
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using reducer_t = typename TEST_CATEGORY(ParallelReduceTest)::view_s_t;
-    using pred_data_t = Kokkos::Execution::Impl::ParallelReduceData<functor_t, policy_t, reducer_t, label_t>;
-    using pred_sndr_t = SndrAdptr<Args..., schd_sndr_t, pred_data_t>;
+    using pred_data_t = Kokkos::Execution::Impl::ParallelReduceData<
+        functor_t,
+        policy_t,
+        reducer_t,
+        Kokkos::Execution::Impl::Label<label_t>
+    >;
+    using pred_sndr_t = SndrAdptr<schd_sndr_t, TEST_EXECUTION_SPACE, label_t, functor_t, policy_t, reducer_t>;
 
     //! Models the execution space completing sender concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<pred_sndr_t>);
@@ -99,6 +104,7 @@ consteval bool test_sndr_traits() {
                   Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceSender<
                       Kokkos::Execution::parallel_reduce_t,
                       schd_sndr_t,
+                      TEST_EXECUTION_SPACE,
                       pred_data_t
                   >
     >);
@@ -109,12 +115,22 @@ consteval bool test_sndr_traits() {
     return true;
 }
 
-static_assert(test_sndr_traits<Kokkos::Execution::Impl::ParallelReduceSender, true>());
-static_assert(test_sndr_traits<
-              Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceSender,
-              false,
-              Kokkos::Execution::parallel_reduce_t
->());
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy, typename Reducer>
+using pred_generic_t = Kokkos::Execution::Impl::ParallelReduceSender<
+    Sndr,
+    Kokkos::Execution::Impl::ParallelReduceData<Functor, Policy, Reducer, Kokkos::Execution::Impl::Label<Label>>
+>;
+
+template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy, typename Reducer>
+using pred_impl_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceSender<
+    Kokkos::Execution::parallel_reduce_t,
+    Sndr,
+    Exec,
+    Kokkos::Execution::Impl::ParallelReduceData<Functor, Policy, Reducer, Kokkos::Execution::Impl::Label<Label>>
+>;
+
+static_assert(test_sndr_traits<pred_generic_t, true>());
+static_assert(test_sndr_traits<pred_impl_t, false>());
 
 //! @test Check that @ref Kokkos::Execution::Impl::ParallelReduceSender is transformable with @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
 consteval bool test_sndr_is_transformable() {
@@ -153,7 +169,7 @@ consteval bool test_closure_traits() {
         reducer_t,
         Kokkos::Execution::Impl::Label<std::string_view>
     >;
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceClosure<pred_data_t>;
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceClosure<TEST_EXECUTION_SPACE, pred_data_t>;
 
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);
