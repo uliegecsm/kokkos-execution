@@ -283,8 +283,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), single_branch) {
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
-    KOKKOS_EXECUTION_TEST_UTILS_GRAPH_FENCE(exec);
-
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     ASSERT_THAT(
@@ -476,8 +474,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_starting_on_single_thread_cont
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
-    KOKKOS_EXECUTION_TEST_UTILS_GRAPH_FENCE(exec);
-
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         std::move(sndr)); // NOLINT(performance-move-const-arg)
 
@@ -543,8 +539,6 @@ TEST_F(TEST_CATEGORY(WhenAllTest), three_branches_some_starting_on_single_thread
         << "Eager execution is not " "allowed.";
 
     KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
-
-    KOKKOS_EXECUTION_TEST_UTILS_GRAPH_FENCE(exec);
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
         std::move(sndr)); // NOLINT(performance-move-const-arg)
