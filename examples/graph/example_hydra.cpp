@@ -75,6 +75,9 @@ struct Hydra : public Kokkos::utils::tests::scoped::ExecutionSpace<Exec> {
                  | stdexec::then(Write<view_t, pattern.at(Is), Is>{.data = data}))...);
         }(std::make_index_sequence<pattern.size()>{});
 
+        //! Wait for @ref data to be ready, as the underlying @c Kokkos::Experimental::Graph will be submitted on the default execution space instance.
+        this->exec.fence();
+
         stdexec::sync_wait(std::move(sndr));
 
         check();
