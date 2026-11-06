@@ -143,6 +143,7 @@ target_sources(
             kokkos-execution/graph/when_all.hpp
             kokkos-execution/impl/attributes.hpp
             kokkos-execution/impl/bulk.hpp
+            kokkos-execution/impl/compile_time_optional.hpp
             kokkos-execution/impl/completion_signal.hpp
             kokkos-execution/impl/completion_signatures.hpp
             kokkos-execution/impl/continues_on.hpp

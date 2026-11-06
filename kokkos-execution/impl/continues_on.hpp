@@ -3,6 +3,7 @@
 
 #include "kokkos-execution/impl/dependency.hpp"
 #include "kokkos-execution/impl/empty.hpp"
+#include "kokkos-execution/impl/get_exec.hpp"
 #include "kokkos-execution/impl/submitted.hpp"
 
 namespace Kokkos::Execution::Impl::ContinuesOn {
@@ -20,6 +21,14 @@ struct DependencyFor<InnerOp, ExecTo> {
 
 template <typename InnerOp, typename ExecTo>
 using dependency_for_t = typename DependencyFor<InnerOp, ExecTo>::type;
+
+//! If no dependency is needed, return @ref Impl::Empty so that @c [[no_unique_address]] can be used.
+template <typename InnerOp, typename ExecTo>
+using optional_dependency_for_t = std::conditional_t<
+    Impl::empty<dependency_for_t<InnerOp, ExecTo>>,
+    Impl::Empty,
+    std::optional<dependency_for_t<InnerOp, ExecTo>>
+>;
 
 template <typename InnerOp, typename ExecTo, typename Rcvr>
 concept signals_submitted = Impl::signals_submitted<InnerOp> && std::same_as<ExecTo, Impl::exec_of_t<InnerOp>>

@@ -72,10 +72,10 @@ struct ContinuesOnOpState
     using completion_signal_policy_t =
         Impl::ContinuesOn::completion_signal_policy_t<inner_op_state_t, execution_space, Rcvr>;
 
-    using dependency_t = Impl::ContinuesOn::dependency_for_t<inner_op_state_t, execution_space>;
+    using optional_dependency_t = Impl::ContinuesOn::optional_dependency_for_t<inner_op_state_t, execution_space>;
 
     [[no_unique_address]]
-    std::optional<dependency_t> dependency{};
+    optional_dependency_t dependency{};
     inner_op_state_t inner_op_state;
 
     ContinuesOnOpState(Schd&& schd, Sndr&& sndr, Rcvr rcvr) noexcept( // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)

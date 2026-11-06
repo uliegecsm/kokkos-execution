@@ -1,3 +1,4 @@
+add_one_test(NAME compile_time_optional)
 add_one_test(NAME completion_signal)
 add_one_test(NAME completion_signatures)
 add_one_test(NAME dependency ADDITIONAL_LINK_LIBRARIES GTest::gmock)

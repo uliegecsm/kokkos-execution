@@ -8,7 +8,7 @@ namespace Kokkos::Execution::Impl {
 struct Empty { };
 
 template <typename T>
-concept not_empty = !std::same_as<T, Empty>;
+concept empty = std::same_as<T, Empty>;
 
 } // namespace Kokkos::Execution::Impl
 
