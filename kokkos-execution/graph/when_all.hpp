@@ -170,7 +170,7 @@ struct WhenAllOpState
     }
 
     [[nodiscard]]
-    auto query(get_node_t) const & noexcept -> const node_t& requires Impl::not_empty<node_t>
+    auto query(get_node_t) const & noexcept -> const node_t& requires(!Impl::empty<node_t>)
     {
         return node;
     }
