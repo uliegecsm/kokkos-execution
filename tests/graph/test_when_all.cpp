@@ -96,8 +96,8 @@ static_assert(test_sndr_traits());
 //! @test Check @c noexcept specification of sender transformation.
 consteval bool test_sndr_nothrow_transformable() {
     using when_all_sndr_t = decltype(stdexec::when_all(
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
+        std::declval<typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t>(),
+        std::declval<typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t>()
             | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(std::same_as<
@@ -121,8 +121,8 @@ consteval bool test_sndr_nothrow_transformable() {
     >);
 
     using when_all_maythrow_on_move_sndr_t = decltype(stdexec::when_all(
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
+        std::declval<typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t>(),
+        std::declval<typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t>()
             | stdexec::then(Tests::Utils::Functors::NoOp<false, false, true>{})));
 
     static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
@@ -143,8 +143,8 @@ consteval bool test_sndr_nothrow_connectable() {
     static_assert(!std::is_nothrow_constructible_v<Kokkos::Experimental::Graph<TEST_EXECUTION_SPACE>>);
 
     using when_all_sndr_t = decltype(stdexec::when_all(
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>()),
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(WhenAllTest)::scheduler_t>())
+        std::declval<typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t>(),
+        std::declval<typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t>()
             | stdexec::then(Tests::Utils::Functors::NoOp<false, false, false>{})));
 
     static_assert(!stdexec::__nothrow_connectable<when_all_sndr_t, Tests::Utils::SinkReceiver>);

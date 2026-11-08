@@ -121,23 +121,6 @@ struct ParallelForData : Properties... {
 
     functor_t functor;
     policy_or_iter_space_t policy_or_iter_space;
-
-    //! Transform @ref policy_or_iter_space, keeping other data unchanged.
-    template <typename Self, typename UnaryOp>
-    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(transform_policy_or_iter_space)(
-        this Self&& self, // NOLINT(cppcoreguidelines-missing-std-forward)
-        UnaryOp&& unary_op)
-        STDEXEC_AUTO_RETURN(
-            ParallelForData<
-                functor_t,
-                std::remove_cvref_t<
-                    std::invoke_result_t<UnaryOp, decltype(stdexec::__forward_like<Self>(self.policy_or_iter_space))>
-                >,
-                Properties...
-            >{stdexec::__forward_like<Self>(detail::as_base<Properties>(self))...,
-              stdexec::__forward_like<Self>(self.functor),
-              std::forward<UnaryOp>(unary_op)(stdexec::__forward_like<Self>(self.policy_or_iter_space))})
-    STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
 };
 
 template <stdexec::sender Sndr, Impl::parallel_for_data Data>

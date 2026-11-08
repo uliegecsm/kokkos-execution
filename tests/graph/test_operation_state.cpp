@@ -65,8 +65,6 @@ class TEST_CATEGORY(OpStateTest)
 
 //! @test Check construction of flattened operation state from two parallel for senders.
 consteval bool test_op_state_flattened_from_two() {
-    using node_props_t = Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>, std::string>;
-
     using sndr_t = decltype(Kokkos::Execution::parallel_for(
         Kokkos::Execution::parallel_for(
             typename TEST_CATEGORY(OpStateTest)::schedule_sender_t(),
@@ -81,16 +79,22 @@ consteval bool test_op_state_flattened_from_two() {
 
     using clsr_0_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
         Kokkos::Execution::parallel_for_t,
-        node_props_t,
-        Tests::Utils::Functors::Labeled<'a'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+        TEST_EXECUTION_SPACE,
+        Kokkos::Execution::Impl::ParallelForData<
+            Tests::Utils::Functors::Labeled<'a'>,
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+            Kokkos::Execution::Impl::Label<std::string>
+        >
     >;
 
     using clsr_1_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
         Kokkos::Execution::parallel_for_t,
-        node_props_t,
-        Tests::Utils::Functors::Labeled<'b'>,
-        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+        TEST_EXECUTION_SPACE,
+        Kokkos::Execution::Impl::ParallelForData<
+            Tests::Utils::Functors::Labeled<'b'>,
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+            Kokkos::Execution::Impl::Label<std::string>
+        >
     >;
 
     static_assert(std::same_as<

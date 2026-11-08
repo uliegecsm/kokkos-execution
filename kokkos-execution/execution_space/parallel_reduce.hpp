@@ -11,6 +11,7 @@
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/make_policy.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/state.hpp"
 #include "kokkos-execution/parallel_reduce.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -19,7 +20,7 @@ template <Kokkos::ExecutionSpace Exec, Impl::parallel_reduce_data Data>
 struct ParallelReduceClosure {
     using execution_space = Exec;
 
-    void submit() const & {
+    void submit() const & noexcept(false) {
         if constexpr (Impl::labeled<Data>) {
             Kokkos::parallel_reduce(
                 Impl::as_convertible_to_string(Impl::get_property<Impl::Label>(data)),
@@ -34,7 +35,12 @@ struct ParallelReduceClosure {
     [[nodiscard]]
     auto get_policy() const & noexcept {
         return Impl::make_policy<Kokkos::Execution::parallel_reduce_t, execution_space>(
-            state->exec, data.policy_or_iter_space);
+            this->get_exec(), data.policy_or_iter_space);
+    }
+
+    [[nodiscard]]
+    auto get_exec() const & noexcept -> const execution_space& {
+        return state->exec;
     }
 
     const Impl::State<execution_space>* state;
