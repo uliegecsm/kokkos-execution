@@ -18,19 +18,23 @@ namespace Kokkos::Execution::GraphImpl {
 template <Kokkos::ExecutionSpace Exec, typename Label>
 using node_props_t = typename Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<Exec>, Label>::uniform_type;
 
-template <Kokkos::ExecutionSpace Exec, typename Data>
+template <typename Data, Kokkos::ExecutionSpace Exec>
 requires(Impl::labeled<std::remove_cvref_t<Data>>)
-constexpr auto make_node_props(const Exec& exec, Data&& data) STDEXEC_AUTO_RETURN(
-    Kokkos::Experimental::node_props(
-        Kokkos::Experimental::get_device_handle(exec),
-        Impl::as_convertible_to_string(Impl::get_property<Impl::Label>(std::forward<Data>(data)))))
+constexpr auto
+    make_node_props(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, std::remove_reference_t<Data>& data)
+        STDEXEC_AUTO_RETURN(
+            Kokkos::Experimental::node_props(
+                device_handle,
+                Impl::as_convertible_to_string(stdexec::__forward_like<Data>(Impl::get_property<Impl::Label>(data)))))
 
-template <Kokkos::ExecutionSpace Exec, typename Data>
-constexpr auto make_node_props(const Exec& exec, Data&&)
-    STDEXEC_AUTO_RETURN(Kokkos::Experimental::node_props(Kokkos::Experimental::get_device_handle(exec)))
+template <typename Data, Kokkos::ExecutionSpace Exec>
+requires(!Impl::labeled<std::remove_cvref_t<Data>>)
+constexpr auto make_node_props(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, std::remove_reference_t<Data>&)
+    STDEXEC_AUTO_RETURN(Kokkos::Experimental::node_props(device_handle))
 
-template <Kokkos::ExecutionSpace Exec, typename Data>
-using make_node_props_t = decltype(make_node_props(std::declval<const Exec&>(), std::declval<Data&&>()));
+template <typename Data, Kokkos::ExecutionSpace Exec>
+using make_node_props_t =
+    decltype(make_node_props<Data>(std::declval<const Kokkos::Impl::DeviceHandle<Exec>&>(), std::declval<Data&>()));
 
 //! Retrieve the @c Kokkos::Impl::DeviceHandle type from a node properties type.
 template <Kokkos::ExecutionSpace Exec>

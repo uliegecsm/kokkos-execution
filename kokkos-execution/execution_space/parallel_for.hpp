@@ -11,6 +11,7 @@
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/make_policy.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/state.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -29,7 +30,12 @@ struct ParallelForClosure {
 
     [[nodiscard]]
     auto get_policy() const & noexcept {
-        return Impl::make_policy<execution_space>(state->exec, data.policy_or_iter_space);
+        return Impl::make_policy<execution_space>(this->get_exec(), data.policy_or_iter_space);
+    }
+
+    [[nodiscard]]
+    auto get_exec() const & noexcept -> const execution_space& {
+        return state->exec;
     }
 
     const Impl::State<execution_space>* state;

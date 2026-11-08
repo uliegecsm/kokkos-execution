@@ -196,10 +196,11 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), then_continues_on_single_thread_context_c
 
     using transform_sender_result_t =
         stdexec::transform_sender_result_t<decltype(sndr), stdexec::env_of_t<sync_wait_rcvr_t>>;
-    static_assert(std::same_as<
-                  transform_sender_result_t,
-                  Kokkos::Execution::GraphImpl::ThenSender<TEST_EXECUTION_SPACE, inner_sndr_t, functor_t>
-    >);
+    static_assert(
+        std::same_as<
+            transform_sender_result_t,
+            Kokkos::Execution::GraphImpl::ThenSender<inner_sndr_t, TEST_EXECUTION_SPACE, std::string_view, functor_t>
+        >);
 
     using connect_result_t = stdexec::connect_result_t<decltype(sndr), sync_wait_rcvr_t>;
     static_assert(std::same_as<
@@ -207,7 +208,7 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), then_continues_on_single_thread_context_c
                   Kokkos::Execution::GraphImpl::OpState<
                       inner_sndr_t,
                       sync_wait_rcvr_t,
-                      Kokkos::Execution::GraphImpl::ThenClosure<TEST_EXECUTION_SPACE, functor_t>
+                      Kokkos::Execution::GraphImpl::ThenClosure<TEST_EXECUTION_SPACE, std::string_view, functor_t>
                   >
     >);
 
