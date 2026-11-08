@@ -36,7 +36,6 @@ struct ParallelReduceClosure {
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        const auto device_handle = Kokkos::Impl::get_property<device_handle_t>(node_props);
         const auto label = get_label_or_display_string_of<Functor>(node_props);
 #endif
         auto node = predecessor.then_parallel_reduce(
@@ -46,7 +45,7 @@ struct ParallelReduceClosure {
             std::move(reducer));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
-        graph_add_node_event(std::move(label), predecessor, node, device_handle);
+        graph_add_node_event(std::move(label), predecessor, node);
 #endif
         return node;
     }
