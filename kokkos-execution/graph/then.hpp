@@ -45,13 +45,12 @@ struct ThenClosure {
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        auto [device_handle, label] = std::tuple<device_handle_t, std::string>{
-            Kokkos::Execution::GraphImpl::get_properties<device_handle_t, std::string>(node_props)};
+        auto label = Kokkos::Impl::get_property<std::string>(node_props);
 #endif
         auto node = predecessor.then(std::move(node_props), std::forward<Functor>(functor));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
-        graph_add_node_event(std::move(label), predecessor, node, device_handle);
+        graph_add_node_event(std::move(label), predecessor, node);
 #endif
         return node;
     }

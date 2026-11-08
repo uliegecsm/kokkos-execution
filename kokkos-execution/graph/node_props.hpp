@@ -54,18 +54,6 @@ struct ExecOf<Kokkos::Impl::DeviceHandle<Exec>> : std::type_identity<Exec> { };
 template <typename T>
 using exec_of_t = typename ExecOf<T>::type;
 
-template <Kokkos::Impl::ValidNodeProperty... Props, typename PropsContainer>
-requires Kokkos::Impl::NodeProperties<std::remove_cvref_t<PropsContainer>>
-[[nodiscard]]
-constexpr auto get_properties(PropsContainer&& props) { // NOLINT(cppcoreguidelines-missing-std-forward)
-    if constexpr (std::is_lvalue_reference_v<PropsContainer>) {
-        return std::tie(Kokkos::Impl::get_property<Props>(props)...);
-    } else {
-        return std::tuple<Props...>{
-            stdexec::__forward_like<PropsContainer>(Kokkos::Impl::get_property<Props>(props))...};
-    }
-}
-
 /**
  * @brief If the node properties contain a label, return it. Otherwise, use the display string of @p T.
  *

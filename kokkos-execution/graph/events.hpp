@@ -50,7 +50,7 @@ struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphAddNodeEvent {
     std::string name{};
     void* graph = nullptr;
     void* predecessor = nullptr;
-    void* node = nullptr;
+    const void* node = nullptr;
     uint32_t dev_id = 0;
 
     constexpr auto operator<=>(const GraphAddNodeEvent&) const = default;
@@ -146,25 +146,18 @@ auto create_graph(const Kokkos::Impl::DeviceHandle<Exec>& device_handle, Args&&.
     return graph;
 }
 
-/**
- * @brief Record an event for a @p node added after @p predecessor.
- *
- * @todo Once https://github.com/kokkos/kokkos/pull/9137 is merged, get rid of the @p device_handle and potentially the @p label arguments.
- */
-template <typename Label, NodeRef Predecessor, NodeRef NodeType, Kokkos::ExecutionSpace Exec>
-void graph_add_node_event(
-    Label&& label,
-    const Predecessor& predecessor,
-    const NodeType& node,
-    const Kokkos::Impl::DeviceHandle<Exec>& device_handle) {
+//! Record an event for a @p node added after @p predecessor.
+template <typename Label, NodeRef Predecessor, NodeRef NodeType>
+void graph_add_node_event(Label&& label, const Predecessor& predecessor, const NodeType& node) {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH)
+    const auto* node_ptr = get_node_ptr(node);
     Kokkos::utils::callbacks::dispatch(
         GraphAddNodeEvent{
             .name = Impl::as_convertible_to_string(std::forward<Label>(label)),
             .graph = get_graph_impl_ptr(predecessor),
             .predecessor = get_node_ptr(predecessor),
-            .node = get_node_ptr(node),
-            .dev_id = Kokkos::Tools::Experimental::device_id(device_handle.m_exec)});
+            .node = node_ptr,
+            .dev_id = Kokkos::Tools::Experimental::device_id(node_ptr->get_device_handle().m_exec)});
 #endif
 }
 
