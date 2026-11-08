@@ -142,41 +142,6 @@ consteval bool test_parallel_reduce_data_size() {
 
 static_assert(test_parallel_reduce_data_size());
 
-//! @test Check that @ref Kokkos::Execution::Impl::parallel_reduce_data_from_t works as expected.
-consteval bool test_parallel_reduce_data_from_t() {
-    static_assert(std::same_as<
-                  Kokkos::Execution::Impl::parallel_reduce_data_from_t<
-                      typename ParallelReduceDataTest::functor_t,
-                      typename ParallelReduceDataTest::iter_space_t,
-                      typename ParallelReduceDataTest::reducer_t
-                  >,
-                  typename ParallelReduceDataTest::data_t
-    >);
-    static_assert(std::same_as<
-                  Kokkos::Execution::Impl::parallel_reduce_data_from_t<
-                      typename ParallelReduceDataTest::functor_t,
-                      typename ParallelReduceDataTest::iter_space_t,
-                      typename ParallelReduceDataTest::reducer_t,
-                      Kokkos::Execution::Impl::Label<std::string_view>
-                  >,
-                  typename ParallelReduceDataTest::labeled_data_t
-    >);
-    static_assert(std::same_as<
-                  Kokkos::Execution::Impl::parallel_reduce_data_from_t<
-                      typename ParallelReduceDataTest::functor_t,
-                      typename ParallelReduceDataTest::iter_space_t,
-                      typename ParallelReduceDataTest::reducer_t,
-                      Kokkos::Execution::Impl::Label<std::string>,
-                      std::monostate
-                  >,
-                  typename ParallelReduceDataTest::multi_data_t
-    >);
-
-    return true;
-}
-
-static_assert(test_parallel_reduce_data_from_t());
-
 //! @test Check that @ref Kokkos::Execution::Impl::ParallelReduceData::transform_policy_or_iter_space works as expected.
 TEST_F(ParallelReduceDataTest, transform_policy_or_iter_space) {
     using labeled_data_iter_space_t = Kokkos::Execution::Impl::ParallelReduceData<

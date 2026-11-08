@@ -19,7 +19,7 @@ struct ParallelForClosure {
     using node_props_t = NodeProps;
     using device_handle_t = device_handle_of_t<NodeProps>;
     using execution_space = exec_of_t<device_handle_t>;
-    using policy_t = Impl::make_policy_t<execution_space, ExecPolicyOrIterSpace&&>;
+    using policy_t = Impl::make_policy_result_t<Impl::make_policy_t<execution_space>, ExecPolicyOrIterSpace&&>;
 
     template <NodeRef Predecessor>
     using node_t = decltype(std::declval<const Predecessor&>().then_parallel_for(
@@ -36,7 +36,7 @@ struct ParallelForClosure {
 #endif
         auto node = predecessor.then_parallel_for(
             std::move(node_props),
-            Impl::make_policy(execution_space{}, std::move(policy_or_iter_space)),
+            Impl::make_policy<execution_space>(std::move(policy_or_iter_space)),
             std::move(functor));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)

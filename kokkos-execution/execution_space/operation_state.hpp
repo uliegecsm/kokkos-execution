@@ -88,7 +88,7 @@ struct OpStateBase {
     //! @note All @ref clsrs are assumed to reference the same execution space instance.
     [[nodiscard]]
     constexpr auto query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> {
-        return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).get_policy().space()};
+        return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).state->exec};
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)

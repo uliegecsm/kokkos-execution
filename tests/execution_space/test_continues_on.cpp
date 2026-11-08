@@ -130,9 +130,9 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
     using then_rcvr_t = Kokkos::Execution::Impl::Receiver<Kokkos::Execution::ExecutionSpaceImpl::OpStateBase<
         Kokkos::Execution::Impl::SyncWait::Receiver<host_execution_space, std::true_type>,
         Kokkos::Execution::ExecutionSpaceImpl::ThenClosure<
+            host_execution_space,
             std::string_view,
-            Tests::Utils::Functors::Labeled<'h'>,
-            Kokkos::SinglePolicy<host_execution_space>
+            Tests::Utils::Functors::Labeled<'h'>
         >
     >>;
     static_assert(std::same_as<decltype(then_op_state.inner_op_state.rcvr), then_rcvr_t>);

@@ -165,24 +165,6 @@ struct ParallelReduceData : Properties... {
     STDEXEC_EXPLICIT_THIS_END(transform_policy_or_iter_space)
 };
 
-//! @name Get the @ref ParallelReduceData type from its components.
-///@{
-template <typename Functor, typename ExecPolicyOrIterSpace, typename Reducer, typename... Properties>
-struct parallel_reduce_data_from {
-    using type = ParallelReduceData<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>;
-};
-
-template <typename Functor, typename ExecPolicyOrIterSpace, typename Reducer, typename... Properties>
-struct parallel_reduce_data_from<Functor, ExecPolicyOrIterSpace, Reducer, properties<Properties...>> {
-    using type = ParallelReduceData<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>;
-};
-
-template <typename Functor, typename ExecPolicyOrIterSpace, typename Reducer, typename... Properties>
-using parallel_reduce_data_from_t =
-    typename parallel_reduce_data_from<Functor, ExecPolicyOrIterSpace, Reducer, Properties...>::type;
-
-///@}
-
 template <stdexec::sender Sndr, Impl::parallel_reduce_data Data>
 struct ParallelReduceSender : stdexec::__tuple<parallel_reduce_t, Data, Sndr> {
     using sender_concept = stdexec::sender_tag;

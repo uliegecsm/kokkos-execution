@@ -29,8 +29,11 @@ struct TransformSenderFor<stdexec::bulk_t> {
     using trnsfrmd_sndr_t = ParallelForSender<
         Sndr,
         node_props_t<Impl::exec_of_t<Sndr, Env>, std::string>,
-        typename Kokkos::Execution::Impl::bulk_traits<Data>::functor_t,
-        Impl::policy_for_bulk_t<Env, Data, Sndr>
+        Impl::functor_for_bulk_t<Data>,
+        Impl::make_policy_result_t<
+            Impl::make_policy_for_bulk_t<Impl::exec_of_t<Sndr, Env>, Data>,
+            Impl::iter_space_for_bulk_t<Data>
+        >
     >;
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
@@ -51,8 +54,8 @@ struct TransformSenderFor<stdexec::bulk_t> {
                      Kokkos::Experimental::get_device_handle(schd.state->exec),
                        std::string(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk"))),
                        .functor = stdexec::__forward_like<Data>(functor),
-                       .policy_or_iter_space =
-                     Impl::policy_for_bulk_t<Env, Data, Sndr>(0, stdexec::__forward_like<Data>(shape))},
+                       .policy_or_iter_space = Impl::make_policy_for_bulk_t<Impl::exec_of_t<Sndr, Env>, Data>{}(
+                     Impl::iter_space_for_bulk_t<Data>{stdexec::__forward_like<Data>(data.__shape_)})},
             .sndr = std::forward<Sndr>(sndr)
         };
     }
