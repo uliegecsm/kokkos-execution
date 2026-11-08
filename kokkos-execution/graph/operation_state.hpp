@@ -36,10 +36,16 @@ import kokkos.graph_impl;
 namespace Kokkos::Execution::GraphImpl {
 
 template <typename Clsr>
-concept Closure = requires {
+concept Closure = requires(const Clsr& clsr) {
     typename Clsr::execution_space;
+    requires Kokkos::ExecutionSpace<typename Clsr::execution_space>;
+
+    typename Clsr::device_handle_t;
     requires std::same_as<typename Clsr::device_handle_t, Kokkos::Impl::DeviceHandle<typename Clsr::execution_space>>;
+
     typename Clsr::node_props_t;
+
+    { clsr.get_node_props() } -> std::same_as<typename Clsr::node_props_t>;
 };
 
 //! General case of a graph operation state.
@@ -221,7 +227,7 @@ struct OpState
         RestOfClosures... clsrs) noexcept(false)
         : OpStateBase<execution_space, Rcvr>(std::move(rcvr))
         , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
-        , state{Kokkos::Impl::get_property<device_handle_t>(clsr.node_props)}
+        , state{Kokkos::Impl::get_property<device_handle_t>(clsr.get_node_props())}
         , node{add_nodes(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Operation state graph composition policy is "
