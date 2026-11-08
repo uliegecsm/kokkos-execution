@@ -36,10 +36,19 @@ import kokkos.graph_impl;
 namespace Kokkos::Execution::GraphImpl {
 
 template <typename Clsr>
-concept Closure = requires {
+concept Closure = requires(const Clsr& clsr) {
     typename Clsr::execution_space;
+    requires Kokkos::ExecutionSpace<typename Clsr::execution_space>;
+
+    typename Clsr::device_handle_t;
     requires std::same_as<typename Clsr::device_handle_t, Kokkos::Impl::DeviceHandle<typename Clsr::execution_space>>;
-    typename Clsr::node_props_t;
+
+    { clsr.get_device_handle() } -> std::same_as<typename Clsr::device_handle_t>;
+};
+
+template <typename Clsr, typename Predecessor>
+concept ClosureFor = Closure<Clsr> && NodeRef<Predecessor> && requires(Clsr&& clsr, const Predecessor& pred) {
+    { std::move(clsr).add_node(pred) } -> NodeRef;
 };
 
 //! General case of a graph operation state.
@@ -168,14 +177,13 @@ struct OpStateBase {
 };
 
 //! Add all nodes as a sequence. Hence, only the first node may be added after the root node.
-template <typename Predecessor, Closure FirstClosure>
-requires NodeRef<std::remove_cvref_t<Predecessor>>
+template <typename Predecessor, ClosureFor<std::remove_cvref_t<Predecessor>> FirstClosure>
 static auto add_nodes(Predecessor&& predecessor, FirstClosure&& clsr) {
     return std::forward<FirstClosure>(clsr).add_node(std::forward<Predecessor>(predecessor));
 }
 
-template <typename Predecessor, Closure FirstClosure, Closure... RestOfClosures>
-requires NodeRef<std::remove_cvref_t<Predecessor>> && (sizeof...(RestOfClosures) > 0)
+template <typename Predecessor, ClosureFor<std::remove_cvref_t<Predecessor>> FirstClosure, Closure... RestOfClosures>
+requires(sizeof...(RestOfClosures) > 0)
 static auto add_nodes(Predecessor&& predecessor, FirstClosure&& clsr, RestOfClosures&&... clsrs) {
     return add_nodes(
         std::forward<FirstClosure>(clsr).add_node(std::forward<Predecessor>(predecessor)),
@@ -221,7 +229,7 @@ struct OpState
         RestOfClosures... clsrs) noexcept(false)
         : OpStateBase<execution_space, Rcvr>(std::move(rcvr))
         , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
-        , state{Kokkos::Impl::get_property<device_handle_t>(clsr.node_props)}
+        , state{clsr.get_device_handle()}
         , node{add_nodes(this->get_predecessor(), std::move(clsr), std::move(clsrs)...)} {
 #if defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         PLOG_INFO << "Operation state graph composition policy is "
