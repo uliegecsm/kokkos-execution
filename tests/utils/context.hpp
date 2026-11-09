@@ -20,6 +20,7 @@ import kokkos.core;
 
 #include "kokkos-utils/tests/scoped/ExecutionSpace.hpp"
 
+#include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/kokkos.hpp"
 
 namespace Tests::Utils {

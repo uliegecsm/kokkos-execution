@@ -2,6 +2,7 @@
 PRAGMA_DIAGNOSTIC_PUSH
 KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/repeat_until.hpp"
+#include "exec/single_thread_context.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
@@ -14,6 +15,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -49,18 +51,19 @@ class TEST_CATEGORY(RepeatEffectUntilTest)
 TEST_F(TEST_CATEGORY(RepeatEffectUntilTest), works) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
+    exec::single_thread_context stc{};
     const context_t esc{exec};
 
-    auto chain = stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data) | BULK_SUM_INDICES(2, data);
+    unsigned int guard = 0;
+
+    auto sndr = experimental::execution::repeat_until(
+        stdexec::schedule(esc.get_scheduler()) | THEN_INCREMENT(data) | BULK_SUM_INDICES(2, data)
+        | stdexec::continues_on(stc.get_scheduler()) | stdexec::then([&guard]() -> bool { return (++guard) >= 3; }));
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
 
     ASSERT_THAT(
-        recorder_listener_t::record([chain = std::move(chain)]() mutable {
-            unsigned int guard = 0;
-            stdexec::sync_wait(
-                experimental::execution::repeat_until(
-                    std::move(chain) | stdexec::continues_on(stdexec::inline_scheduler{})
-                    | stdexec::then([&guard]() -> bool { return (++guard) >= 3; })));
-        }),
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),

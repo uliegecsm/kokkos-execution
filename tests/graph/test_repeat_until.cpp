@@ -2,6 +2,7 @@
 PRAGMA_DIAGNOSTIC_PUSH
 KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/repeat_until.hpp"
+#include "exec/single_thread_context.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos-utils/callbacks/ConjunctionMatcher.hpp"
@@ -57,15 +58,18 @@ class TEST_CATEGORY(RepeatEffectUntilTest)
 TEST_F(TEST_CATEGORY(RepeatEffectUntilTest), works) {
     const view_s_t data(Kokkos::view_alloc(exec, "data - shared space"));
 
+    exec::single_thread_context stc{};
     const context_t gctx{exec};
 
     unsigned int guard = 0;
 
-    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(
-        experimental::execution::repeat_until(
-            stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT(data)
-            | stdexec::continues_on(stdexec::inline_scheduler{})
-            | stdexec::then([&guard]() -> bool { return (++guard) >= 3; })));
+    auto sndr = experimental::execution::repeat_until(
+        stdexec::schedule(gctx.get_scheduler()) | THEN_INCREMENT(data) | stdexec::continues_on(stc.get_scheduler())
+        | stdexec::then([&guard]() -> bool { return (++guard) >= 3; }));
+
+    KOKKOS_EXECUTION_THREADS_THROWS_ON_SYNC_WAIT_ASSERT_AND_SKIP(sndr)
+
+    const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr));
 
     ASSERT_THAT(
         recorded_events,

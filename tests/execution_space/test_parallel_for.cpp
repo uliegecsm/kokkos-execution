@@ -51,7 +51,11 @@ class TEST_CATEGORY(ParallelForTest)
  * @test Check traits of sender returned by @ref Kokkos::Execution::parallel_for either uncustomized
  *       or customized for @ref Kokkos::Execution::ExecutionSpaceContext.
  */
-template <template <typename...> class SndrAdptr, bool IsDispatchingSender>
+template <
+    template <typename...> typename SndrAdptr,
+    bool ExptIsDispatchingSender,
+    template <typename> typename ExptTransformSenderType
+>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
@@ -69,7 +73,7 @@ consteval bool test_sndr_traits() {
     static_assert(std::same_as<Kokkos::Execution::Impl::exec_of_t<pfor_sndr_t>, TEST_EXECUTION_SPACE>);
 
     //! Models the dispatching sender concept.
-    static_assert(Kokkos::Execution::Impl::dispatching_sender<pfor_sndr_t> == IsDispatchingSender);
+    static_assert(Kokkos::Execution::Impl::dispatching_sender<pfor_sndr_t> == ExptIsDispatchingSender);
 
     //! Has the expected completion signatures.
     static_assert(!stdexec::dependent_sender<pfor_sndr_t>);
@@ -94,12 +98,12 @@ consteval bool test_sndr_traits() {
 
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
-                  Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
+                  typename ExptTransformSenderType<Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender< // NOLINT(modernize-type-traits)
                       Kokkos::Execution::parallel_for_t,
                       schd_sndr_t,
                       TEST_EXECUTION_SPACE,
                       pfor_data_t
-                  >
+                  >>::type
     >);
 
     //! It is nothrow connectable.
@@ -122,8 +126,8 @@ using pfor_impl_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForSender<
     Kokkos::Execution::Impl::ParallelForData<Functor, Policy, Kokkos::Execution::Impl::Label<Label>>
 >;
 
-static_assert(test_sndr_traits<pfor_generic_t, true>());
-static_assert(test_sndr_traits<pfor_impl_t, false>());
+static_assert(test_sndr_traits<pfor_generic_t, true, std::type_identity>());
+static_assert(test_sndr_traits<pfor_impl_t, false, std::add_rvalue_reference>());
 
 //! @test Check that @ref Kokkos::Execution::Impl::ParallelForSender is transformable with @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
 consteval bool test_sndr_is_transformable() {
@@ -447,10 +451,10 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
         stdexec::schedule(esc.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, counter),
         Tests::Utils::SinkReceiver{});
 
-    EXPECT_EQ(counter_t::copy_assignments, 0);
-    EXPECT_EQ(counter_t::copy_constructions, 1);
-    EXPECT_EQ(counter_t::move_assignments, 0);
-    EXPECT_EQ(counter_t::move_constructions, 8);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::copy_constructions, 1);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 6);
 
     counter_t::reset();
 
@@ -459,10 +463,10 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
         stdexec::schedule(esc.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, std::move(counter)),
         Tests::Utils::SinkReceiver{});
 
-    EXPECT_EQ(counter_t::copy_assignments, 0);
-    EXPECT_EQ(counter_t::copy_constructions, 0);
-    EXPECT_EQ(counter_t::move_assignments, 0);
-    EXPECT_EQ(counter_t::move_constructions, 9);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::copy_constructions, 0);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 7);
 
     counter_t::reset();
 
@@ -471,10 +475,10 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
         stdexec::schedule(esc.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, counter_t{}),
         Tests::Utils::SinkReceiver{});
 
-    EXPECT_EQ(counter_t::copy_assignments, 0);
-    EXPECT_EQ(counter_t::copy_constructions, 0);
-    EXPECT_EQ(counter_t::move_assignments, 0);
-    EXPECT_EQ(counter_t::move_constructions, 9);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::copy_constructions, 0);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 7);
 }
 
 } // namespace Tests::ExecutionSpaceImpl

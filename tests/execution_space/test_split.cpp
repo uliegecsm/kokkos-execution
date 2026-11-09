@@ -87,14 +87,18 @@ TEST_F(SplitTest, within) {
                   Kokkos::Execution::ExecutionSpaceImpl::Domain
     >);
 
-    stdexec::sender auto sndr = std::move(w_a) | stdexec::continues_on(stdexec::inline_scheduler{})
+    stdexec::sender auto sndr = std::move(w_a) | stdexec::continues_on(pool.get_scheduler())
                               | stdexec::then([&data]() { EXPECT_EQ(data(), 5); });
 
     static_assert(stdexec::dependent_sender<decltype(sndr)>);
 
     static_assert(std::same_as<
-                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(sndr), stdexec::env<>>,
-                  stdexec::default_domain
+                  stdexec::__completion_domain_of_t<
+                      stdexec::set_value_t,
+                      decltype(sndr),
+                      stdexec::prop<stdexec::get_start_scheduler_t, stdexec::run_loop::scheduler>
+                  >,
+                  experimental::execution::_pool::_static_thread_pool::domain
     >);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";

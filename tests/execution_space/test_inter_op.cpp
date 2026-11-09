@@ -57,7 +57,7 @@ TEST_F(InterOpTest, transition_to_inline_scheduler) {
             Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{.prev = 0, .value = 4, .data = data.data()})
         | stdexec::continues_on(stdexec::inline_scheduler{})
         | stdexec::then(
-            Tests::Utils::Functors::LoadCheckAdd<value_t, false>{.prev = 4, .value = 4, .data = data.data()});
+            Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
@@ -68,7 +68,9 @@ TEST_F(InterOpTest, transition_to_inline_scheduler) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 8);
 }
@@ -120,7 +122,7 @@ TEST_F(InterOpTest, transition_from_inline_scheduler_and_back) {
             Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{.prev = 4, .value = 4, .data = data.data()})
         | stdexec::continues_on(stdexec::inline_scheduler{})
         | stdexec::then(
-            Tests::Utils::Functors::LoadCheckAdd<value_t, false>{.prev = 8, .value = 4, .data = data.data()});
+            Tests::Utils::Functors::LoadCheckAdd<value_t, on_device>{.prev = 8, .value = 4, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 
@@ -131,7 +133,9 @@ TEST_F(InterOpTest, transition_from_inline_scheduler_and_back) {
         recorded_events,
         testing::ElementsAre(
             MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
-            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from"))));
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
+            MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 12);
 }

@@ -66,6 +66,51 @@ struct Counter {
     }
 };
 
+//! Similar to @ref Tests::Utils::Functors::Counter, but the internal counters are not atomic.
+struct CounterRef {
+    struct counters {
+        unsigned int constructions = 0;
+        unsigned int destructions = 0;
+        unsigned int copy_constructions = 0;
+        unsigned int copy_assignments = 0;
+        unsigned int move_constructions = 0;
+        unsigned int move_assignments = 0;
+    };
+
+    counters& m_counts; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+
+    explicit constexpr CounterRef(counters& counts) noexcept
+        : m_counts(counts) {
+        ++m_counts.constructions;
+    }
+
+    constexpr ~CounterRef() noexcept {
+        ++m_counts.destructions;
+    }
+
+    constexpr CounterRef(const CounterRef& other) noexcept
+        : m_counts(other.m_counts) {
+        ++m_counts.copy_constructions;
+    }
+
+    constexpr CounterRef& operator=(const CounterRef& other) noexcept {
+        m_counts = other.m_counts;
+        ++m_counts.copy_assignments;
+        return *this;
+    }
+
+    constexpr CounterRef(CounterRef&& other) noexcept
+        : m_counts(other.m_counts) {
+        ++m_counts.move_constructions;
+    }
+
+    constexpr CounterRef& operator=(CounterRef&& other) noexcept {
+        m_counts = other.m_counts;
+        ++m_counts.move_assignments;
+        return *this;
+    }
+};
+
 } // namespace Tests::Utils::Functors
 
 #endif // KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_COUNTER_HPP
