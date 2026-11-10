@@ -6,7 +6,7 @@
 
 namespace Kokkos::Execution::Utils {
 
-inline std::ostream& operator<<(std::ostream& out, const std::vector<void*>& values) {
+inline std::ostream& operator<<(std::ostream& out, const std::vector<const void*>& values) {
     out << '[';
     for (bool first = true; const void* value: values) {
         if (!first)

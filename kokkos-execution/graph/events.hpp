@@ -26,8 +26,8 @@ using Utils::operator<<;
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is created.
 struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphCreateEvent {
-    void* graph = nullptr;
-    void* root_node = nullptr;
+    const void* graph = nullptr;
+    const void* root_node = nullptr;
     uint32_t dev_id = 0;
     uint64_t event_id = 0;
 
@@ -48,8 +48,8 @@ struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphCreateEvent {
  */
 struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphAddNodeEvent {
     std::string name{};
-    void* graph = nullptr;
-    void* predecessor = nullptr;
+    const void* graph = nullptr;
+    const void* predecessor = nullptr;
     const void* node = nullptr;
     uint32_t dev_id = 0;
 
@@ -66,9 +66,9 @@ struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphAddNodeEvent {
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph aggregate node is added.
 struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphAddAggregateNodeEvent {
-    void* graph = nullptr;
-    std::vector<void*> predecessors{};
-    void* node = nullptr;
+    const void* graph = nullptr;
+    std::vector<const void*> predecessors{};
+    const void* node = nullptr;
 
     constexpr auto operator<=>(const GraphAddAggregateNodeEvent&) const = default;
 
@@ -83,7 +83,7 @@ struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphAddAggregateNodeEvent {
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is instantiated.
 struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphInstantiateEvent {
-    void* graph = nullptr;
+    const void* graph = nullptr;
 
     constexpr auto operator<=>(const GraphInstantiateEvent&) const = default;
 
@@ -96,7 +96,7 @@ struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphInstantiateEvent {
 
 //! Event to be sent to @ref Kokkos::utils::callbacks::dispatch when a @c Kokkos graph is submitted.
 struct KOKKOS_EXECUTION_UTILS_STREAMABLE GraphSubmitEvent {
-    void* graph = nullptr;
+    const void* graph = nullptr;
     uint32_t dev_id = 0;
 
     constexpr auto operator<=>(const GraphSubmitEvent&) const = default;
