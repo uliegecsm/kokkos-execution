@@ -37,6 +37,14 @@ struct make_policy_t {
     }
 
     template <extents Extents>
+    requires(Extents::rank() == 1 && SenderTag == bulk_t)
+    [[nodiscard]]
+    auto operator()(const Exec& exec, const Extents& extents) const noexcept
+        -> Kokkos::RangePolicy<Exec, IndexType<...>, Properties...> {
+        return {exec, 0, extents.extent(0)};
+    }
+
+    template <extents Extents>
     requires(Extents::rank() == 1)
     [[nodiscard]]
     auto operator()(const Exec& exec, const Extents& extents) const noexcept
