@@ -188,13 +188,14 @@ TEST_F(BulkTest, bulk_schedule) {
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<sndr_t, stdexec::env<>>,
                   Kokkos::Execution::GraphImpl::ParallelForSender<
+                      stdexec::bulk_t,
                       stdexec::then_t::__sender<
                           load_check_add_t,
                           stdexec::__sexpr<stdexec::bulk_t, bulk_data_t, typename BulkTest::schedule_sender_t>
                       >,
                       Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
                       sum_indices_t,
-                      Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>
+                      Kokkos::dims<1, int>
                   >
     >);
 

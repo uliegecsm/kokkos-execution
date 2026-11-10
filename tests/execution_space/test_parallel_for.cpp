@@ -194,7 +194,11 @@ consteval bool test_closure_traits() {
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using pfor_data_t =
         Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<std::string_view>>;
-    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<TEST_EXECUTION_SPACE, pfor_data_t>;
+    using closure_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+        Kokkos::Execution::parallel_for_t,
+        TEST_EXECUTION_SPACE,
+        pfor_data_t
+    >;
 
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);
@@ -214,6 +218,40 @@ static_assert(Tests::Utils::check_continues_on_after_just_stopped<
               Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
               Tests::Utils::Functors::NoOp<false, false, false>
 >());
+
+//! @test Check that @ref Kokkos::Execution::parallel_for works well with a @c Kokkos::range_slice whose first and last are known at compile time.
+TEST_F(TEST_CATEGORY(ParallelForTest), static_range_slice) {
+    const view_s_t witness(Kokkos::view_alloc(exec, "data - shared space"));
+
+    const context_t esc{exec};
+
+    using range_slice_t = Kokkos::range_slice<std::integral_constant<size_t, 42>, std::integral_constant<size_t, 43>>;
+    using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
+
+    auto sndr = stdexec::schedule(esc.get_scheduler())
+              | Kokkos::Execution::parallel_for(range_slice_t{}, functor_t{.data = witness});
+
+    static_assert(std::same_as<
+                  stdexec::connect_result_t<decltype(sndr), Tests::Utils::SinkReceiver>,
+                  Kokkos::Execution::ExecutionSpaceImpl::OpState<
+                      typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t,
+                      Tests::Utils::SinkReceiver,
+                      Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          Kokkos::Execution::parallel_for_t,
+                          TEST_EXECUTION_SPACE,
+                          Kokkos::Execution::Impl::ParallelForData<functor_t, range_slice_t>
+                      >
+                  >
+    >);
+
+    ASSERT_THAT(
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)),
+        testing::ElementsAre(
+            MATCHER_FOR_BEGIN_PFOR(exec, Kokkos::Execution::Impl::display_string_of<functor_t>()),
+            MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
+
+    ASSERT_EQ(witness(), 42);
+}
 
 //! @test Check @ref Kokkos::Execution::parallel_for with a team policy.
 TEST_F(TEST_CATEGORY(ParallelForTest), team_policy) {

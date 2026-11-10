@@ -14,14 +14,14 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-template <typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
+template <typename Tag, typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
 struct ParallelForClosure {
     static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
 
     using node_props_t = NodeProps;
     using device_handle_t = device_handle_of_t<NodeProps>;
     using execution_space = exec_of_t<device_handle_t>;
-    using policy_t = Impl::make_policy_result_t<Impl::make_policy_t<execution_space>, ExecPolicyOrIterSpace&&>;
+    using policy_t = Impl::make_policy_result_t<Impl::make_policy_t<Tag, execution_space>, ExecPolicyOrIterSpace&&>;
 
     template <NodeRef Predecessor>
     using node_t = decltype(std::declval<const Predecessor&>().then_parallel_for(
@@ -37,7 +37,7 @@ struct ParallelForClosure {
 #endif
         auto node = predecessor.then_parallel_for(
             std::move(node_props),
-            Impl::make_policy<execution_space>(std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)),
+            Impl::make_policy<Tag, execution_space>(std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)),
             std::forward<Functor>(functor));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
@@ -54,13 +54,13 @@ struct ParallelForClosure {
     ///@}
 };
 
-template <stdexec::sender Sndr, typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
+template <typename Tag, stdexec::sender Sndr, typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
 struct ParallelForSender {
     using sender_concept = stdexec::sender_tag;
 
     static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
 
-    using closure_t = ParallelForClosure<NodeProps, Functor, ExecPolicyOrIterSpace>;
+    using closure_t = ParallelForClosure<Tag, NodeProps, Functor, ExecPolicyOrIterSpace>;
 
     KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
@@ -76,6 +76,7 @@ template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t = ParallelForSender<
+        Kokkos::Execution::parallel_for_t,
         Sndr,
         make_node_props_t<Impl::exec_of_t<Sndr, Env>, Data>,
         stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::functor_t>,

@@ -65,7 +65,7 @@ consteval bool test_sndr_traits() {
                       TEST_EXECUTION_SPACE,
                       Kokkos::Execution::Impl::ParallelForData<
                           functor_t,
-                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>,
+                          Kokkos::dims<1, int>,
                           Kokkos::Execution::Impl::Label<std::string_view>
                       >
                   >
@@ -154,10 +154,11 @@ constexpr bool test_op_state_passed_by_const_ref() {
                       const typename BulkTest::schedule_sender_t&,
                       Tests::Utils::SinkReceiver,
                       Kokkos::Execution::ExecutionSpaceImpl::ParallelForClosure<
+                          stdexec::bulk_t,
                           TEST_EXECUTION_SPACE,
                           Kokkos::Execution::Impl::ParallelForData<
                               Tests::Utils::Functors::Labeled<'a'>,
-                              Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<int>>,
+                              Kokkos::dims<1, int>,
                               Kokkos::Execution::Impl::Label<std::string_view>
                           >
                       >

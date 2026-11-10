@@ -20,11 +20,8 @@ struct TransformSenderFor<stdexec::bulk_t> {
 
         using functor_t = Impl::functor_for_bulk_t<Data>;
         using iter_space_t = Impl::iter_space_for_bulk_t<Data>;
-        using make_policy_t = Impl::make_policy_for_bulk_t<execution_space, Data>;
 
-        using policy_t = Impl::make_policy_result_t<make_policy_t, iter_space_t>;
-
-        using data_t = Impl::ParallelForData<functor_t, policy_t, Impl::Label<std::string_view>>;
+        using data_t = Impl::ParallelForData<functor_t, iter_space_t, Impl::Label<std::string_view>>;
 
         using sndr_t = ParallelForSender<stdexec::bulk_t, Sndr, execution_space, data_t>;
 
@@ -36,7 +33,7 @@ struct TransformSenderFor<stdexec::bulk_t> {
                      .data =
                          {{Impl::Label{KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(execution_space, ": bulk")}},
                           stdexec::__forward_like<Data>(data.__fun_),
-                          make_policy_t{}(iter_space_t(stdexec::__forward_like<Data>(data.__shape_)))}},
+                          iter_space_t(stdexec::__forward_like<Data>(data.__shape_))}},
                     std::forward<Sndr>(sndr)
         })
     };
