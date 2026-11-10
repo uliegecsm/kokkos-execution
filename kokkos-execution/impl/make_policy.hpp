@@ -44,6 +44,27 @@ struct make_policy_t {
         return {exec, 0, extents.extent(0)};
     }
 
+    template <static_range_slice_with_default_stride RangeSlice>
+    requires(
+        std::remove_cvref_t<decltype(RangeSlice::first)>::value == 0
+        && std::remove_cvref_t<decltype(RangeSlice::last)>::value == 1)
+    [[nodiscard]]
+    auto operator()(const Exec& exec, const RangeSlice&) const noexcept {
+        return this->operator()(exec);
+    }
+
+    template <static_range_slice_with_default_stride RangeSlice>
+    requires(
+        std::remove_cvref_t<decltype(RangeSlice::first)>::value != 0
+        && std::remove_cvref_t<decltype(RangeSlice::last)>::value
+                   - std::remove_cvref_t<decltype(RangeSlice::first)>::value
+               == 1)
+    [[nodiscard]]
+    auto operator()(const Exec& exec, const RangeSlice& rgsl) const noexcept
+        -> Kokkos::RangePolicy<Exec, Kokkos::LaunchBounds<1>, Properties...> {
+        return {exec, rgsl.first, rgsl.last};
+    }
+
     template <range_slice_with_default_stride RangeSlice>
     [[nodiscard]]
     auto operator()(const Exec& exec, const RangeSlice& rgsl) const noexcept
