@@ -53,7 +53,11 @@ class TEST_CATEGORY(ParallelReduceTest)
  * @test Check traits of sender returned by @ref Kokkos::Execution::parallel_reduce either uncustomized
  *       or customized for @ref Kokkos::Execution::ExecutionSpaceContext.
  */
-template <template <typename...> class SndrAdptr, bool IsDispatchingSender>
+template <
+    template <typename...> typename SndrAdptr,
+    bool ExptIsDispatchingSender,
+    template <typename> typename ExptTransformSenderType
+>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t;
@@ -76,7 +80,7 @@ consteval bool test_sndr_traits() {
     static_assert(std::same_as<Kokkos::Execution::Impl::exec_of_t<pred_sndr_t>, TEST_EXECUTION_SPACE>);
 
     //! Models the dispatching sender concept.
-    static_assert(Kokkos::Execution::Impl::dispatching_sender<pred_sndr_t> == IsDispatchingSender);
+    static_assert(Kokkos::Execution::Impl::dispatching_sender<pred_sndr_t> == ExptIsDispatchingSender);
 
     //! Has the expected completion signatures.
     static_assert(!stdexec::dependent_sender<pred_sndr_t>);
@@ -101,12 +105,12 @@ consteval bool test_sndr_traits() {
 
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<pred_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
-                  Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceSender<
+                  typename ExptTransformSenderType<Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceSender< // NOLINT(modernize-type-traits)
                       Kokkos::Execution::parallel_reduce_t,
                       schd_sndr_t,
                       TEST_EXECUTION_SPACE,
                       pred_data_t
-                  >
+                  >>::type
     >);
 
     //! It is nothrow connectable.
@@ -129,8 +133,8 @@ using pred_impl_t = Kokkos::Execution::ExecutionSpaceImpl::ParallelReduceSender<
     Kokkos::Execution::Impl::ParallelReduceData<Functor, Policy, Reducer, Kokkos::Execution::Impl::Label<Label>>
 >;
 
-static_assert(test_sndr_traits<pred_generic_t, true>());
-static_assert(test_sndr_traits<pred_impl_t, false>());
+static_assert(test_sndr_traits<pred_generic_t, true, std::type_identity>());
+static_assert(test_sndr_traits<pred_impl_t, false, std::add_rvalue_reference>());
 
 //! @test Check that @ref Kokkos::Execution::Impl::ParallelReduceSender is transformable with @ref Kokkos::Execution::ExecutionSpaceImpl::TransformSenderFor.
 consteval bool test_sndr_is_transformable() {

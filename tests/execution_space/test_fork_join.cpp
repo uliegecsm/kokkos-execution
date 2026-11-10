@@ -66,7 +66,7 @@ TEST_F(ForkJoinTest, diamond) {
         | stdexec::continues_on(esc.get_scheduler())
         | stdexec::then(
             Tests::Utils::Functors::LoadCheckAdd<int, on_device>{.prev = 6, .value = 3, .data = data.data()})
-        | stdexec::continues_on(stdexec::inline_scheduler{})
+        | stdexec::continues_on(pool.get_scheduler())
         | stdexec::then(Tests::Utils::Functors::LoadCheckAdd<int, false>{.prev = 9, .value = 5, .data = data.data()});
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";

@@ -56,7 +56,11 @@ class TEST_CATEGORY(ParallelForTest)
  * @test Check traits of sender returned by @ref Kokkos::Execution::parallel_for either uncustomized
  *       or customized for @ref Kokkos::Execution::GraphContext.
  */
-template <template <typename...> class SndrAdptr, bool IsDispatchingSender, typename... Args>
+template <
+    template <typename...> class SndrAdptr,
+    bool ExptIsDispatchingSender,
+    template <typename> typename ExptTransformSenderType
+>
 consteval bool test_sndr_traits() {
     //! Schedule sender.
     using schd_sndr_t = typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t;
@@ -71,7 +75,7 @@ consteval bool test_sndr_traits() {
     static_assert(Kokkos::Execution::GraphImpl::graph_completing_sender<pfor_sndr_t>);
 
     //! Models the dispatching sender concept.
-    static_assert(Kokkos::Execution::Impl::dispatching_sender<pfor_sndr_t> == IsDispatchingSender);
+    static_assert(Kokkos::Execution::Impl::dispatching_sender<pfor_sndr_t> == ExptIsDispatchingSender);
 
     //! Has the expected completion signatures.
     static_assert(!stdexec::dependent_sender<pfor_sndr_t>);
@@ -96,12 +100,12 @@ consteval bool test_sndr_traits() {
 
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
-                  Kokkos::Execution::GraphImpl::ParallelForSender<
+                  typename ExptTransformSenderType<Kokkos::Execution::GraphImpl::ParallelForSender< // NOLINT(modernize-type-traits)
                       schd_sndr_t,
                       Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, label_t>,
                       functor_t,
                       policy_t
-                  >
+                  >>::type
     >);
 
     //! It is not nothrow connectable.
@@ -124,8 +128,8 @@ using pfor_impl_t = Kokkos::Execution::GraphImpl::ParallelForSender<
     Policy
 >;
 
-static_assert(test_sndr_traits<pfor_generic_t, true>());
-static_assert(test_sndr_traits<pfor_impl_t, false>());
+static_assert(test_sndr_traits<pfor_generic_t, true, std::type_identity>());
+static_assert(test_sndr_traits<pfor_impl_t, false, std::add_rvalue_reference>());
 
 //! @test Check traits of @ref Kokkos::Execution::GraphImpl::ParallelForClosure.
 template <typename ViewType>
