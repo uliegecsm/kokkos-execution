@@ -55,7 +55,7 @@ template <typename T>
 using exec_of_t = typename ExecOf<T>::type;
 
 /**
- * @brief If the node properties contain a label, return it. Otherwise, use the display string of @p T.
+ * @brief If the node properties contain a label, return it. Otherwise, use the display string of @p T (without cv type qualifiers).
  *
  * @note It avoids instantiating @ref Kokkos::Execution::Impl::display_string_of if it is not necessary.
  */
@@ -65,7 +65,7 @@ decltype(auto) get_label_or_display_string_of(PropsContainer&& props) {
     if constexpr (std::remove_cvref_t<PropsContainer>::template has<std::string>) {
         return Kokkos::Impl::get_property<std::string>(std::forward<PropsContainer>(props));
     } else {
-        return Kokkos::Execution::Impl::display_string_of<T>();
+        return Kokkos::Execution::Impl::display_string_of<std::remove_cvref_t<T>>();
     }
 }
 
