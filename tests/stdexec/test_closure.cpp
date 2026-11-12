@@ -4,6 +4,7 @@
 #include "kokkos-execution/stdexec.hpp"
 
 #include "tests/utils/functors/counter.hpp"
+#include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 
 /**
@@ -20,6 +21,7 @@
 namespace Tests {
 
 using Empty = Kokkos::Execution::Impl::Empty;
+using NoOp = Tests::Utils::Functors::NoOp<false, false, false>;
 using ThrowsWhenCopied = Tests::Utils::Functors::ThrowsWhenCopied;
 
 //! @test An @c rvalue is move-constructed and can be in a constant expression.
@@ -81,6 +83,37 @@ consteval bool test_decays() {
 }
 
 static_assert(test_decays());
+
+/**
+ * @test It may be composed with a closure of the same type.
+ *
+ * @note The underlying implementation relies on the @c stdexec::__composed structure, which must hence be instantiable
+ *       for closures of the same type.
+ *
+ * See also:
+ * - https://github.com/NVIDIA/stdexec/issues/2440
+ * - https://github.com/NVIDIA/stdexec/blob/a8449abd18f580b595bcacf249b5c18b9b8a5b2b/include/stdexec/__detail/__sender_adaptor_closure.hpp#L54-L57
+ * - https://github.com/NVIDIA/stdexec/blob/a8449abd18f580b595bcacf249b5c18b9b8a5b2b/include/stdexec/__detail/__sender_adaptor_closure.hpp#L73
+ * - https://github.com/NVIDIA/stdexec/blob/a8449abd18f580b595bcacf249b5c18b9b8a5b2b/include/stdexec/__detail/__sender_adaptor_closure.hpp#L90
+ */
+consteval bool test_may_be_composed_with_closure_of_the_same_type() {
+    auto clsr_a = stdexec::then(NoOp{});
+    auto clsr_b = stdexec::then(NoOp{});
+
+    using clsr_t = decltype(clsr_a);
+    static_assert(std::same_as<clsr_t, stdexec::__closure<stdexec::then_t, NoOp>>);
+
+    const auto clsr_composed = clsr_a | clsr_b;
+
+    static_assert(
+        std::same_as<std::remove_const_t<decltype(clsr_composed)>, stdexec::__clsur::__composed<clsr_t, clsr_t>>);
+    static_assert(std::derived_from<decltype(clsr_composed), stdexec::__composed<clsr_t, clsr_t>>);
+    static_assert(stdexec::__sender_adaptor_closure<decltype(clsr_composed)>);
+
+    return true;
+}
+
+static_assert(test_may_be_composed_with_closure_of_the_same_type());
 
 class ClosureTest : public testing::Test {
    protected:
