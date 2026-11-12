@@ -91,6 +91,7 @@ static_assert(test_decays());
  *       for closures of the same type.
  *
  * See also:
+ * - https://github.com/NVIDIA/stdexec/issues/2440
  * - https://github.com/NVIDIA/stdexec/blob/a8449abd18f580b595bcacf249b5c18b9b8a5b2b/include/stdexec/__detail/__sender_adaptor_closure.hpp#L54-L57
  * - https://github.com/NVIDIA/stdexec/blob/a8449abd18f580b595bcacf249b5c18b9b8a5b2b/include/stdexec/__detail/__sender_adaptor_closure.hpp#L73
  * - https://github.com/NVIDIA/stdexec/blob/a8449abd18f580b595bcacf249b5c18b9b8a5b2b/include/stdexec/__detail/__sender_adaptor_closure.hpp#L90
