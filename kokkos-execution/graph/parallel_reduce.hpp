@@ -13,13 +13,10 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-template <
-    typename NodeProps,
-    typename Functor,
-    Impl::execution_policy_or_iteration_space ExecPolicyOrIterSpace,
-    typename Reducer
->
+template <typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace, typename Reducer>
 struct ParallelReduceClosure {
+    static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
+
     using node_props_t = NodeProps;
     using device_handle_t = device_handle_of_t<NodeProps>;
     using execution_space = exec_of_t<device_handle_t>;
@@ -40,9 +37,9 @@ struct ParallelReduceClosure {
 #endif
         auto node = predecessor.then_parallel_reduce(
             std::move(node_props),
-            Impl::make_policy<execution_space>(std::move(policy_or_iter_space)),
-            std::move(functor),
-            std::move(reducer));
+            Impl::make_policy<execution_space>(std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)),
+            std::forward<Functor>(functor),
+            std::forward<Reducer>(reducer));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
         graph_add_node_event(std::move(label), predecessor, node);
@@ -51,20 +48,19 @@ struct ParallelReduceClosure {
     }
 
     node_props_t node_props;
-    Functor functor;
-    ExecPolicyOrIterSpace policy_or_iter_space;
-    Reducer reducer;
+    /// @name Holding a reference is fine, because it will be copied into the graph node in @ref add_node.
+    ///@{
+    Functor functor;                            // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    ExecPolicyOrIterSpace policy_or_iter_space; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    Reducer reducer;                            // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    ///@}
 };
 
-template <
-    stdexec::sender Sndr,
-    typename NodeProps,
-    typename Functor,
-    Impl::execution_policy_or_iteration_space ExecPolicyOrIterSpace,
-    typename Reducer
->
+template <stdexec::sender Sndr, typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace, typename Reducer>
 struct ParallelReduceSender {
     using sender_concept = stdexec::sender_tag;
+
+    static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
 
     using closure_t = ParallelReduceClosure<NodeProps, Functor, ExecPolicyOrIterSpace, Reducer>;
 
@@ -84,9 +80,9 @@ struct TransformSenderFor<Kokkos::Execution::parallel_reduce_t> {
     using trnsfrmd_sndr_t = ParallelReduceSender<
         Sndr,
         make_node_props_t<Impl::exec_of_t<Sndr, Env>, Data>,
-        typename std::remove_cvref_t<Data>::functor_t,
-        typename std::remove_cvref_t<Data>::policy_or_iter_space_t,
-        typename std::remove_cvref_t<Data>::reducer_t
+        stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::functor_t>,
+        stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>,
+        stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::reducer_t>
     >;
 
     template <typename Env, typename Data, typename Sndr>
