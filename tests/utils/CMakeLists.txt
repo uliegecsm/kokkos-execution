@@ -1,4 +1,5 @@
 add_one_test(NAME check_completion_scheduler_type)
 add_one_test(NAME check_rcvr_env)
 add_one_test(NAME check_rcvr_env_queryable_with)
+add_one_test(NAME lifetime)
 add_one_test(NAME tracking_allocator)

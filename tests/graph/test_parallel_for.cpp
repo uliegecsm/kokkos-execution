@@ -9,6 +9,8 @@
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/category.hpp"
 #include "tests/utils/check_node_type.hpp"
+#include "tests/utils/functors/counter.hpp"
+#include "tests/utils/functors/lifetime.hpp"
 #include "tests/utils/functors/load_check_add.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
@@ -309,6 +311,138 @@ TEST_F(TEST_CATEGORY(ParallelForTest), parallel_for_schedule_tagged_operator) {
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait"))));
 
     ASSERT_EQ(data(), 1);
+}
+
+//! @test Check that connecting uses the least amount of moves and copies.
+TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    const context_t gctx{exec};
+
+    const Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy(0, 1);
+    counter_t counter;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor = stdexec::connect(
+        stdexec::schedule(gctx.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, counter),
+        Tests::Utils::SinkReceiver{});
+
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::copy_constructions, 3);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 7);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto closure_from_xvalue_functor = stdexec::connect(
+        stdexec::schedule(gctx.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, std::move(counter)),
+        Tests::Utils::SinkReceiver{});
+
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::copy_constructions, 2);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 8);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto closure_from_prvalue_functor = stdexec::connect(
+        stdexec::schedule(gctx.get_scheduler()) | Kokkos::Execution::parallel_for("label", policy, counter_t{}),
+        Tests::Utils::SinkReceiver{});
+
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::copy_constructions, 2);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 8);
+}
+
+//! @test Ensure that the data lifetime is extended only by the underlying @c Kokkos::Experimental::Graph node.
+TEST_F(TEST_CATEGORY(ParallelForTest), lifetime) {
+    using node_props_t = Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>>;
+    using lifetime_source_t = Tests::Utils::Functors::LifetimeSource;
+    using lifetime_t = Tests::Utils::Functors::Lifetime;
+
+    const context_t gctx{exec};
+
+    lifetime_source_t lifetime_tracker{};
+
+    ASSERT_EQ(lifetime_tracker.use_count(), 0);
+
+    auto sndr = stdexec::schedule(gctx.get_scheduler())
+              | Kokkos::Execution::parallel_for(42, lifetime_t(lifetime_tracker));
+
+    //! The @c lifetime_tracker is stored by the sender.
+    ASSERT_EQ(lifetime_tracker.use_count(), 1);
+    ASSERT_EQ(lifetime_tracker.high_water(), 1);
+
+    //! Connecting with an @c lvalue sender increases the use count by one.
+    {
+        [[maybe_unused]]
+        const auto opstate_from_lvalue = stdexec::connect(sndr, Tests::Utils::SinkReceiver{});
+
+        static_assert(
+            std::same_as<
+                decltype(opstate_from_lvalue),
+                const Kokkos::Execution::GraphImpl::OpState<
+                    typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t&,
+                    Tests::Utils::SinkReceiver,
+                    Kokkos::Execution::GraphImpl::ParallelForClosure<node_props_t, lifetime_t&, Kokkos::dims<1, int>&>
+                >
+            >);
+
+        ASSERT_EQ(lifetime_tracker.use_count(), 2);
+        ASSERT_EQ(lifetime_tracker.high_water(), 4);
+    }
+
+    ASSERT_EQ(lifetime_tracker.use_count(), 1);
+
+    /// Connecting with a @c xvalue sender does not increase the use count, because the data lifetime responsibility
+    /// is only handled by the underlying @c Kokkos::Experimental::Graph node.
+    {
+        [[maybe_unused]]
+        const auto opstate_from_xvalue = stdexec::connect(std::move(sndr), Tests::Utils::SinkReceiver{});
+
+        static_assert(
+            std::same_as<
+                decltype(opstate_from_xvalue),
+                const Kokkos::Execution::GraphImpl::OpState<
+                    typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t,
+                    Tests::Utils::SinkReceiver,
+                    Kokkos::Execution::GraphImpl::ParallelForClosure<node_props_t, lifetime_t, Kokkos::dims<1, int>>
+                >
+            >);
+
+        ASSERT_EQ(lifetime_tracker.use_count(), 1);
+        ASSERT_EQ(lifetime_tracker.high_water(), 4);
+    }
+
+    ASSERT_EQ(lifetime_tracker.use_count(), 0);
+
+    //! Connecting with a @c prvalue sender increases the use count by one.
+    {
+        [[maybe_unused]]
+        const auto opstate_from_prvalue = stdexec::connect(
+            stdexec::schedule(gctx.get_scheduler()) | Kokkos::Execution::parallel_for(42, lifetime_t(lifetime_tracker)),
+            Tests::Utils::SinkReceiver{});
+
+        static_assert(
+            std::same_as<
+                decltype(opstate_from_prvalue),
+                const Kokkos::Execution::GraphImpl::OpState<
+                    typename TEST_CATEGORY(ParallelForTest)::schedule_sender_t,
+                    Tests::Utils::SinkReceiver,
+                    Kokkos::Execution::GraphImpl::ParallelForClosure<node_props_t, lifetime_t, Kokkos::dims<1, int>>
+                >
+            >);
+
+        ASSERT_EQ(lifetime_tracker.use_count(), 1);
+        ASSERT_EQ(lifetime_tracker.high_water(), 4);
+    }
+
+    ASSERT_EQ(lifetime_tracker.use_count(), 0);
 }
 
 } // namespace Tests::GraphImpl

@@ -14,8 +14,10 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-template <typename NodeProps, typename Functor, Impl::execution_policy_or_iteration_space ExecPolicyOrIterSpace>
+template <typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
 struct ParallelForClosure {
+    static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
+
     using node_props_t = NodeProps;
     using device_handle_t = device_handle_of_t<NodeProps>;
     using execution_space = exec_of_t<device_handle_t>;
@@ -35,8 +37,8 @@ struct ParallelForClosure {
 #endif
         auto node = predecessor.then_parallel_for(
             std::move(node_props),
-            Impl::make_policy<execution_space>(std::move(policy_or_iter_space)),
-            std::move(functor));
+            Impl::make_policy<execution_space>(std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)),
+            std::forward<Functor>(functor));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
         graph_add_node_event(std::move(label), predecessor, node);
@@ -45,18 +47,18 @@ struct ParallelForClosure {
     }
 
     node_props_t node_props;
-    Functor functor;
-    ExecPolicyOrIterSpace policy_or_iter_space;
+    /// @name Holding a reference is fine, because it will be copied into the graph node in @ref add_node.
+    ///@{
+    Functor functor;                            // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    ExecPolicyOrIterSpace policy_or_iter_space; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    ///@}
 };
 
-template <
-    stdexec::sender Sndr,
-    typename NodeProps,
-    typename Functor,
-    Impl::execution_policy_or_iteration_space ExecPolicyOrIterSpace
->
+template <stdexec::sender Sndr, typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
 struct ParallelForSender {
     using sender_concept = stdexec::sender_tag;
+
+    static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
 
     using closure_t = ParallelForClosure<NodeProps, Functor, ExecPolicyOrIterSpace>;
 
@@ -76,8 +78,8 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     using trnsfrmd_sndr_t = ParallelForSender<
         Sndr,
         make_node_props_t<Impl::exec_of_t<Sndr, Env>, Data>,
-        typename std::remove_cvref_t<Data>::functor_t,
-        typename std::remove_cvref_t<Data>::policy_or_iter_space_t
+        stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::functor_t>,
+        stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>
     >;
 
     template <typename Env, typename Data, typename Sndr>
