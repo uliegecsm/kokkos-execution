@@ -8,6 +8,7 @@
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/state.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
@@ -22,7 +23,12 @@ struct ThenClosure {
     //! @todo Implement policy update for the single policy in kokkos.
     [[nodiscard]]
     auto get_policy() const & noexcept {
-        return Kokkos::SinglePolicy<execution_space>{state->exec};
+        return Kokkos::SinglePolicy<execution_space>{this->get_exec()};
+    }
+
+    [[nodiscard]]
+    auto get_exec() const & noexcept -> const execution_space& {
+        return state->exec;
     }
 
     const Impl::State<execution_space>* state;

@@ -19,13 +19,10 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 template <typename Clsr>
 concept Closure = requires(const Clsr& clsr) {
     typename Clsr::execution_space;
+    requires Kokkos::ExecutionSpace<typename Clsr::execution_space>;
 
     { clsr.submit() } -> std::same_as<void>;
-
-    { clsr.get_policy() };
-    requires Kokkos::ExecutionPolicy<std::remove_cvref_t<decltype(clsr.get_policy())>>;
-
-    requires std::same_as<std::remove_cvref_t<decltype(clsr.get_policy().space())>, typename Clsr::execution_space>;
+    { clsr.get_exec() } noexcept -> std::same_as<const typename Clsr::execution_space&>;
 };
 
 template <typename Exec, typename Rcvr>
@@ -88,7 +85,7 @@ struct OpStateBase {
     //! @note All @ref clsrs are assumed to reference the same execution space instance.
     [[nodiscard]]
     constexpr auto query(Impl::get_exec_t) const noexcept -> Impl::ExecutionSpaceRef<execution_space> {
-        return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).state->exec};
+        return Impl::ExecutionSpaceRef<execution_space>{stdexec::__get<0>(clsrs).get_exec()};
     }
 
     KOKKOS_EXECUTION_GET_ENV(Rcvr, this->completion_signal.rcvr)

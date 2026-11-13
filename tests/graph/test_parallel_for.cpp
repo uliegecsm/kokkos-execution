@@ -98,15 +98,15 @@ consteval bool test_sndr_traits() {
     //! Is connectable.
     static_assert(stdexec::sender_to<pfor_sndr_t, Tests::Utils::SinkReceiver>);
 
-    static_assert(std::same_as<
-                  stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
-                  typename ExptTransformSenderType<Kokkos::Execution::GraphImpl::ParallelForSender< // NOLINT(modernize-type-traits)
-                      schd_sndr_t,
-                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, label_t>,
-                      functor_t,
-                      policy_t
-                  >>::type
-    >);
+    static_assert(
+        std::same_as<
+            stdexec::transform_sender_result_t<pfor_sndr_t, stdexec::env_of_t<Tests::Utils::SinkReceiver>>,
+            typename ExptTransformSenderType<Kokkos::Execution::GraphImpl::ParallelForSender< // NOLINT(modernize-type-traits)
+                schd_sndr_t,
+                TEST_EXECUTION_SPACE,
+                Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<label_t>>
+            >>::type
+        >);
 
     //! It is not nothrow connectable.
     static_assert(!stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
@@ -123,9 +123,8 @@ using pfor_generic_t = Kokkos::Execution::Impl::ParallelForSender<
 template <typename Sndr, typename Exec, typename Label, typename Functor, typename Policy>
 using pfor_impl_t = Kokkos::Execution::GraphImpl::ParallelForSender<
     Sndr,
-    Kokkos::Execution::GraphImpl::node_props_t<Exec, Label>,
-    Functor,
-    Policy
+    Exec,
+    Kokkos::Execution::Impl::ParallelForData<Functor, Policy, Kokkos::Execution::Impl::Label<Label>>
 >;
 
 static_assert(test_sndr_traits<pfor_generic_t, true, std::type_identity>());
@@ -138,14 +137,16 @@ consteval bool test_closure_traits() {
     using policy_t = Kokkos::RangePolicy<TEST_EXECUTION_SPACE>;
     using iter_space_t = Kokkos::dims<1, int>;
     using closure_policy_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
-        functor_t,
-        policy_t
+        TEST_EXECUTION_SPACE,
+        Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<std::string_view>>
     >;
     using closure_iter_space_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
-        functor_t,
-        iter_space_t
+        TEST_EXECUTION_SPACE,
+        Kokkos::Execution::Impl::ParallelForData<
+            functor_t,
+            iter_space_t,
+            Kokkos::Execution::Impl::Label<std::string_view>
+        >
     >;
 
     //! Models the @ref Kokkos::Execution::GraphImpl::Closure concept.

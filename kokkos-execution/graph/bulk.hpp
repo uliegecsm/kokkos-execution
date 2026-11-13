@@ -26,39 +26,40 @@ namespace Kokkos::Execution::GraphImpl {
 template <>
 struct TransformSenderFor<stdexec::bulk_t> {
     template <typename Env, typename Data, typename Sndr>
-    using trnsfrmd_sndr_t = ParallelForSender<
-        Sndr,
-        node_props_t<Impl::exec_of_t<Sndr, Env>, std::string>,
-        Impl::functor_for_bulk_t<Data>,
-        Impl::make_policy_result_t<
-            Impl::make_policy_for_bulk_t<Impl::exec_of_t<Sndr, Env>, Data>,
-            Impl::iter_space_for_bulk_t<Data>
-        >
-    >;
+    struct Transformer {
+        using execution_space = Impl::exec_of_t<Sndr, Env>;
 
-    template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
+        using functor_t = Impl::functor_for_bulk_t<Data>;
+        using iter_space_t = Impl::iter_space_for_bulk_t<Data>;
+        using make_policy_t = Impl::make_policy_for_bulk_t<execution_space, Data>;
+
+        using policy_t = Impl::make_policy_result_t<make_policy_t, iter_space_t>;
+
+        using data_t = Impl::ParallelForData<functor_t, policy_t, Impl::Label<std::string_view>>;
+
+        using sndr_t = ParallelForSender<Sndr, execution_space, data_t>;
+
+        auto operator()(const Env& env, std::remove_reference_t<Data>& data, std::remove_reference_t<Sndr>& sndr) const
+            STDEXEC_AUTO_RETURN(
+                sndr_t{
+                    {.state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
+                                  .state,
+                     .data =
+                         {{Impl::Label{KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(execution_space, ": bulk")}},
+                          stdexec::__forward_like<Data>(data.__fun_),
+                          make_policy_t{}(iter_space_t(stdexec::__forward_like<Data>(data.__shape_)))}},
+                    std::forward<Sndr>(sndr)
+        })
+    };
+
+    template <typename Env, Impl::has_parallel_policy Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && graph_completing_sender<Sndr, Env>)
-    auto operator()(const Env& env, stdexec::bulk_t, Data&& data, Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t,
-                 Sndr&&
-        >) {
-        auto&& [parallel_policy, shape, functor] = std::forward<Data>(data);
-
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            .clsr =
-                {.node_props = Kokkos::Experimental::node_props(
-                     Kokkos::Experimental::get_device_handle(schd.state->exec),
-                       std::string(KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL((Impl::exec_of_t<Sndr, Env>), ": bulk"))),
-                       .functor = stdexec::__forward_like<Data>(functor),
-                       .policy_or_iter_space = Impl::make_policy_for_bulk_t<Impl::exec_of_t<Sndr, Env>, Data>{}(
-                     Impl::iter_space_for_bulk_t<Data>{stdexec::__forward_like<Data>(data.__shape_)})},
-            .sndr = std::forward<Sndr>(sndr)
-        };
-    }
+    auto operator()(
+        const Env& env,
+        stdexec::bulk_t,
+        Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
+        Sndr&& sndr  // NOLINT(cppcoreguidelines-missing-std-forward)
+    ) const STDEXEC_AUTO_RETURN(Transformer<Env, Data, Sndr>{}(env, data, sndr))
 
     template <typename Env, Kokkos::Execution::Impl::has_parallel_policy Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
