@@ -11,6 +11,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "kokkos-execution/graph.hpp"
 #include "kokkos-execution/impl/event.hpp"
 
+#include "tests/graph/event_discard_matcher.hpp"
 #include "tests/graph/events.hpp"
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/category.hpp"
