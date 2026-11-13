@@ -11,6 +11,12 @@ import kokkos.execution.mdspan;
 #    include "Kokkos_Core.hpp"
 #endif
 
+namespace Kokkos::detail {
+//! @c Kokkos::detail::is_constant_wrapper specialization for @c std::integral_constant.
+template <class T, T Value>
+constexpr bool is_constant_wrapper<std::integral_constant<T, Value>> = true;
+} // namespace Kokkos::detail
+
 namespace Kokkos::Execution::Impl {
 
 template <typename T>
@@ -19,10 +25,17 @@ concept extents = Kokkos::detail::impl_is_extents_v<T>;
 template <typename T>
 concept range_slice = Kokkos::detail::is_range_slice<T>::value;
 
+//! Constrain a @c Kokkos::range_slice to have a compile-time known unit stride.
 template <typename T>
 concept range_slice_with_default_stride = range_slice<T>
                                        && Kokkos::detail::is_constant_wrapper<decltype(std::declval<T>().stride)>
                                        && requires(const T& rgsl) { rgsl.stride == 1; };
+
+//! Constrain a @c Kokkos::range_slice to have compile-time known @c first and @c last, as well as a compile-time known unit stride.
+template <typename T>
+concept static_range_slice_with_default_stride = range_slice_with_default_stride<T>
+                                              && Kokkos::detail::is_constant_wrapper<decltype(std::declval<T>().first)>
+                                              && Kokkos::detail::is_constant_wrapper<decltype(std::declval<T>().last)>;
 
 //! Concept that constrains types that may represent an iteration space.
 template <typename T>

@@ -33,10 +33,13 @@ struct ParallelForClosure {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         const auto label = get_label_or_display_string_of<Functor>(node_props);
 #endif
-        auto node = predecessor.then_parallel_for(
-            std::move(node_props),
-            Impl::make_policy<execution_space>(std::move(policy_or_iter_space)),
-            std::move(functor));
+        auto [policy, functor] =
+            Impl::make_policy_and_functor<Tag, Kokkos::ParallelFor>(policy_or_iter_space, functor) auto node =
+                predecessor.then_parallel_for(
+                    std::move(node_props),
+                    Impl::make_policy<execution_space>(std::move(policy_or_iter_space)),
+                    Impl::transform_functor_for_policy<Kokkos::ParallelForTag, ExecPolicyOrIterSpace, policy_t>(
+                        std::move(functor)));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
         graph_add_node_event(std::move(label), predecessor, node);
@@ -50,6 +53,7 @@ struct ParallelForClosure {
 };
 
 template <
+    typename Tag,
     stdexec::sender Sndr,
     typename NodeProps,
     typename Functor,
@@ -74,6 +78,7 @@ template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t = ParallelForSender<
+        Kokkos::parallel_for_t,
         Sndr,
         make_node_props_t<Impl::exec_of_t<Sndr, Env>, Data>,
         typename std::remove_cvref_t<Data>::functor_t,

@@ -37,11 +37,40 @@ struct make_policy_t {
     }
 
     template <extents Extents>
+    requires(Extents::rank() == 1 && SenderTag == bulk_t)
+    [[nodiscard]]
+    auto operator()(const Exec& exec, const Extents& extents) const noexcept
+        -> Kokkos::RangePolicy<Exec, IndexType<...>, Properties...> {
+        return {exec, 0, extents.extent(0)};
+    }
+
+    template <extents Extents>
     requires(Extents::rank() == 1)
     [[nodiscard]]
     auto operator()(const Exec& exec, const Extents& extents) const noexcept
         -> Kokkos::RangePolicy<Exec, Properties...> {
         return {exec, 0, extents.extent(0)};
+    }
+
+    template <static_range_slice_with_default_stride RangeSlice>
+    requires(
+        std::remove_cvref_t<decltype(RangeSlice::first)>::value == 0
+        && std::remove_cvref_t<decltype(RangeSlice::last)>::value == 1)
+    [[nodiscard]]
+    auto operator()(const Exec& exec, const RangeSlice&) const noexcept {
+        return this->operator()(exec);
+    }
+
+    template <static_range_slice_with_default_stride RangeSlice>
+    requires(
+        std::remove_cvref_t<decltype(RangeSlice::first)>::value != 0
+        && std::remove_cvref_t<decltype(RangeSlice::last)>::value
+                   - std::remove_cvref_t<decltype(RangeSlice::first)>::value
+               == 1)
+    [[nodiscard]]
+    auto operator()(const Exec& exec, const RangeSlice& rgsl) const noexcept
+        -> Kokkos::RangePolicy<Exec, Kokkos::LaunchBounds<1>, Properties...> {
+        return {exec, rgsl.first, rgsl.last};
     }
 
     template <range_slice_with_default_stride RangeSlice>

@@ -59,8 +59,13 @@ struct TransformSenderFor<stdexec::then_t> {
     struct Transformer {
         using execution_space = Impl::exec_of_t<Sndr, Env>;
 
-        using sndr_t =
-            ThenSender<stdexec::then_t, Sndr, execution_space, std::string_view, std::remove_cvref_t<Functor>>;
+        using sndr_t = ParallelForSender<
+            stdexec::then_t,
+            Sndr,
+            PforData... execution_space,
+            std::string_view,
+            std::remove_cvref_t<Functor>
+        >;
 
         auto operator()(const Env& env, std::remove_reference_t<Functor>& functor, std::remove_reference_t<Sndr>& sndr)
             const STDEXEC_AUTO_RETURN(
@@ -68,7 +73,7 @@ struct TransformSenderFor<stdexec::then_t> {
                     {.state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
                                   .state,
                      .label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(execution_space, ": then"),
-                     .functor = std::forward<Functor>(functor)},
+                     .data = {.iter_space = Kokkos::range_slice<integral_cst(0), integral_cst(1)>{}... = std::forward<Functor>(functor)},
                     std::forward<Sndr>(sndr)
         })
     };
@@ -85,9 +90,9 @@ struct TransformSenderFor<stdexec::then_t> {
     template <typename Env, typename Functor, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
     auto operator()(const Env&, stdexec::then_t, Functor&&, Sndr&&) const noexcept {
-        return no_execution_space_scheduler_in_env<stdexec::then_t, Sndr, Env>();
+            return no_execution_space_scheduler_in_env<stdexec::then_t, Sndr, Env>();
     }
-};
+    };
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 
