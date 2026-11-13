@@ -9,6 +9,7 @@
 
 #include "kokkos-execution/execution_space/execution_space_fwd.hpp"
 
+#include "kokkos-execution/impl/dependency.hpp"
 #include "kokkos-execution/impl/dispatch_label.hpp"
 #include "kokkos-execution/impl/env.hpp"
 #include "kokkos-execution/impl/event.hpp"
