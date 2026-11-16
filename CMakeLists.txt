@@ -67,6 +67,9 @@ include(/opt/cpm-${CPM_VERSION}/CPM.cmake)
 
 include(cmake/functions/patch.cmake)
 
+# See https://github.com/NVIDIA/stdexec/pull/2469.
+apply_patch(${CMAKE_SOURCE_DIR}/external/stdexec-shared-constexpr-virtual.patch ${CMAKE_SOURCE_DIR}/external/stdexec)
+
 if(SYCL IN_LIST Kokkos_DEVICES AND CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
   apply_patch(${CMAKE_SOURCE_DIR}/external/stdexec-icpx-ice-when-all.patch ${CMAKE_SOURCE_DIR}/external/stdexec)
 endif()
@@ -170,6 +173,7 @@ target_sources(
             kokkos-execution/impl/make_policy.hpp
             kokkos-execution/impl/optional_ref.hpp
             kokkos-execution/impl/optional_storage.hpp
+            kokkos-execution/impl/parallel_for.hpp
             kokkos-execution/impl/properties.hpp
             kokkos-execution/impl/queryable.hpp
             kokkos-execution/impl/receiver.hpp
@@ -184,6 +188,7 @@ target_sources(
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/impl/type_info.hpp
             kokkos-execution/impl/type_traits.hpp
+            kokkos-execution/utils/execution_policy.hpp
             kokkos-execution/utils/ignore_warnings.hpp
             kokkos-execution/utils/streamers.hpp
 )
