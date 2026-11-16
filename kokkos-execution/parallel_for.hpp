@@ -12,6 +12,7 @@ import kokkos.core_impl;
 #include "kokkos-execution/impl/iteration_space.hpp"
 #include "kokkos-execution/impl/label.hpp"
 #include "kokkos-execution/impl/macros.hpp"
+#include "kokkos-execution/impl/parallel_for.hpp"
 #include "kokkos-execution/impl/properties.hpp"
 
 namespace Kokkos::Execution {
@@ -154,11 +155,16 @@ struct ParallelForSender : stdexec::__tuple<parallel_for_t, Data, Sndr> {
 
     KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
-    template <stdexec::receiver Rcvr>
-    constexpr auto connect(Rcvr) && = delete;
-
-    template <stdexec::receiver Rcvr>
-    constexpr auto connect(Rcvr) const & = delete;
+    template <typename Self, stdexec::receiver Rcvr>
+    [[nodiscard]]
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(
+        connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+        STDEXEC_AUTO_RETURN(
+            ParallelForOpState<stdexec::__copy_cvref_t<Self, Sndr>, stdexec::__copy_cvref_t<Self, Data>, Rcvr>(
+                stdexec::__get<2>(static_cast<stdexec::__copy_cvref_t<Self&&, base_t>>(self)),
+                stdexec::__get<1>(static_cast<stdexec::__copy_cvref_t<Self&&, base_t>>(self)),
+                std::move(rcvr)))
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
     static constexpr size_t idx_sndr = 2;
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(

@@ -453,7 +453,7 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), lifetime) {
 
     tracker_source.reset_high_water();
 
-    //! Connecting with a @c prvalue sender increases the use count of @c tracker_source by one.
+    //! Connecting with a @c prvalue sender increases the use count of @c tracker_source by two.
     {
         [[maybe_unused]]
         const auto opstate_from_prvalue = stdexec::connect(

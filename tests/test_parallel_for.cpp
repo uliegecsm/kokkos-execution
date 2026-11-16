@@ -1,5 +1,11 @@
 #include "gtest/gtest.h"
 
+#include "kokkos-execution/utils/ignore_warnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/single_thread_context.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 #include "Kokkos_Macros.hpp"
 #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
 import kokkos.core;
@@ -9,9 +15,15 @@ import kokkos.core;
 
 #include "kokkos-execution/parallel_for.hpp"
 
+#include "tests/utils/category.hpp"
+#include "tests/utils/functors/check_args.hpp"
 #include "tests/utils/functors/counter.hpp"
 #include "tests/utils/functors/no_op.hpp"
+#include "tests/utils/functors/sum_indices.hpp"
+#include "tests/utils/functors/tag_dispatch.hpp"
+#include "tests/utils/functors/use_count_tracker.hpp"
 #include "tests/utils/properties.hpp"
+#include "tests/utils/sink_receiver.hpp"
 
 /**
  * @addtogroup unittests
@@ -40,6 +52,35 @@ consteval bool test_parallel_for_in_constant_expression() {
 }
 
 static_assert(test_parallel_for_in_constant_expression());
+
+//! @test @ref Kokkos::Execution::parallel_for_t can be connected and started in a constant-evaluated scope.
+template <typename ExecPolicyOrIterSpace>
+consteval bool
+    test_parallel_for_connect_and_start_in_constant_expression(ExecPolicyOrIterSpace&& policy_or_iter_space) {
+    std::array<unsigned short int, 42> values{0};
+
+    using expt_index_t = typename Kokkos::RangePolicy<Kokkos::Serial>::index_type;
+
+    auto sndr = stdexec::just()
+              | Kokkos::Execution::parallel_for(
+                    std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
+                    [&values]<std::integral IndexType>(const IndexType index) noexcept {
+                        static_assert(std::same_as<IndexType, expt_index_t>);
+                        values.at(index) = index;
+                    });
+
+    auto opstate = stdexec::connect(std::move(sndr), Tests::Utils::SinkReceiver{});
+    stdexec::start(opstate);
+
+    return std::ranges::equal(values, std::views::iota(std::size_t{0}, values.size()));
+}
+
+static_assert(test_parallel_for_connect_and_start_in_constant_expression(static_cast<size_t>(42)));
+static_assert(test_parallel_for_connect_and_start_in_constant_expression(Kokkos::dims<1, char>(42)));
+static_assert(test_parallel_for_connect_and_start_in_constant_expression(
+    Kokkos::range_slice<size_t, size_t>{.first = 0, .last = 42}));
+static_assert(test_parallel_for_connect_and_start_in_constant_expression(
+    Kokkos::range_slice<std::integral_constant<size_t, 0>, std::integral_constant<size_t, 42>>{}));
 
 class ParallelForDataTest : public testing::Test {
    public:
@@ -378,6 +419,237 @@ TEST(ParallelForTest, closure_object_creation_perfectly_forwards_functor) {
 
     ASSERT_EQ(counter_t::copy_constructions, 1);
     ASSERT_EQ(counter_t::move_constructions, 2);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define MAKE_SNDR(_policy_or_iter_space_, _functor_t_, _tag_, ...)                                                     \
+    stdexec::schedule(stc.get_scheduler())                                                                             \
+        | Kokkos::Execution::parallel_for(                                                                             \
+            KOKKOS_IMPL_STRIP_PARENS(_policy_or_iter_space_),                                                          \
+            Tests::Utils::Functors::CheckArgs<_functor_t_, _tag_, __VA_ARGS__>{.m_functor = {.data = data}});
+
+/**
+ * @test Connecting @ref Kokkos::Execution::parallel_for to @c exec::single_thread_context works, and selects
+ *       @ref Kokkos::Execution::Impl::ParallelForOpState.
+ */
+TEST(ParallelForTest, on_single_thread_context) {
+    constexpr size_t size = 10;
+
+    exec::single_thread_context stc{};
+
+    using view_t = Kokkos::View<int, Kokkos::HostSpace>;
+    using functor_t = Tests::Utils::Functors::SumIndices<view_t>;
+    using tag_functor_t = Tests::Utils::Functors::TagDispatch<view_t>;
+
+    using serial_default_index_type = typename Kokkos::RangePolicy<Kokkos::Serial>::index_type;
+    using TEST_CATEGORY(default_index_type) = typename Kokkos::RangePolicy<TEST_EXECUTION_SPACE>::index_type;
+
+    view_t data("data");
+
+    auto sndr_dims_char = MAKE_SNDR((Kokkos::dims<1, char>(size)), functor_t, void, serial_default_index_type&);
+    auto sndr_rgsl_char = MAKE_SNDR(
+        (Kokkos::range_slice<char, char>{.first = 0, .last = size}), functor_t, void, serial_default_index_type&);
+    auto sndr_rgpl = MAKE_SNDR(
+        (Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size)), functor_t, void, TEST_CATEGORY(default_index_type) &);
+    auto sndr_rgpl_char = MAKE_SNDR(
+        (Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<char>>(0, size)), functor_t, void, char&);
+    auto sndr_rgpl_char_tag = MAKE_SNDR(
+        (Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<char>, typename tag_functor_t::Tag>(0, size)),
+        tag_functor_t,
+        typename tag_functor_t::Tag,
+        char&);
+
+    using connect_result_dims_char_t = stdexec::connect_result_t<decltype(sndr_dims_char), Tests::Utils::SinkReceiver>;
+    using connect_result_rgsl_char_t = stdexec::connect_result_t<decltype(sndr_rgsl_char), Tests::Utils::SinkReceiver>;
+    using connect_result_rgpl_t = stdexec::connect_result_t<decltype(sndr_rgpl), Tests::Utils::SinkReceiver>;
+    using connect_result_rgpl_char_t = stdexec::connect_result_t<decltype(sndr_rgpl_char), Tests::Utils::SinkReceiver>;
+    using connect_result_rgpl_char_tag_t =
+        stdexec::connect_result_t<decltype(sndr_rgpl_char_tag), Tests::Utils::SinkReceiver>;
+
+    static_assert(std::same_as<
+                  connect_result_dims_char_t,
+                  Kokkos::Execution::Impl::ParallelForOpState<
+                      decltype(stdexec::schedule(stc.get_scheduler())),
+                      Kokkos::Execution::Impl::ParallelForData<
+                          Tests::Utils::Functors::CheckArgs<functor_t, void, serial_default_index_type&>,
+                          Kokkos::dims<1, char>
+                      >,
+                      Tests::Utils::SinkReceiver
+                  >
+    >);
+    static_assert(std::same_as<
+                  connect_result_rgsl_char_t,
+                  Kokkos::Execution::Impl::ParallelForOpState<
+                      decltype(stdexec::schedule(stc.get_scheduler())),
+                      Kokkos::Execution::Impl::ParallelForData<
+                          Tests::Utils::Functors::CheckArgs<functor_t, void, serial_default_index_type&>,
+                          Kokkos::range_slice<char, char>
+                      >,
+                      Tests::Utils::SinkReceiver
+                  >
+    >);
+    static_assert(std::same_as<
+                  connect_result_rgpl_t,
+                  Kokkos::Execution::Impl::ParallelForOpState<
+                      decltype(stdexec::schedule(stc.get_scheduler())),
+                      Kokkos::Execution::Impl::ParallelForData<
+                          Tests::Utils::Functors::CheckArgs<functor_t, void, TEST_CATEGORY(default_index_type) &>,
+                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+                      >,
+                      Tests::Utils::SinkReceiver
+                  >
+    >);
+    static_assert(std::same_as<
+                  connect_result_rgpl_char_t,
+                  Kokkos::Execution::Impl::ParallelForOpState<
+                      decltype(stdexec::schedule(stc.get_scheduler())),
+                      Kokkos::Execution::Impl::ParallelForData<
+                          Tests::Utils::Functors::CheckArgs<functor_t, void, char&>,
+                          Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<char>>
+                      >,
+                      Tests::Utils::SinkReceiver
+                  >
+    >);
+    static_assert(
+        std::same_as<
+            connect_result_rgpl_char_tag_t,
+            Kokkos::Execution::Impl::ParallelForOpState<
+                decltype(stdexec::schedule(stc.get_scheduler())),
+                Kokkos::Execution::Impl::ParallelForData<
+                    Tests::Utils::Functors::CheckArgs<tag_functor_t, typename tag_functor_t::Tag, char&>,
+                    Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<char>, typename tag_functor_t::Tag>
+                >,
+                Tests::Utils::SinkReceiver
+            >
+        >);
+
+    const auto test_sndr =
+        [&]<typename Sndr>(Sndr&& sndr, const size_t expt) { // NOLINT(cppcoreguidelines-missing-std-forward)
+            data() = 0;
+            stdexec::sync_wait(std::forward<Sndr>(sndr));
+            ASSERT_EQ(data(), expt);
+        };
+
+    test_sndr(sndr_dims_char, size / 2 * (size - 1));
+    test_sndr(std::move(sndr_dims_char), size / 2 * (size - 1));
+
+    test_sndr(sndr_rgsl_char, size / 2 * (size - 1));
+    test_sndr(std::move(sndr_rgsl_char), size / 2 * (size - 1));
+
+    test_sndr(sndr_rgpl, size / 2 * (size - 1));
+    test_sndr(std::move(sndr_rgpl), size / 2 * (size - 1));
+
+    test_sndr(sndr_rgpl_char, size / 2 * (size - 1));
+    test_sndr(std::move(sndr_rgpl_char), size / 2 * (size - 1));
+
+    test_sndr(sndr_rgpl_char_tag, 10);
+    test_sndr(std::move(sndr_rgpl_char_tag), 10);
+}
+
+/**
+ * @test Check who maintains the lifetime of the data when connecting uses the default
+ *       implementation of @ref Kokkos::Execution::Impl::ParallelForSender.
+ */
+TEST(ParallelForTest, lifetime) {
+    using use_count_tracker_source_t = Tests::Utils::Functors::UseCountTrackerSource;
+    using use_count_tracker_t = Tests::Utils::Functors::UseCountTracker;
+
+    exec::single_thread_context stc{};
+
+    use_count_tracker_source_t tracker_source{};
+
+    ASSERT_EQ(tracker_source.use_count(), 0);
+
+    auto sndr = stdexec::schedule(stc.get_scheduler())
+              | Kokkos::Execution::parallel_for(42, use_count_tracker_t(tracker_source))
+              | Kokkos::Execution::parallel_for(42, use_count_tracker_t(tracker_source));
+
+    static_assert(
+        stdexec::get_completion_signatures<decltype(sndr), stdexec::env<>>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
+
+    using schd_sndr_t = decltype(stdexec::schedule(stc.get_scheduler()));
+    using pfor_data_t =
+        Kokkos::Execution::Impl::ParallelForData<Tests::Utils::Functors::UseCountTracker, Kokkos::dims<1, int>>;
+
+    using expt_sndr_t = Kokkos::Execution::Impl::ParallelForSender<
+        Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, pfor_data_t>,
+        pfor_data_t
+    >;
+
+    static_assert(std::same_as<decltype(sndr), expt_sndr_t>);
+
+    //! @c tracker_source is stored by the sender.
+    ASSERT_EQ(tracker_source.use_count(), 2);
+    ASSERT_EQ(tracker_source.high_water(), 2);
+
+    //! Connecting an @c lvalue sender does not increase the use count of @c tracker_source.
+    {
+        [[maybe_unused]]
+        const auto opstate_from_lvalue = stdexec::connect(sndr, Tests::Utils::SinkReceiver{});
+
+        static_assert(std::same_as<
+                      decltype(opstate_from_lvalue),
+                      const Kokkos::Execution::Impl::ParallelForOpState<
+                          Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, pfor_data_t>&,
+                          pfor_data_t&,
+                          Tests::Utils::SinkReceiver
+                      >
+        >);
+
+        EXPECT_EQ(tracker_source.use_count(), 2);
+        EXPECT_EQ(tracker_source.high_water(), 2);
+    }
+
+    EXPECT_EQ(tracker_source.use_count(), 2);
+
+    tracker_source.reset_high_water();
+
+    /// Connecting with a @c xvalue sender does not increase the use count of @c tracker_source.
+    {
+        [[maybe_unused]]
+        const auto opstate_from_xvalue = stdexec::connect(std::move(sndr), Tests::Utils::SinkReceiver{});
+
+        static_assert(std::same_as<
+                      decltype(opstate_from_xvalue),
+                      const Kokkos::Execution::Impl::ParallelForOpState<
+                          Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, pfor_data_t>,
+                          pfor_data_t,
+                          Tests::Utils::SinkReceiver
+                      >
+        >);
+
+        EXPECT_EQ(tracker_source.use_count(), 2);
+        EXPECT_EQ(tracker_source.high_water(), 2);
+    }
+
+    ASSERT_EQ(tracker_source.use_count(), 0);
+
+    tracker_source.reset_high_water();
+
+    //! Connecting with a @c prvalue sender increases the use count of @c tracker_source by two.
+    {
+        [[maybe_unused]]
+        const auto opstate_from_prvalue = stdexec::connect(
+            stdexec::schedule(stc.get_scheduler())
+                | Kokkos::Execution::parallel_for(42, use_count_tracker_t(tracker_source))
+                | Kokkos::Execution::parallel_for(42, use_count_tracker_t(tracker_source)),
+            Tests::Utils::SinkReceiver{});
+
+        static_assert(std::same_as<
+                      decltype(opstate_from_prvalue),
+                      const Kokkos::Execution::Impl::ParallelForOpState<
+                          Kokkos::Execution::Impl::ParallelForSender<schd_sndr_t, pfor_data_t>,
+                          pfor_data_t,
+                          Tests::Utils::SinkReceiver
+                      >
+        >);
+
+        ASSERT_EQ(tracker_source.use_count(), 2);
+        ASSERT_EQ(tracker_source.high_water(), 2);
+    }
+
+    ASSERT_EQ(tracker_source.use_count(), 0);
 }
 
 } // namespace Tests

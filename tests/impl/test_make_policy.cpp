@@ -22,6 +22,24 @@ struct MakePolicyTest
     : public virtual testing::Test
     , public Kokkos::utils::tests::scoped::ExecutionSpace<TEST_EXECUTION_SPACE> { };
 
+//! @test Check that @ref Kokkos::Execution::Impl::make_policy_type_t works as expected.
+consteval bool test_make_policy_type_t() {
+    static_assert(
+        std::same_as<
+            Kokkos::Execution::Impl::make_policy_type_t<
+                Kokkos::extents<unsigned short int, 10>,
+                stdexec::bulk_t,
+                Kokkos::RangePolicy<Kokkos::Serial, Kokkos::Schedule<Kokkos::Static>, Kokkos::IndexType<char>>
+            >,
+            Kokkos::RangePolicy<Kokkos::Serial, Kokkos::Schedule<Kokkos::Static>, Kokkos::IndexType<unsigned short int>>
+        >);
+
+    return true;
+}
+
+static_assert(test_make_policy_type_t());
+
+//! @test Check that @ref Kokkos::Execution::Impl::make_policy_result_t works as expected.
 consteval bool test_make_policy_result_t() {
     static_assert(std::same_as<
                   Kokkos::Execution::Impl::make_policy_result_t<
