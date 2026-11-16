@@ -332,7 +332,7 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_assignments, 0);
     ASSERT_EQ(counter_t::copy_constructions, 3);
     ASSERT_EQ(counter_t::move_assignments, 0);
-    ASSERT_EQ(counter_t::move_constructions, 5);
+    ASSERT_EQ(counter_t::move_constructions, 3);
 
     counter_t::reset();
 
@@ -344,7 +344,7 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_assignments, 0);
     ASSERT_EQ(counter_t::copy_constructions, 2);
     ASSERT_EQ(counter_t::move_assignments, 0);
-    ASSERT_EQ(counter_t::move_constructions, 6);
+    ASSERT_EQ(counter_t::move_constructions, 4);
 
     counter_t::reset();
 
@@ -356,7 +356,7 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_assignments, 0);
     ASSERT_EQ(counter_t::copy_constructions, 2);
     ASSERT_EQ(counter_t::move_assignments, 0);
-    ASSERT_EQ(counter_t::move_constructions, 6);
+    ASSERT_EQ(counter_t::move_constructions, 4);
 }
 
 //! @test Ensure that the data lifetime is extended only by the underlying @c Kokkos::Experimental::Graph node.

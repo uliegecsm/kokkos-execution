@@ -16,9 +16,11 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/category.hpp"
 #include "tests/utils/functors/increment.hpp"
+#include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/throws_when_copied.hpp"
 #include "tests/utils/graph_context.hpp"
+#include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/sync_wait.hpp"
 
 /**
@@ -37,7 +39,7 @@ namespace Tests::GraphImpl {
 
 using namespace Kokkos::utils::callbacks;
 
-class TEST_CATEGORY(RemainsOnGraphForTest)
+class TEST_CATEGORY(OpStateTest)
     : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE>
     , public Kokkos::utils::tests::scoped::callbacks::Manager {
    public:
@@ -61,8 +63,76 @@ class TEST_CATEGORY(RemainsOnGraphForTest)
     using noop_t = Tests::Utils::Functors::NoOp<true, false, false>;
 };
 
+//! @test Check construction of flattened operation state from two parallel for senders.
+consteval bool test_op_state_flattened_from_two() {
+    using node_props_t = Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>, std::string>;
+
+    using sndr_t = decltype(Kokkos::Execution::parallel_for(
+        Kokkos::Execution::parallel_for(
+            typename TEST_CATEGORY(OpStateTest)::schedule_sender_t(),
+            "hello from pfor",
+            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+            Tests::Utils::Functors::Labeled<'a'>{}),
+        "hello again from pfor",
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
+        Tests::Utils::Functors::Labeled<'b'>{}));
+
+    using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
+
+    using clsr_0_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
+        node_props_t,
+        Tests::Utils::Functors::Labeled<'a'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+
+    using clsr_1_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
+        node_props_t,
+        Tests::Utils::Functors::Labeled<'b'>,
+        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
+    >;
+
+    static_assert(std::same_as<
+                  op_state_t,
+                  Kokkos::Execution::GraphImpl::OpState<
+                      typename TEST_CATEGORY(OpStateTest)::schedule_sender_t,
+                      Tests::Utils::SinkReceiver,
+                      clsr_0_t,
+                      clsr_1_t
+                  >
+    >);
+
+    static_assert(std::is_constructible_v<
+                  op_state_t,
+                  typename TEST_CATEGORY(OpStateTest)::schedule_sender_t,
+                  Tests::Utils::SinkReceiver&&,
+                  clsr_0_t&&,
+                  clsr_1_t&&
+    >);
+
+    static_assert(!std::is_nothrow_constructible_v<
+                  op_state_t,
+                  typename TEST_CATEGORY(OpStateTest)::schedule_sender_t,
+                  Tests::Utils::SinkReceiver&&,
+                  clsr_0_t&&,
+                  clsr_1_t&&
+    >);
+
+    //! The operation state cannot be constructed from @c lvalue closures.
+    static_assert(!std::is_constructible_v<
+                  op_state_t,
+                  typename TEST_CATEGORY(OpStateTest)::schedule_sender_t,
+                  Tests::Utils::SinkReceiver&&,
+                  clsr_0_t&,
+                  clsr_1_t&
+    >);
+
+    return true;
+}
+
+static_assert(test_op_state_flattened_from_two());
+
 //! @test Check @ref Kokkos::Execution::GraphImpl::connect_result_remains_on_graph_for for a non-dependent sender on @ref Kokkos::Execution::GraphImpl::Domain.
-TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender) {
+TEST_F(TEST_CATEGORY(OpStateTest), remains_on_graph_for_non_dependent_sender) {
     const context_t gctx{exec};
 
     stdexec::sender auto sndr = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(noop_t{});
@@ -101,7 +171,7 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender) {
 }
 
 //! @test Check @ref Kokkos::Execution::GraphImpl::connect_result_remains_on_graph_for for a dependent sender partly on @ref Kokkos::Execution::GraphImpl::Domain.
-TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), dependent_sender_partly_on_graph_domain) {
+TEST_F(TEST_CATEGORY(OpStateTest), remains_on_graph_for_dependent_sender_partly_on_graph_domain) {
     experimental::execution::single_thread_context stc{};
     const context_t gctx{exec};
 
@@ -140,7 +210,7 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), dependent_sender_partly_on_graph_do
  *
  * @bug It should not create two graphs.
  */
-TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_with_continues_on) {
+TEST_F(TEST_CATEGORY(OpStateTest), remains_on_graph_for_non_dependent_sender_with_continues_on) {
     const context_t gctx{exec};
 
     stdexec::sender auto sndr = stdexec::schedule(gctx.get_scheduler()) | stdexec::then(noop_t{})
@@ -174,7 +244,7 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_with_continues
 }
 
 //! @test Check @ref Kokkos::Execution::GraphImpl::connect_result_remains_on_graph_for for non-dependent sender branches on @ref Kokkos::Execution::GraphImpl::Domain in a @c stdexec::when_all.
-TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all) {
+TEST_F(TEST_CATEGORY(OpStateTest), remains_on_graph_for_non_dependent_sender_in_when_all) {
     const context_t gctx{exec};
 
     stdexec::sender auto sndr = stdexec::when_all(
@@ -213,13 +283,13 @@ TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all) {
 /**
  * @test Check @ref Kokkos::Execution::GraphImpl::connect_result_remains_on_graph_for for non-dependent sender branches terminating on @ref Kokkos::Execution::GraphImpl::Domain in a @c stdexec::when_all.
  *
- * Similar to @ref Tests::GraphImpl::RemainsOnGraphForTest_non_dependent_sender_in_when_all_Test but in this case,
+ * Similar to the previous test but in this case,
  * the branches only terminate on the @ref Kokkos::Execution::GraphImpl::Domain.
  *
  * Therefore, the resulting operation state models @ref Kokkos::Execution::GraphImpl::graph_operation_state_for
  * but does not model @ref Kokkos::Execution::GraphImpl::connect_result_remains_on_graph_for.
  */
-TEST_F(TEST_CATEGORY(RemainsOnGraphForTest), non_dependent_sender_in_when_all_mixed_branches) {
+TEST_F(TEST_CATEGORY(OpStateTest), remains_on_graph_for_non_dependent_sender_in_when_all_mixed_branches) {
     const view_s_t data(Kokkos::view_alloc("data - shared space"));
 
     experimental::execution::single_thread_context stc{};

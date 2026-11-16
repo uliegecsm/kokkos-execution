@@ -217,8 +217,8 @@ struct OpState
     constexpr OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         Rcvr rcvr,
-        FirstClosure clsr,
-        RestOfClosures... clsrs) noexcept(false)
+        FirstClosure&& clsr,
+        RestOfClosures&&... clsrs) noexcept(false)
         : OpStateBase<execution_space, Rcvr>(std::move(rcvr))
         , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
         , state{Kokkos::Impl::get_property<device_handle_t>(clsr.node_props)}

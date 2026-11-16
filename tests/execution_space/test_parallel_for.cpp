@@ -199,6 +199,11 @@ consteval bool test_closure_traits() {
     //! Models the @ref Kokkos::Execution::ExecutionSpaceImpl::Closure concept.
     static_assert(Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t>);
 
+    //! The concept does not accept reference types.
+    static_assert(!Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t&>);
+    static_assert(!Kokkos::Execution::ExecutionSpaceImpl::Closure<const closure_t&>);
+    static_assert(!Kokkos::Execution::ExecutionSpaceImpl::Closure<closure_t&&>);
+
     static_assert(std::is_nothrow_move_constructible_v<closure_t>);
 
     return true;
@@ -454,7 +459,7 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_assignments, 0);
     ASSERT_EQ(counter_t::copy_constructions, 1);
     ASSERT_EQ(counter_t::move_assignments, 0);
-    ASSERT_EQ(counter_t::move_constructions, 6);
+    ASSERT_EQ(counter_t::move_constructions, 3);
 
     counter_t::reset();
 
@@ -466,7 +471,7 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_assignments, 0);
     ASSERT_EQ(counter_t::copy_constructions, 0);
     ASSERT_EQ(counter_t::move_assignments, 0);
-    ASSERT_EQ(counter_t::move_constructions, 7);
+    ASSERT_EQ(counter_t::move_constructions, 4);
 
     counter_t::reset();
 
@@ -478,7 +483,7 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_assignments, 0);
     ASSERT_EQ(counter_t::copy_constructions, 0);
     ASSERT_EQ(counter_t::move_assignments, 0);
-    ASSERT_EQ(counter_t::move_constructions, 7);
+    ASSERT_EQ(counter_t::move_constructions, 4);
 }
 
 } // namespace Tests::ExecutionSpaceImpl

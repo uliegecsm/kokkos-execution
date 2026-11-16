@@ -138,10 +138,7 @@ static_assert(Tests::Utils::check_continues_on_after_just_stopped<
  */
 constexpr bool test_op_state_passed_by_const_ref() {
     using sndr_t = decltype(stdexec::bulk(
-        stdexec::schedule(std::declval<typename BulkTest::context_t>().get_scheduler()),
-        stdexec::par,
-        1,
-        Tests::Utils::Functors::Labeled<'a'>{}));
+        typename BulkTest::schedule_sender_t(), stdexec::par, 1, Tests::Utils::Functors::Labeled<'a'>{}));
 
     static_assert(!std::is_const_v<sndr_t>);
 

@@ -72,6 +72,7 @@ struct parallel_for_t {
     template <typename Functor, std::integral T>
     constexpr auto operator()(const T work_count, Functor&& functor) const STDEXEC_AUTO_RETURN(
         stdexec::__closure(*this, Impl::make_iter_space(work_count), std::forward<Functor>(functor)))
+
     template <typename Functor, typename ExecPolicyOrIterSpace, typename... Properties>
     using parallel_for_data_t = Impl::ParallelForData<
         std::remove_cvref_t<Functor>,
