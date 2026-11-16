@@ -20,7 +20,7 @@ template <Kokkos::ExecutionSpace Exec, Impl::parallel_for_data Data>
 struct ParallelForClosure {
     using execution_space = Exec;
 
-    void submit() const & {
+    void submit() const & noexcept(false) {
         if constexpr (Impl::labeled<Data>) {
             Kokkos::parallel_for(Impl::get_property<Impl::Label>(data), this->get_policy(), data.functor);
         } else {

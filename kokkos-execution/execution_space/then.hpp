@@ -16,7 +16,7 @@ template <Kokkos::ExecutionSpace Exec, typename Label, typename Functor>
 struct ThenClosure {
     using execution_space = Exec;
 
-    void submit() const & {
+    void submit() const & noexcept(false) {
         Kokkos::single(Impl::as_convertible_to_string(label), this->get_policy(), functor);
     }
 

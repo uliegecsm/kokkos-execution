@@ -136,7 +136,7 @@ consteval bool test_sndr_nothrow_transformable() {
     >);
 
     using schedule_from_sndr_t = decltype(stdexec::schedule_from(
-        stdexec::schedule(std::declval<typename TEST_CATEGORY(ContinuesOnTest)::scheduler_t>())));
+        std::declval<typename TEST_CATEGORY(ContinuesOnTest)::schedule_sender_t>()));
 
     static_assert(std::same_as<
                   schedule_from_sndr_t,

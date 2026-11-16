@@ -46,7 +46,7 @@ struct ThenClosure {
 
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
-    auto add_node(const Predecessor& predecessor) && -> node_t<Predecessor> {
+    auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         std::string label_copy(label);
 #endif

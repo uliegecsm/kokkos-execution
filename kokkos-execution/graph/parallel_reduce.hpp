@@ -14,15 +14,18 @@
 
 namespace Kokkos::Execution::GraphImpl {
 
-template <Kokkos::ExecutionSpace Exec, typename Data> requires Impl::parallel_for_data<Data>
+template <Kokkos::ExecutionSpace Exec, typename Data>
+requires Impl::parallel_for_data<std::remove_cvref_t<Data>>
 struct ParallelReduceClosure {
     using execution_space = Exec;
 
     using device_handle_t = Kokkos::Impl::DeviceHandle<execution_space>;
 
-    using node_props_t = make_node_props_t<Data, execution_space>;
-    using policy_t =
-        Impl::make_policy_result_t<Impl::make_policy_t<execution_space>, const typename std::remove_cvref_t<Data>::policy_or_iter_space_t&>;
+    using node_props_t = make_node_props_result_t<Data, execution_space>;
+    using policy_t = Impl::make_policy_result_t<
+        Impl::make_policy_t<execution_space>,
+        const typename std::remove_cvref_t<Data>::policy_or_iter_space_t&
+    >;
     using functor_t = typename std::remove_cvref_t<Data>::functor_t;
     using reducer_t = typename std::remove_cvref_t<Data>::reducer_t;
 
@@ -35,7 +38,7 @@ struct ParallelReduceClosure {
 
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
-    auto add_node(const Predecessor& predecessor) && -> node_t<Predecessor> {
+    auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
         node_props_t node_props = std::move(*this).get_node_props();
         policy_t policy = this->get_policy();
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
@@ -70,10 +73,11 @@ struct ParallelReduceClosure {
     }
 
     const Impl::State<execution_space>* state;
-    Data data;
+    Data data; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
-template <stdexec::sender Sndr, Kokkos::ExecutionSpace Exec, typename Data> requires Impl::parallel_reduce_data<Data>
+template <stdexec::sender Sndr, Kokkos::ExecutionSpace Exec, typename Data>
+requires Impl::parallel_for_data<std::remove_cvref_t<Data>>
 struct ParallelReduceSender {
     using sender_concept = stdexec::sender_tag;
 

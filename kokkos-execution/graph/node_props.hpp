@@ -33,7 +33,7 @@ constexpr auto make_node_props(const Kokkos::Impl::DeviceHandle<Exec>& device_ha
     STDEXEC_AUTO_RETURN(Kokkos::Experimental::node_props(device_handle))
 
 template <typename Data, Kokkos::ExecutionSpace Exec>
-using make_node_props_t =
+using make_node_props_result_t =
     decltype(make_node_props<Data>(std::declval<const Kokkos::Impl::DeviceHandle<Exec>&>(), std::declval<Data&>()));
 
 //! Retrieve the @c Kokkos::Impl::DeviceHandle type from a node properties type.

@@ -366,7 +366,6 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), perfect_forwarding_connect) {
  * @todo Once https://github.com/kokkos/kokkos/pull/9768 is merged, update the use counts accordingly.
  */
 TEST_F(TEST_CATEGORY(ParallelReduceTest), lifetime) {
-    using node_props_t = Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>>;
     using use_count_tracker_source_t = Tests::Utils::Functors::UseCountTrackerSource;
     using use_count_tracker_t = Tests::Utils::Functors::UseCountTracker;
     using reducer_t = view_s_t;
@@ -394,25 +393,22 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), lifetime) {
         [[maybe_unused]]
         const auto opstate_from_lvalue = stdexec::connect(sndr, Tests::Utils::SinkReceiver{});
 
-        static_assert(std::same_as<
-                      decltype(opstate_from_lvalue),
-                      const Kokkos::Execution::GraphImpl::OpState<
-                          typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t&,
-                          Tests::Utils::SinkReceiver,
-                          Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-                              node_props_t,
-                              use_count_tracker_t&,
-                              Kokkos::dims<1, int>&,
-                              reducer_t&
-                          >,
-                          Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-                              node_props_t,
-                              use_count_tracker_t&,
-                              Kokkos::dims<1, int>&,
-                              reducer_t&
-                          >
-                      >
-        >);
+        static_assert(
+            std::same_as<
+                decltype(opstate_from_lvalue),
+                const Kokkos::Execution::GraphImpl::OpState<
+                    typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t&,
+                    Tests::Utils::SinkReceiver,
+                    Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+                        TEST_EXECUTION_SPACE,
+                        Kokkos::Execution::Impl::ParallelReduceData<use_count_tracker_t, Kokkos::dims<1, int>, reducer_t>&
+                    >,
+                    Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+                        TEST_EXECUTION_SPACE,
+                        Kokkos::Execution::Impl::ParallelReduceData<use_count_tracker_t, Kokkos::dims<1, int>, reducer_t>&
+                    >
+                >
+            >);
 
         ASSERT_EQ(tracker_source.use_count(), 4);
         ASSERT_EQ(tracker_source.high_water(), 7);
@@ -430,25 +426,22 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), lifetime) {
         [[maybe_unused]]
         const auto opstate_from_xvalue = stdexec::connect(std::move(sndr), Tests::Utils::SinkReceiver{});
 
-        static_assert(std::same_as<
-                      decltype(opstate_from_xvalue),
-                      const Kokkos::Execution::GraphImpl::OpState<
-                          typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t,
-                          Tests::Utils::SinkReceiver,
-                          Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>,
-                              reducer_t
-                          >,
-                          Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>,
-                              reducer_t
-                          >
-                      >
-        >);
+        static_assert(
+            std::same_as<
+                decltype(opstate_from_xvalue),
+                const Kokkos::Execution::GraphImpl::OpState<
+                    typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t,
+                    Tests::Utils::SinkReceiver,
+                    Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+                        TEST_EXECUTION_SPACE,
+                        Kokkos::Execution::Impl::ParallelReduceData<use_count_tracker_t, Kokkos::dims<1, int>, reducer_t>
+                    >,
+                    Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+                        TEST_EXECUTION_SPACE,
+                        Kokkos::Execution::Impl::ParallelReduceData<use_count_tracker_t, Kokkos::dims<1, int>, reducer_t>
+                    >
+                >
+            >);
 
         ASSERT_EQ(tracker_source.use_count(), 2);
         ASSERT_EQ(tracker_source.high_water(), 7);
@@ -469,25 +462,22 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), lifetime) {
                 | Kokkos::Execution::parallel_reduce(42, use_count_tracker_t(tracker_source), target),
             Tests::Utils::SinkReceiver{});
 
-        static_assert(std::same_as<
-                      decltype(opstate_from_prvalue),
-                      const Kokkos::Execution::GraphImpl::OpState<
-                          typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t,
-                          Tests::Utils::SinkReceiver,
-                          Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>,
-                              reducer_t
-                          >,
-                          Kokkos::Execution::GraphImpl::ParallelReduceClosure<
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>,
-                              reducer_t
-                          >
-                      >
-        >);
+        static_assert(
+            std::same_as<
+                decltype(opstate_from_prvalue),
+                const Kokkos::Execution::GraphImpl::OpState<
+                    typename TEST_CATEGORY(ParallelReduceTest)::schedule_sender_t,
+                    Tests::Utils::SinkReceiver,
+                    Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+                        TEST_EXECUTION_SPACE,
+                        Kokkos::Execution::Impl::ParallelReduceData<use_count_tracker_t, Kokkos::dims<1, int>, reducer_t>
+                    >,
+                    Kokkos::Execution::GraphImpl::ParallelReduceClosure<
+                        TEST_EXECUTION_SPACE,
+                        Kokkos::Execution::Impl::ParallelReduceData<use_count_tracker_t, Kokkos::dims<1, int>, reducer_t>
+                    >
+                >
+            >);
 
         ASSERT_EQ(tracker_source.use_count(), 2);
         ASSERT_EQ(tracker_source.high_water(), 7);

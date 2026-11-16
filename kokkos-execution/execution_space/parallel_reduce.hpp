@@ -20,7 +20,7 @@ template <Kokkos::ExecutionSpace Exec, Impl::parallel_reduce_data Data>
 struct ParallelReduceClosure {
     using execution_space = Exec;
 
-    void submit() const & {
+    void submit() const & noexcept(false) {
         if constexpr (Impl::labeled<Data>) {
             Kokkos::parallel_reduce(
                 Impl::as_convertible_to_string(Impl::get_property<Impl::Label>(data)),
