@@ -63,7 +63,7 @@ static_assert(test_op_state_traits());
  */
 constexpr bool test_op_state_passed_by_const_ref() {
     using sndr_t = decltype(Kokkos::Execution::parallel_for(
-        stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+        typename OpStateTest::schedule_sender_t(),
         Kokkos::Execution::label("hello from pfor"),
         Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
         Tests::Utils::Functors::Labeled<'a'>{}));
@@ -127,7 +127,7 @@ TEST_F(OpStateTest, construct_query_and_start) {
 consteval bool test_op_state_flattened_from_two() {
     using sndr_t = decltype(Kokkos::Execution::parallel_for(
         Kokkos::Execution::parallel_for(
-            stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+            typename OpStateTest::schedule_sender_t(),
             "hello from pfor",
             Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
             Tests::Utils::Functors::Labeled<'a'>{}),
@@ -164,7 +164,22 @@ consteval bool test_op_state_flattened_from_two() {
                   >
     >);
 
-    static_assert(!std::is_nothrow_constructible_v<op_state_t, sndr_t, Tests::Utils::SinkReceiver, clsr_0_t, clsr_1_t>);
+    static_assert(std::is_nothrow_constructible_v<
+                  op_state_t,
+                  typename OpStateTest::schedule_sender_t,
+                  Tests::Utils::SinkReceiver&&,
+                  clsr_0_t&&,
+                  clsr_1_t&&
+    >);
+
+    //! The operation state cannot be constructed from @c lvalue closures.
+    static_assert(!std::is_constructible_v<
+                  op_state_t,
+                  typename OpStateTest::schedule_sender_t,
+                  Tests::Utils::SinkReceiver&&,
+                  clsr_0_t&,
+                  clsr_1_t&
+    >);
 
     static_assert(stdexec::__tuple_size_v<typename op_state_t::closures_t> == 2);
 
@@ -178,7 +193,7 @@ consteval bool test_op_state_flattened_from_three() {
     using sndr_t = decltype(Kokkos::Execution::parallel_for(
         Kokkos::Execution::parallel_for(
             Kokkos::Execution::parallel_for(
-                stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+                typename OpStateTest::schedule_sender_t(),
                 "hello from pfor",
                 Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, 10),
                 Tests::Utils::Functors::Labeled<'a'>{}),
@@ -227,8 +242,14 @@ consteval bool test_op_state_flattened_from_three() {
                   >
     >);
 
-    static_assert(
-        !std::is_nothrow_constructible_v<op_state_t, sndr_t, Tests::Utils::SinkReceiver, clsr_0_t, clsr_1_t, clsr_2_t>);
+    static_assert(std::is_nothrow_constructible_v<
+                  op_state_t,
+                  typename OpStateTest::schedule_sender_t,
+                  Tests::Utils::SinkReceiver&&,
+                  clsr_0_t&&,
+                  clsr_1_t&&,
+                  clsr_2_t&&
+    >);
 
     static_assert(stdexec::__tuple_size_v<typename op_state_t::closures_t> == 3);
 
@@ -242,7 +263,7 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
     using sndr_t = decltype(stdexec::then(
         stdexec::bulk(
             Kokkos::Execution::parallel_for(
-                stdexec::schedule(std::declval<typename OpStateTest::context_t>().get_scheduler()),
+                typename OpStateTest::schedule_sender_t(),
                 Kokkos::RangePolicy<TEST_EXECUTION_SPACE, Kokkos::IndexType<size_t>>(0, 10),
                 Tests::Utils::Functors::Labeled<'a'>{}),
             stdexec::par,
@@ -284,8 +305,14 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
                   >
     >);
 
-    static_assert(
-        !std::is_nothrow_constructible_v<op_state_t, sndr_t, Tests::Utils::SinkReceiver, clsr_0_t, clsr_1_t, clsr_2_t>);
+    static_assert(std::is_nothrow_constructible_v<
+                  op_state_t,
+                  typename OpStateTest::schedule_sender_t,
+                  Tests::Utils::SinkReceiver&&,
+                  clsr_0_t&&,
+                  clsr_1_t&&,
+                  clsr_2_t&&
+    >);
 
     static_assert(stdexec::__tuple_size_v<typename op_state_t::closures_t> == 3);
 

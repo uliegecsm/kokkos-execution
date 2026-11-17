@@ -55,7 +55,7 @@ struct OpStateBase {
     completion_signal_t completion_signal;
     closures_t clsrs;
 
-    constexpr explicit OpStateBase(Rcvr rcvr, Clsr clsr_, Clsrs... clsrs_) noexcept(
+    constexpr explicit OpStateBase(Rcvr rcvr, Clsr&& clsr_, Clsrs&&... clsrs_) noexcept(
         std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&> && std::is_nothrow_move_constructible_v<Clsr>
         && (std::is_nothrow_move_constructible_v<Clsrs> && ...))
         : completion_signal(std::move(rcvr))
@@ -121,7 +121,7 @@ struct OpState
     constexpr explicit OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
         Rcvr rcvr_,
-        Clsrs... clsrs_) noexcept(op_state_base_is_nothrow_constructible && inner_op_state_is_nothrow_constructible)
+        Clsrs&&... clsrs_) noexcept(op_state_base_is_nothrow_constructible && inner_op_state_is_nothrow_constructible)
         : base_t(std::move(rcvr_), std::move(clsrs_)...)
         , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }

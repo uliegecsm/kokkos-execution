@@ -15,7 +15,7 @@ struct MakeOpState {
         using type = OpStateType<Sndr, Rcvr, Clsrs...>;
 
         // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-        constexpr auto operator()(Sndr&& sndr, Rcvr rcvr, Clsrs... clsrs) const
+        constexpr auto operator()(Sndr&& sndr, Rcvr rcvr, Clsrs&&... clsrs) const
             noexcept(std::is_nothrow_constructible_v<type, Sndr&&, Rcvr&&, Clsrs&&...>) -> type {
             return type(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsrs)...);
         }
@@ -46,7 +46,7 @@ struct MakeOpState {
          * See https://github.com/NVIDIA/stdexec/blob/0a3afb8de52b4fde8ca7ab62ca09a23a8aa6a30f/include/stdexec/__detail/__sender_introspection.hpp#L244-L246.
          */
         // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-        constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs... clsrs) const
+        constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs&&... clsrs) const
             noexcept(sndr_has_nothrow_transform_sender && is_nothrow_huddle) -> type {
             auto trnsfrmd_sndr = stdexec::transform_sender(std::forward<Sndr>(sndr), stdexec::get_env(rcvr));
             return huddle_fn_t{}(
