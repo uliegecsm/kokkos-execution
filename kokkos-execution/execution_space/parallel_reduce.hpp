@@ -33,7 +33,8 @@ struct ParallelReduceClosure {
 
     [[nodiscard]]
     auto get_policy() const & noexcept {
-        return Impl::make_policy<execution_space>(state->exec, data.policy_or_iter_space);
+        return Impl::make_policy<Kokkos::Execution::parallel_reduce_t, execution_space>(
+            state->exec, data.policy_or_iter_space);
     }
 
     const Impl::State<execution_space>* state;

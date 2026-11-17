@@ -15,7 +15,7 @@
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
-template <Kokkos::ExecutionSpace Exec, Impl::parallel_for_data Data>
+template <typename Tag, Kokkos::ExecutionSpace Exec, Impl::parallel_for_data Data>
 struct ParallelForClosure {
     using execution_space = Exec;
 
@@ -29,7 +29,7 @@ struct ParallelForClosure {
 
     [[nodiscard]]
     auto get_policy() const & noexcept {
-        return Impl::make_policy<execution_space>(state->exec, data.policy_or_iter_space);
+        return Impl::make_policy<Tag, execution_space>(state->exec, data.policy_or_iter_space);
     }
 
     const Impl::State<execution_space>* state;
@@ -41,7 +41,7 @@ struct ParallelForSender {
     using sender_concept = stdexec::sender_tag;
 
     using execution_space = Exec;
-    using closure_t = ParallelForClosure<execution_space, Data>;
+    using closure_t = ParallelForClosure<Tag, execution_space, Data>;
 
     closure_t clsr;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)

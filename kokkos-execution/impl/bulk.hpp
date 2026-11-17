@@ -27,15 +27,6 @@ struct BulkTraits<stdexec::__bulk::__data<Policy, Shape, Functor>> {
 template <typename Data>
 using bulk_traits = BulkTraits<std::remove_cvref_t<Data>>;
 
-/**
- * According to https://eel.is/c++draft/exec#bulk-4, the callable is invoked using an index
- * whose type is the same as the @c stdexec::bulk_t shape argument type.
- *
- * See also https://github.com/NVIDIA/stdexec/pull/2359.
- */
-template <Kokkos::ExecutionSpace Exec, typename Data>
-using make_policy_for_bulk_t = Impl::make_policy_t<Exec, Kokkos::IndexType<typename Impl::bulk_traits<Data>::shape_t>>;
-
 template <typename Data>
 using functor_for_bulk_t = typename Impl::bulk_traits<Data>::functor_t;
 
