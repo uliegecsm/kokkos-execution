@@ -81,7 +81,7 @@ struct ContinuesOnOpState
         , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }
 
-    void complete(stdexec::set_value_t) noexcept {
+    constexpr void complete(stdexec::set_value_t) noexcept {
         stdexec::set_value(std::move(this->rcvr));
     }
 

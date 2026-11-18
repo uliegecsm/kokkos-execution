@@ -9,6 +9,7 @@
 #include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/execution_space/sender_concepts.hpp"
 #include "kokkos-execution/impl/attributes.hpp"
+#include "kokkos-execution/impl/macros.hpp"
 #include "kokkos-execution/impl/make_policy.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
 #include "kokkos-execution/parallel_for.hpp"
@@ -64,6 +65,20 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t =
         ParallelForSender<parallel_for_t, Sndr, Impl::exec_of_t<Sndr, Env>, std::remove_cvref_t<Data>>;
+
+    template <typename Env, typename Data, typename Sndr>
+    requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
+    static auto make_closure(
+        const Env& env,
+        Kokkos::Execution::parallel_for_t,
+        Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
+        const Sndr& sndr)
+    // KOKKOS_EXECUTION_RETURNS_BRACED(
+    {
+        return typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t{
+            .state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env).state,
+            .data = std::forward<Data>(data)};
+    }
 
     template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)

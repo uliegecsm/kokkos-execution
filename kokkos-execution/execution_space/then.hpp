@@ -62,6 +62,16 @@ struct TransformSenderFor<stdexec::then_t> {
         using sndr_t =
             ThenSender<stdexec::then_t, Sndr, execution_space, std::string_view, std::remove_cvref_t<Functor>>;
 
+        static auto make_closure(
+            const Env& env,
+            std::remove_reference_t<Functor>& functor,
+            const std::remove_reference_t<Sndr>& sndr)
+            STDEXEC_AUTO_RETURN(
+                typename sndr_t::closure_t{
+                    .state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env).state,
+                    .label = KOKKOS_EXECUTION_IMPL_DISPATCH_LABEL(execution_space, ": then"),
+                    .functor = std::forward<Functor>(functor)})
+
         auto operator()(const Env& env, std::remove_reference_t<Functor>& functor, std::remove_reference_t<Sndr>& sndr)
             const STDEXEC_AUTO_RETURN(
                 sndr_t{
@@ -72,6 +82,14 @@ struct TransformSenderFor<stdexec::then_t> {
                     std::forward<Sndr>(sndr)
         })
     };
+
+    template <typename Env, typename Functor, typename Sndr>
+    requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)
+    static auto make_closure(
+        const Env& env,
+        stdexec::then_t,
+        Functor&& functor, // NOLINT(cppcoreguidelines-missing-std-forward)
+        const Sndr& sndr) STDEXEC_AUTO_RETURN(Transformer<Env, Functor, Sndr>::make_closure(env, functor, sndr))
 
     template <typename Env, typename Functor, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)

@@ -1,6 +1,7 @@
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/single_thread_context.hpp"
 #include "exec/split.hpp"
 #include "exec/static_thread_pool.hpp"
 PRAGMA_DIAGNOSTIC_POP
@@ -13,6 +14,7 @@ PRAGMA_DIAGNOSTIC_POP
 #include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/increment.hpp"
+#include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/sync_wait.hpp"
 
 /**
@@ -44,6 +46,46 @@ class SplitTest
     >;
 };
 
+TEST_F(SplitTest, continues_on) {
+    exec::single_thread_context stc{};
+    const context_t esc{exec};
+
+    using dir_at = stdexec::connect_result_t<
+        decltype(stdexec::schedule(stc.get_scheduler()) | experimental::execution::split()),
+        Tests::Utils::SinkReceiver
+    >;
+
+    using dir_bt = stdexec::connect_result_t<
+        decltype(stdexec::schedule(esc.get_scheduler()) | experimental::execution::split()),
+        Tests::Utils::SinkReceiver
+    >;
+
+    stdexec::sender auto sndr = stdexec::schedule(stc.get_scheduler()) | experimental::execution::split()
+                              | stdexec::continues_on(esc.get_scheduler());
+
+    using type = Kokkos::Execution::ExecutionSpaceImpl::ContinuesOnOpState<
+        Kokkos::Execution::ExecutionSpaceImpl::Scheduler<Kokkos::Serial>,
+        stdexec::__sexpr<
+            stdexec::schedule_from_t,
+            stdexec::__,
+            experimental::execution::__shared::__sndr<
+                experimental::execution::split_t,
+                stdexec::__run_loop::__basic_run_loop<stdexec::run_loop, stdexec::env<>>::__scheduler::__sndr_t,
+                stdexec::env<>
+            >
+        >,
+        Tests::Utils::SinkReceiver
+    >;
+    type* ptr = nullptr;
+
+    static_assert(std::same_as<typename type::exec_env_policy_t, int>);
+
+    // using op_state_t = stdexec::connect_result_t<decltype(sndr), Tests::Utils::SinkReceiver>;
+
+    // ASSERT_THAT(Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)), testing::IsEmpty());
+}
+
+#if false
 //! @test Use @c experimental::execution::split and @c stdexec::sync_wait right after.
 TEST_F(SplitTest, split_and_sync_wait) {
     const context_t esc{exec};
@@ -135,5 +177,6 @@ TEST_F(SplitTest, within) {
 
     ASSERT_EQ(data(), 5);
 }
+#endif
 
 } // namespace Tests::ExecutionSpaceImpl

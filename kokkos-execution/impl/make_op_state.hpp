@@ -7,7 +7,11 @@
 
 namespace Kokkos::Execution::Impl {
 
-template <typename DomainType, template <typename...> typename OpStateType>
+template <
+    typename DomainType,
+    template <typename...> typename OpStateType,
+    template <typename> typename TransformSenderForType
+>
 struct MakeOpState {
 
     template <typename Sndr, typename Rcvr, typename... Clsrs>
@@ -48,12 +52,11 @@ struct MakeOpState {
         // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
         constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs&&... clsrs) const
             noexcept(sndr_has_nothrow_transform_sender && is_nothrow_huddle) -> type {
-            auto trnsfrmd_sndr = stdexec::transform_sender(std::forward<Sndr>(sndr), stdexec::get_env(rcvr));
+            auto& [tag, data, child] = sndr;
+            auto clsr = TransformSenderForType<stdexec::tag_of_t<Sndr>>::make_closure(
+                stdexec::get_env(rcvr), tag, stdexec::__forward_like<Sndr>(data), child);
             return huddle_fn_t{}(
-                stdexec::__forward_like<Sndr>(trnsfrmd_sndr.sndr),
-                std::forward<Rcvr>(rcvr),
-                std::move(trnsfrmd_sndr.clsr),
-                std::move(clsrs)...);
+                stdexec::__forward_like<Sndr>(child), std::forward<Rcvr>(rcvr), std::move(clsr), std::move(clsrs)...);
         }
     };
 };

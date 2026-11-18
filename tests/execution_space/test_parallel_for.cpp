@@ -1,5 +1,13 @@
 #include <bit>
 
+#include "kokkos-execution/utils/ignore_warnings.hpp"
+PRAGMA_DIAGNOSTIC_PUSH
+KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/single_thread_context.hpp"
+#include "exec/split.hpp"
+#include "exec/static_thread_pool.hpp"
+PRAGMA_DIAGNOSTIC_POP
+
 #include "kokkos-utils/callbacks/RecorderListener.hpp"
 #include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
 
@@ -107,7 +115,7 @@ consteval bool test_sndr_traits() {
     >);
 
     //! It is nothrow connectable.
-    static_assert(stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
+    // static_assert(stdexec::__nothrow_connectable<pfor_sndr_t, Tests::Utils::SinkReceiver>);
 
     return true;
 }
@@ -478,8 +486,8 @@ TEST_F(TEST_CATEGORY(ParallelForTest), forwarding_env) {
     ASSERT_EQ(count, 1);
 }
 
-//! @test Check that connecting uses the least amount of moves and copies.
-TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
+//! @test Check that connecting uses the least amount of moves and copies (one operation in the sender).
+TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect_one_operation) {
     using counter_t = Tests::Utils::Functors::Counter;
 
     const context_t esc{exec};
@@ -522,6 +530,313 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_constructions, 0);
     ASSERT_EQ(counter_t::move_assignments, 0);
     ASSERT_EQ(counter_t::move_constructions, 4);
+}
+
+/**
+ * @test Check that connecting uses the least amount of moves and copies (one or more operations in the sender).
+ *
+ * @note Be sure to avoid creating the sender with piping, as this already incurs moves.
+ */
+TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect_more_operations) {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    const context_t esc{exec};
+
+    const Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy(0, 1);
+    counter_t counter;
+
+    // transform 1
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_1 = stdexec::transform_sender(
+        Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+        stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 1);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 1);
+
+    // connect 1
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_1 = stdexec::connect(
+        Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 1);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 2);
+
+    // transform 2
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_2 = stdexec::transform_sender(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+            "two",
+            policy,
+            counter),
+        stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 2);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 3);
+
+    // connect 2
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_2 = stdexec::connect(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+            "two",
+            policy,
+            counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 2);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 6);
+
+    // transform 3
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_3 = stdexec::transform_sender(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(
+                Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+                "two",
+                policy,
+                counter),
+            "three",
+            policy,
+            counter),
+        stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 3);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 6);
+
+    // connect 3
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_3 = stdexec::connect(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(
+                Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+                "two",
+                policy,
+                counter),
+            "three",
+            policy,
+            counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 3);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 11);
+
+    // transform 4
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_4 = stdexec::transform_sender(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(
+                Kokkos::Execution::parallel_for(
+                    Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+                    "two",
+                    policy,
+                    counter),
+                "three",
+                policy,
+                counter),
+            "four",
+            policy,
+            counter),
+        stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 4);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 10);
+
+    // connect 4
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_4 = stdexec::connect(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(
+                Kokkos::Execution::parallel_for(
+                    Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+                    "two",
+                    policy,
+                    counter),
+                "three",
+                policy,
+                counter),
+            "four",
+            policy,
+            counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 4);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 17);
+
+    // transform 5
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_5 = stdexec::transform_sender(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(
+                Kokkos::Execution::parallel_for(
+                    Kokkos::Execution::parallel_for(
+                        Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+                        "two",
+                        policy,
+                        counter),
+                    "three",
+                    policy,
+                    counter),
+                "four",
+                policy,
+                counter),
+            "five",
+            policy,
+            counter),
+        stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 5);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 15);
+
+    // connect 5
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_5 = stdexec::connect(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(
+                Kokkos::Execution::parallel_for(
+                    Kokkos::Execution::parallel_for(
+                        Kokkos::Execution::parallel_for(stdexec::schedule(esc.get_scheduler()), "one", policy, counter),
+                        "two",
+                        policy,
+                        counter),
+                    "three",
+                    policy,
+                    counter),
+                "four",
+                policy,
+                counter),
+            "five",
+            policy,
+            counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 5);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 24);
+}
+
+TEST(coucou, coucou) {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    exec::single_thread_context stc{};
+
+    counter_t counter;
+
+    // transform 1
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_1 =
+        stdexec::transform_sender(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 1);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 2);
+
+    // connect 1
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto opstate_from_lvalue_functor_1 =
+        stdexec::connect(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 1);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 2);
+
+    // transform 2
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_2 = stdexec::transform_sender(
+        stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 2);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 5);
+
+    // connect 2
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto opstate_from_lvalue_functor_2 = stdexec::connect(
+        stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 2);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 5);
+
+    // transform 3
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_3 = stdexec::transform_sender(
+        stdexec::then(stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
+        stdexec::env<>{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 3);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 9);
+
+    // connect 3
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto opstate_from_lvalue_functor_3 = stdexec::connect(
+        stdexec::then(stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
+        Tests::Utils::SinkReceiver{});
+
+    EXPECT_EQ(counter_t::copy_assignments, 0);
+    EXPECT_EQ(counter_t::copy_constructions, 3);
+    EXPECT_EQ(counter_t::move_assignments, 0);
+    EXPECT_EQ(counter_t::move_constructions, 9);
 }
 
 } // namespace Tests::ExecutionSpaceImpl

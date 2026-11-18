@@ -132,7 +132,7 @@ struct OpState
 };
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
-using make_op_state_t = Impl::MakeOpState<Domain, OpState>::Huddle<Sndr, Rcvr, Clsrs...>;
+using make_op_state_t = Impl::MakeOpState<Domain, OpState, TransformSenderFor>::Huddle<Sndr, Rcvr, Clsrs...>;
 
 template <typename Sndr, typename Rcvr, typename... Clsrs>
 using op_state_t = typename make_op_state_t<Sndr, Rcvr, Clsrs...>::type;
