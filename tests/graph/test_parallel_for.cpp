@@ -17,6 +17,7 @@
 #include "tests/utils/functors/use_count_tracker.hpp"
 #include "tests/utils/graph_context.hpp"
 #include "tests/utils/just_stopped.hpp"
+#include "tests/utils/parallel_for.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/sync_wait.hpp"
 
@@ -418,6 +419,131 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::copy_constructions, 2);
     ASSERT_EQ(counter_t::move_assignments, 0);
     ASSERT_EQ(counter_t::move_constructions, 4);
+}
+
+/**
+ * @test Check that connecting uses the least amount of moves and copies (one or more operations in the sender).
+ *
+ * @note Be sure to avoid creating the sender with piping, as this already incurs moves.
+ */
+TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect_more_operations) {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    const context_t gctx{exec};
+
+    const Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy(0, 1);
+    const counter_t counter;
+
+    //! @c stdexec::transform_sender with length of 1.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_1 =
+        stdexec::transform_sender(KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one), stdexec::env<>{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 1, 0, 1)
+
+    //! @c stdexec::connect with length of 1.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_1 =
+        stdexec::connect(KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one), Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 3, 0, 2)
+
+    //! @c stdexec::transform_sender with length of 2.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_2 = stdexec::transform_sender(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two), stdexec::env<>{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 2, 0, 3)
+
+    //! @c stdexec::connect with length of 2.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_2 = stdexec::connect(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two), Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 6, 0, 6)
+
+    //! @c stdexec::transform_sender with length of 3.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_3 = stdexec::transform_sender(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three), stdexec::env<>{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 3, 0, 6)
+
+    //! @c stdexec::connect with length of 3.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_3 = stdexec::connect(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three), Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 9, 0, 12)
+
+    //! @c stdexec::transform_sender with length of 4.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_4 = stdexec::transform_sender(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three, four), stdexec::env<>{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 4, 0, 10)
+
+    //! @c stdexec::connect with length of 4.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_4 = stdexec::connect(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three, four),
+        Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 12, 0, 20)
+
+    //! @c stdexec::transform_sender with length of 5.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_5 = stdexec::transform_sender(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three, four, five), stdexec::env<>{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 5, 0, 15)
+
+    //! @c stdexec::connect with length of 5.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_5 = stdexec::connect(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three, four, five),
+        Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 15, 0, 30)
+
+    //! @c stdexec::transform_sender with length of 6.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr_from_lvalue_functor_6 = stdexec::transform_sender(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three, four, five, six), stdexec::env<>{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 6, 0, 21)
+
+    //! @c stdexec::connect with length of 6.
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate_from_lvalue_functor_6 = stdexec::connect(
+        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(gctx, policy, counter, one, two, three, four, five, six),
+        Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 18, 0, 42)
 }
 
 //! @test Ensure that the data lifetime is extended only by the underlying @c Kokkos::Experimental::Graph node.
