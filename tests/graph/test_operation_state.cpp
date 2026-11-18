@@ -80,12 +80,14 @@ consteval bool test_op_state_flattened_from_two() {
     using op_state_t = stdexec::connect_result_t<sndr_t&&, Tests::Utils::SinkReceiver>;
 
     using clsr_0_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
+        Kokkos::Execution::parallel_for_t,
         node_props_t,
         Tests::Utils::Functors::Labeled<'a'>,
         Kokkos::RangePolicy<TEST_EXECUTION_SPACE>
     >;
 
     using clsr_1_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
+        Kokkos::Execution::parallel_for_t,
         node_props_t,
         Tests::Utils::Functors::Labeled<'b'>,
         Kokkos::RangePolicy<TEST_EXECUTION_SPACE>

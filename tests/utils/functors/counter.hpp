@@ -111,6 +111,14 @@ struct CounterRef {
     }
 };
 
+//! Check move and copy counts.
+#define CHECK_COUNTER_MOVES_AND_COPIES(                                                                                \
+    _HOW_, _copy_assignments_, _copy_constructions_, _move_assignments_, _move_constructions_)                         \
+    _HOW_##_EQ(counter_t::copy_assignments, _copy_assignments_);                                                       \
+    _HOW_##_EQ(counter_t::copy_constructions, _copy_constructions_);                                                   \
+    _HOW_##_EQ(counter_t::move_assignments, _move_assignments_);                                                       \
+    _HOW_##_EQ(counter_t::move_constructions, _move_constructions_);
+
 } // namespace Tests::Utils::Functors
 
 #endif // KOKKOS_EXECUTION_TESTS_UTILS_FUNCTORS_COUNTER_HPP
