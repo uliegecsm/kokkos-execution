@@ -56,4 +56,5 @@ function(add_one_example)
   endforeach()
 endfunction()
 
+add_subdirectory(cg)
 add_subdirectory(graph)
