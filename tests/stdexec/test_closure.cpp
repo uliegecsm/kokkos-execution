@@ -155,4 +155,60 @@ TEST_F(ClosureTest, stored_by_value) {
     ASSERT_EQ(counter_t::move_assignments, 0);
 }
 
+//! @test Check how things are moved/copied around with @ref Tests::Utils::Functors::Counter.
+TEST_F(ClosureTest, nesting_expo) {
+    counter_t counter{};
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto one = stdexec::then(counter);
+
+    ASSERT_EQ(counter_t::copy_constructions, 1);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 1);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto two = stdexec::then(counter) | stdexec::then(counter);
+
+    ASSERT_EQ(counter_t::copy_constructions, 2);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 4);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto three = stdexec::then(counter) | stdexec::then(counter) | stdexec::then(counter);
+
+    ASSERT_EQ(counter_t::copy_constructions, 3);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 1 + 2 + 3 + 2);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto four = stdexec::then(counter) | stdexec::then(counter) | stdexec::then(counter) | stdexec::then(counter);
+
+    ASSERT_EQ(counter_t::copy_constructions, 4);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 1 + 2 + 3 + 4 + 3);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto five = stdexec::then(counter) | stdexec::then(counter) | stdexec::then(counter) | stdexec::then(counter)
+                    | stdexec::then(counter);
+
+    ASSERT_EQ(counter_t::copy_constructions, 5);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::move_constructions, 19);
+    ASSERT_EQ(counter_t::move_assignments, 0);
+}
+
 } // namespace Tests

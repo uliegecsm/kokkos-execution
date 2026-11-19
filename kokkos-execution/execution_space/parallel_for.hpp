@@ -54,6 +54,7 @@ struct ParallelForSender {
         std::declval<Sndr>(),
         std::declval<Rcvr>(),
         std::declval<closure_t>()))) -> op_state_t<Sndr, Rcvr, closure_t> {
+        printf("--------------- MAKE A HUDDLE --------\n");
         return make_op_state_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
     }
 

@@ -56,6 +56,13 @@ struct Counter {
     KOKKOS_FUNCTION void operator()(Args&&...) const noexcept {
     }
 
+    static void report() {
+        printf("\tcopy_constructions: %d\n", copy_constructions.load());
+        printf("\tcopy_assignments  : %d\n", copy_assignments.load());
+        printf("\tmove_constructions: %d\n", move_constructions.load());
+        printf("\tmove_assignments  : %d\n", move_assignments.load());
+    }
+
     static void reset() {
         default_constructions = 0;
         destructions = 0;

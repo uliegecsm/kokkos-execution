@@ -380,4 +380,29 @@ TEST(ParallelForTest, closure_object_creation_perfectly_forwards_functor) {
     ASSERT_EQ(counter_t::move_constructions, 2);
 }
 
+//! @test Check @ref Kokkos::Execution::parallel_for closure object creation perfectly forwards the functor.
+TEST(ParallelForTest, closure_object_creation_perfectly_forwards_functor_2) {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    const Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy(0, 1);
+    counter_t counter;
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto closure_from_lvalue_functor = Kokkos::Execution::parallel_for(
+        Kokkos::Execution::parallel_for(
+            Kokkos::Execution::parallel_for(stdexec::just(), "label", policy, counter), "label", policy, counter),
+        "label",
+        policy,
+        counter);
+
+    const auto closure_from_lvalue_functor = Kokkos::Execution::parallel_for_sequence(
+        stdexec::just(), {"label", policy, counter}, {"label", policy, counter}, {"label", policy, counter});
+
+    stdexec::batched(stdexec::then_t, {functor}, {functor}, {functor}) // then() | then() | then()
+
+        ASSERT_EQ(counter_t::copy_constructions, 3);
+    ASSERT_EQ(counter_t::move_constructions, 3);
+}
+
 } // namespace Tests

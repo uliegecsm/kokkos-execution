@@ -5,6 +5,8 @@
 
 #include "kokkos-execution/impl/sender_concepts.hpp"
 
+#include "tests/utils/functors/counter.hpp"
+
 namespace Kokkos::Execution::Impl {
 
 template <
@@ -52,12 +54,32 @@ struct MakeOpState {
         // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
         constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs&&... clsrs) const
             noexcept(sndr_has_nothrow_transform_sender && is_nothrow_huddle) -> type {
+            printf("Before binding...\n");
+            Tests::Utils::Functors::Counter::report();
             auto& [tag, data, child] = sndr;
+            printf("After binding...\n");
+            Tests::Utils::Functors::Counter::report();
             auto clsr = TransformSenderForType<stdexec::tag_of_t<Sndr>>::make_closure(
                 stdexec::get_env(rcvr), tag, stdexec::__forward_like<Sndr>(data), child);
+            printf("After closure...\n");
+            Tests::Utils::Functors::Counter::report();
             return huddle_fn_t{}(
                 stdexec::__forward_like<Sndr>(child), std::forward<Rcvr>(rcvr), std::move(clsr), std::move(clsrs)...);
         }
+
+        // constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs&&... clsrs) const
+        //     noexcept(sndr_has_nothrow_transform_sender && is_nothrow_huddle) -> type {
+        //     printf("Before huddle::transform_sender...\n");
+        //     Tests::Utils::Functors::Counter::report();
+        //     auto trnsfrmd_sndr = stdexec::transform_sender(std::forward<Sndr>(sndr), stdexec::get_env(rcvr));
+        //     printf("After huddle::transform_sender...\n");
+        //     Tests::Utils::Functors::Counter::report();
+        //     return huddle_fn_t{}(
+        //         stdexec::__forward_like<Sndr>(trnsfrmd_sndr.sndr),
+        //         std::forward<Rcvr>(rcvr),
+        //         std::move(trnsfrmd_sndr.clsr),
+        //         std::move(clsrs)...);
+        // }
     };
 };
 
