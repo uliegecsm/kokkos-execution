@@ -64,10 +64,12 @@ TYPED_TEST_SUITE_P(TEST_CATEGORY(SyncWaitTest));
 TYPED_TEST_P(TEST_CATEGORY(SyncWaitTest), get_start_scheduler) {
     std::thread::id tid;
 
-    auto sndr = stdexec::read_env(stdexec::get_start_scheduler)
-              | stdexec::let_value([&](auto schd) { return stdexec::schedule(schd) | THEN_STORE_THREAD_ID(&tid); })
-              | Tests::Utils::check_completion_scheduler_type<stdexec::set_value_t, stdexec::run_loop::scheduler>()
-              | stdexec::continues_on(this->ctx.get_scheduler());
+    auto sndr =
+        stdexec::read_env(stdexec::get_start_scheduler) | stdexec::let_value([&](auto schd) {
+            return stdexec::schedule(schd) | THEN_STORE_THREAD_ID(&tid)
+                 | Tests::Utils::check_completion_scheduler_type<stdexec::set_value_t, stdexec::run_loop::scheduler>();
+        })
+        | stdexec::continues_on(this->ctx.get_scheduler());
 
     stdexec::sync_wait(std::move(sndr)); // NOLINT(performance-move-const-arg)
 

@@ -107,12 +107,22 @@ TEST_F(LetValueTest, scoped_allocation) {
                           });
                });
 
+    static_assert(stdexec::dependent_sender<decltype(run)>);
+
     static_assert(
         stdexec::get_completion_signatures<decltype(run), stdexec::env<>>()
         == stdexec::completion_signatures<
             stdexec::set_value_t(view_of_5_t),
             stdexec::set_error_t(std::exception_ptr)
         >{});
+
+    //! The completion domain is the default domain because the value completion is delivered by the execution agent of the single thread context scheduler.
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(run), stdexec::env<>>,
+                  stdexec::default_domain
+    >);
+
+    static_assert(!Tests::Utils::has_completion_scheduler_for<decltype(run), stdexec::set_value_t, stdexec::env<>>);
 
     //! Check the result of the computation.
     auto check = std::move(run) // NOLINT(performance-move-const-arg)
@@ -147,9 +157,31 @@ TEST_F(LetValueTest, scoped_allocation) {
                                 });
                  });
 
+    static_assert(stdexec::dependent_sender<decltype(check)>);
+
     static_assert(
         stdexec::get_completion_signatures<decltype(check), stdexec::env<>>()
         == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
+
+    static_assert(std::same_as<
+                  stdexec::__completion_domain_of_t<stdexec::set_value_t, decltype(check), stdexec::env<>>,
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain
+    >);
+
+    static_assert(!Tests::Utils::has_completion_scheduler_for<decltype(check), stdexec::set_value_t, stdexec::env<>>);
+
+    /// The @c let_value sender does not advertise a completion scheduler for the value channel. As a consequence, it is not an execution space
+    /// completing sender, which in turn implies that our execution space customisation of @c sync_wait is not selected.
+    static_assert(!Kokkos::Execution::ExecutionSpaceImpl::execution_space_completing_sender<
+                  decltype(check),
+                  Kokkos::Execution::Impl::SyncWait::env
+    >);
+    static_assert(!stdexec::__detail::__has_transform_sender<
+                  Kokkos::Execution::ExecutionSpaceImpl::Domain,
+                  stdexec::sync_wait_t,
+                  decltype(check),
+                  Kokkos::Execution::Impl::SyncWait::env
+    >);
 
     ASSERT_EQ(data(), 0) << "Eager execution is not allowed.";
 

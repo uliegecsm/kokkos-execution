@@ -120,8 +120,8 @@ struct ScheduleFromSender {
     >;
 
     template <stdexec::__decays_to<ScheduleFromSender> Self, stdexec::receiver Rcvr>
-    STDEXEC_EXPLICIT_THIS_BEGIN(
-        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(
+        connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
         noexcept(is_nothrow_connectable_v<Self, Rcvr>) -> connect_result_t<Self, Rcvr> {
         return {std::forward<Self>(self).sndr, std::move(rcvr)};
     }

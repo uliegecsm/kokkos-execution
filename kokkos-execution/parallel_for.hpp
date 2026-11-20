@@ -124,7 +124,7 @@ struct ParallelForData : Properties... {
 
     //! Transform @ref policy_or_iter_space, keeping other data unchanged.
     template <typename Self, typename UnaryOp>
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto transform_policy_or_iter_space)(
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(transform_policy_or_iter_space)(
         this Self&& self, // NOLINT(cppcoreguidelines-missing-std-forward)
         UnaryOp&& unary_op)
         STDEXEC_AUTO_RETURN(

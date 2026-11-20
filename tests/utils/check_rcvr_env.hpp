@@ -19,11 +19,13 @@ struct CheckRcvrEnvSender {
 
     template <stdexec::__decays_to<CheckRcvrEnvSender> Self, stdexec::receiver Rcvr>
     [[nodiscard]]
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
-        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(
+        connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
         noexcept(stdexec::__nothrow_connectable<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&>)
             -> stdexec::connect_result_t<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&> {
-        static_assert(std::same_as<ExpectedEnv, stdexec::env_of_t<Rcvr>>);
+        if constexpr (!stdexec::__is_debug_env<stdexec::env_of_t<Rcvr>>) {
+            static_assert(std::same_as<ExpectedEnv, stdexec::env_of_t<Rcvr>>);
+        }
         return stdexec::connect(std::forward<Self>(self).sndr, std::move(rcvr));
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
