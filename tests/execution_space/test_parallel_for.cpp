@@ -524,4 +524,94 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::move_constructions, 4);
 }
 
+template <typename T>
+struct TEST_CATEGORY(ParallelForCopiesAndMovesTest)
+    : public virtual testing::Test
+    , public Kokkos::utils::tests::scoped::ExecutionSpace<TEST_EXECUTION_SPACE> {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    static constexpr typename T::value_type N = T::value; // NOLINT(readability-identifier-length)
+
+    TEST_CATEGORY(ParallelForCopiesAndMovesTest)()
+        : esc{this->exec}
+        , policy(0, 1)
+        , counter{} {
+    }
+
+    template <typename T::value_type M>
+    stdexec::sender auto make_sndr_impl() {
+        if constexpr (M == 0) {
+            return stdexec::schedule(esc.get_scheduler());
+        } else {
+            return Kokkos::Execution::parallel_for(make_sndr_impl<M - 1>(), this->policy, this->counter);
+        }
+    }
+
+    stdexec::sender auto make_sndr() {
+        return make_sndr_impl<N>();
+    }
+
+    Kokkos::Execution::ExecutionSpaceContext<TEST_EXECUTION_SPACE> esc;
+    Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy;
+    counter_t counter;
+};
+
+TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest));
+
+/**
+ * For a sender with @c N  @c Kokkos::Execution::parallel_for sender adapters:
+ * - build: copy each functor into the functor member of the data (N copies)
+ * - build: move each child with its subtree into its parent (N * (N-1) / 2 moves)
+ * - transform: move the child with its subtree into the transformed sender (N - 1 moves)
+ * - transform: move the parallel for data into the transformed sender closure (1 move)
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ */
+TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr = stdexec::transform_sender(this->make_sndr(), stdexec::env<>{});
+
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N - 1)) / 2 + (this->N - 1) + 1)
+}
+
+/**
+ * For a sender with @c N  @c Kokkos::Execution::parallel_for sender adapters:
+ * - build: copy each functor into the functor member of the data (N copies)
+ * - build: move each child with its subtree into its parent (N * (N-1) / 2 moves)
+ * - connect: recursively transform each sender (N * (N+1) / 2 moves)
+ * - connect: move each closure into the operation state (N moves)
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ */
+TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), connect) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_COPIES_AND_MOVES(
+        EXPECT, 0, this->N, 0, (this->N * (this->N - 1)) / 2 + (this->N * (this->N + 1)) / 2 + this->N)
+}
+
+REGISTER_TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender, connect);
+
+using parallel_for_copies_and_moves_types_t = ::testing::Types<
+    std::integral_constant<size_t, 1>,
+    std::integral_constant<size_t, 2>,
+    std::integral_constant<size_t, 3>,
+    std::integral_constant<size_t, 4>,
+    std::integral_constant<size_t, 5>,
+    std::integral_constant<size_t, 6>
+>;
+
+STDEXEC_PP_EVAL(
+    INSTANTIATE_TYPED_TEST_SUITE_P,
+    TEST_CATEGORY(ParallelForCopiesAndMovesTestInstantiation),
+    TEST_CATEGORY(ParallelForCopiesAndMovesTest),
+    parallel_for_copies_and_moves_types_t);
+
 } // namespace Tests::ExecutionSpaceImpl
