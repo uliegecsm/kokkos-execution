@@ -14,7 +14,6 @@
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
 #include "tests/utils/just_stopped.hpp"
-#include "tests/utils/parallel_for.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/sync_wait.hpp"
 #include "tests/utils/tracking_allocator.hpp"
@@ -525,128 +524,94 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
     ASSERT_EQ(counter_t::move_constructions, 4);
 }
 
-/**
- * @test Check that connecting uses the least amount of moves and copies (one or more operations in the sender).
- *
- * @note Be sure to avoid creating the sender with piping, as this already incurs moves.
- */
-TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect_more_operations) {
+template <typename T>
+struct TEST_CATEGORY(ParallelForCopiesAndMovesTest)
+    : public virtual testing::Test
+    , public Kokkos::utils::tests::scoped::ExecutionSpace<TEST_EXECUTION_SPACE> {
     using counter_t = Tests::Utils::Functors::Counter;
 
-    const context_t esc{exec};
+    static constexpr typename T::value_type N = T::value; // NOLINT(readability-identifier-length)
 
-    const Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy(0, 1);
-    const counter_t counter;
+    TEST_CATEGORY(ParallelForCopiesAndMovesTest)()
+        : esc{this->exec}
+        , policy(0, 1)
+        , counter{} {
+    }
 
-    //! @c stdexec::transform_sender with length of 1.
+    template <typename T::value_type M>
+    stdexec::sender auto make_sndr_impl() {
+        if constexpr (M == 0) {
+            return stdexec::schedule(esc.get_scheduler());
+        } else {
+            return Kokkos::Execution::parallel_for(make_sndr_impl<M - 1>(), this->policy, this->counter);
+        }
+    }
+
+    stdexec::sender auto make_sndr() {
+        return make_sndr_impl<N>();
+    }
+
+    Kokkos::Execution::ExecutionSpaceContext<TEST_EXECUTION_SPACE> esc;
+    Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy;
+    counter_t counter;
+};
+
+TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest));
+
+/**
+ * For a sender with @c N  @c Kokkos::Execution::parallel_for sender adapters:
+ * - build: copy each functor into the functor member of the data (N copies)
+ * - build: move each child with its subtree into its parent (N * (N-1) / 2 moves)
+ * - transform: move the child with its subtree into the transformed sender (N - 1 moves)
+ * - transform: move the parallel for data into the transformed sender closure (1 move)
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ */
+TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender) {
+    using counter_t = typename TestFixture::counter_t;
+
     counter_t::reset();
 
     [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_1 =
-        stdexec::transform_sender(KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one), stdexec::env<>{});
+    const auto trnsfrmd_sndr = stdexec::transform_sender(this->make_sndr(), stdexec::env<>{});
 
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 1, 0, 1)
-
-    //! @c stdexec::connect with length of 1.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const stdexec::operation_state auto opstate_from_lvalue_functor_1 =
-        stdexec::connect(KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one), Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 1, 0, 2)
-
-    //! @c stdexec::transform_sender with length of 2.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_2 = stdexec::transform_sender(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two), stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 2, 0, 3)
-
-    //! @c stdexec::connect with length of 2.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const stdexec::operation_state auto opstate_from_lvalue_functor_2 = stdexec::connect(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two), Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 2, 0, 6)
-
-    //! @c stdexec::transform_sender with length of 3.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_3 = stdexec::transform_sender(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three), stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 3, 0, 6)
-
-    //! @c stdexec::connect with length of 3.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const stdexec::operation_state auto opstate_from_lvalue_functor_3 = stdexec::connect(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three), Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 3, 0, 12)
-
-    //! @c stdexec::transform_sender with length of 4.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_4 = stdexec::transform_sender(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three, four), stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 4, 0, 10)
-
-    //! @c stdexec::connect with length of 4.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const stdexec::operation_state auto opstate_from_lvalue_functor_4 = stdexec::connect(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three, four), Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 4, 0, 20)
-
-    //! @c stdexec::transform_sender with length of 5.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_5 = stdexec::transform_sender(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three, four, five), stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 5, 0, 15)
-
-    //! @c stdexec::connect with length of 5.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const stdexec::operation_state auto opstate_from_lvalue_functor_5 = stdexec::connect(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three, four, five),
-        Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 5, 0, 30)
-
-    //! @c stdexec::transform_sender with length of 6.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_6 = stdexec::transform_sender(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three, four, five, six), stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 6, 0, 21)
-
-    //! @c stdexec::connect with length of 6.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const stdexec::operation_state auto opstate_from_lvalue_functor_6 = stdexec::connect(
-        KOKKOS_EXECUTION_TESTS_PARALLEL_FOR(esc, policy, counter, one, two, three, four, five, six),
-        Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 6, 0, 42)
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N - 1)) / 2 + (this->N - 1) + 1)
 }
+
+/**
+ * For a sender with @c N  @c Kokkos::Execution::parallel_for sender adapters:
+ * - build: copy each functor into the functor member of the data (N copies)
+ * - build: move each child with its subtree into its parent (N * (N-1) / 2 moves)
+ * - connect: recursively transform each sender (N * (N+1) / 2 moves)
+ * - connect: move each closure into the operation state (N moves)
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ */
+TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), connect) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_COPIES_AND_MOVES(
+        EXPECT, 0, this->N, 0, (this->N * (this->N - 1)) / 2 + (this->N * (this->N + 1)) / 2 + this->N)
+}
+
+REGISTER_TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender, connect);
+
+using parallel_for_copies_and_moves_types_t = ::testing::Types<
+    std::integral_constant<size_t, 1>,
+    std::integral_constant<size_t, 2>,
+    std::integral_constant<size_t, 3>,
+    std::integral_constant<size_t, 4>,
+    std::integral_constant<size_t, 5>,
+    std::integral_constant<size_t, 6>
+>;
+
+STDEXEC_PP_EVAL(
+    INSTANTIATE_TYPED_TEST_SUITE_P,
+    TEST_CATEGORY(ParallelForCopiesAndMovesTestInstantiation),
+    TEST_CATEGORY(ParallelForCopiesAndMovesTest),
+    parallel_for_copies_and_moves_types_t);
 
 } // namespace Tests::ExecutionSpaceImpl
