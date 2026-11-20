@@ -111,7 +111,7 @@ TYPED_TEST_SUITE_P(ThenCopiesAndMovesTest);
  * - move each child with its subtree into its parent (N * (N-1) / 2 moves)
  * - move the transformed sender into the result variable (N moves)
  *
- * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ * @note Each adaptor is called with the fixture’s @c counter as an lvalue.
  */
 TYPED_TEST_P(ThenCopiesAndMovesTest, transform_sender) {
     using counter_t = typename TestFixture::counter_t;
@@ -131,7 +131,7 @@ TYPED_TEST_P(ThenCopiesAndMovesTest, transform_sender) {
  * - move each child with its subtree into its parent (N * (N-1) / 2 moves)
  * - move each functor into the operation state (N moves)
  *
- * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ * @note Each adaptor is called with the fixture’s @c counter as an lvalue.
  */
 TYPED_TEST_P(ThenCopiesAndMovesTest, connect) {
     using counter_t = typename TestFixture::counter_t;
