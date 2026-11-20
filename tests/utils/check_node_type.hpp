@@ -42,8 +42,8 @@ struct CheckNodeTypeSender {
 
     template <stdexec::__decays_to<CheckNodeTypeSender> Self, stdexec::receiver Rcvr>
     [[nodiscard]]
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
-        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(
+        connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
         noexcept(stdexec::__nothrow_connectable<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&>)
             -> stdexec::connect_result_t<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&> {
         using op_state_t = stdexec::connect_result_t<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&>;

@@ -84,8 +84,8 @@ struct RegionSender {
 
     template <stdexec::__decays_to<RegionSender> Self, stdexec::receiver Rcvr>
     [[nodiscard]]
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
-        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(
+        connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
         noexcept(
             std::is_nothrow_constructible_v<
                 rcvr_t<Rcvr>,

@@ -46,8 +46,8 @@ struct CheckCompletionSchedulerTypeSender {
 
     template <stdexec::__decays_to<CheckCompletionSchedulerTypeSender> Self, stdexec::receiver Rcvr>
     [[nodiscard]]
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
-        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+    auto constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
+        connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
         noexcept(stdexec::__nothrow_connectable<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&>)
             -> stdexec::connect_result_t<KOKKOS_EXECUTION_IMPL_MEMBER_CVREF_T(Self, sndr), Rcvr&&> {
         static_assert(check_completion_scheduler_type<Rcvr>());

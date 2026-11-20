@@ -146,8 +146,8 @@ struct ContinuesOnSender {
     >;
 
     template <stdexec::__decays_to<ContinuesOnSender> Self, stdexec::receiver Rcvr>
-    STDEXEC_EXPLICIT_THIS_BEGIN(
-        auto connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(
+        connect)(this Self&& self, Rcvr rcvr) // NOLINT(cppcoreguidelines-missing-std-forward)
         noexcept(is_nothrow_connectable_v<Self, Rcvr>) -> connect_result_t<Self, Rcvr> {
         return {
             KOKKOS_EXECUTION_IMPL_FORWARD_THIS(Self, self).schd,
