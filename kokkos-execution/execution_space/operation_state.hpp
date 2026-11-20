@@ -59,7 +59,7 @@ struct OpStateBase {
         std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&> && std::is_nothrow_move_constructible_v<Clsr>
         && (std::is_nothrow_move_constructible_v<Clsrs> && ...))
         : completion_signal(std::move(rcvr))
-        , clsrs(std::move(clsr_), std::move(clsrs_)...) {
+        , clsrs(stdexec::__mktuple(std::move(clsr_), std::move(clsrs_)...)) {
     }
 
     void complete(stdexec::set_value_t) noexcept {
