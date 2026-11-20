@@ -605,7 +605,8 @@ using parallel_for_copies_and_moves_types_t = ::testing::Types<
     std::integral_constant<size_t, 3>,
     std::integral_constant<size_t, 4>,
     std::integral_constant<size_t, 5>,
-    std::integral_constant<size_t, 6>
+    std::integral_constant<size_t, 6>,
+    std::integral_constant<size_t, 9>
 >;
 
 STDEXEC_PP_EVAL(
