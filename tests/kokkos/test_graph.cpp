@@ -45,7 +45,7 @@ TEST_F(TEST_CATEGORY(GraphTest), copies_and_moves) {
     const auto graph_from_lvalue_functor = Kokkos::Experimental::create_graph(
         Kokkos::Experimental::get_device_handle(exec), [&](const auto& root) { root.then_parallel_for(42, counter); });
 
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 3, 0, 0)
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, 3, 0, 0)
 
     counter_t::reset();
 
@@ -55,7 +55,7 @@ TEST_F(TEST_CATEGORY(GraphTest), copies_and_moves) {
             root.then_parallel_for(42, std::move(counter));
         });
 
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 2, 0, 1)
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, 2, 0, 1)
 
     counter_t::reset();
 
@@ -65,6 +65,6 @@ TEST_F(TEST_CATEGORY(GraphTest), copies_and_moves) {
             root.then_parallel_for(42, counter_t{});
         });
 
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 2, 0, 1)
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, 2, 0, 1)
 }
 } // namespace Tests

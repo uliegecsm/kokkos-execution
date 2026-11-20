@@ -22,166 +22,85 @@ PRAGMA_DIAGNOSTIC_POP
 
 namespace Tests {
 
+template <typename T>
+struct ThenCopiesAndMovesTest : public testing::Test {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    static constexpr typename T::value_type N = T::value; // NOLINT(readability-identifier-length)
+
+    template <typename T::value_type M>
+    stdexec::sender auto make_sndr_impl() {
+        if constexpr (M == 0) {
+            return stdexec::schedule(stc.get_scheduler());
+        } else {
+            return stdexec::then(make_sndr_impl<M - 1>(), counter);
+        }
+    }
+
+    stdexec::sender auto make_sndr() {
+        return make_sndr_impl<N>();
+    }
+
+    exec::single_thread_context stc;
+    counter_t counter;
+};
+
+TYPED_TEST_SUITE_P(ThenCopiesAndMovesTest);
+
 /**
- * @test Check copies and moves count while using @c stdexec::transform_sender and @c stdexec::connect.
+ * For a sender with @c N  @c stdexec::then sender adapters:
+ * - copy each functor into the by-value parameter of @c stdexec::then (N copies)
+ * - move each functor from that parameter into its adapter (N moves)
+ * - move each child with its subtree into its parent (N * (N-1) / 2 moves)
+ * - move the transformed sender into the result variable (N moves)
  *
  * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
  */
-TEST(ThenTest, copies_and_moves_in_transform_sender_and_connect) {
-    using counter_t = Tests::Utils::Functors::Counter;
+TYPED_TEST_P(ThenCopiesAndMovesTest, transform_sender) {
+    using counter_t = typename TestFixture::counter_t;
 
-    exec::single_thread_context stc{};
-
-    const counter_t counter;
-
-    //! @c stdexec::transform_sender with length of 1.
     counter_t::reset();
 
     [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_1 =
-        stdexec::transform_sender(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), stdexec::env<>{});
+    const auto trnsfrmd_sndr = stdexec::transform_sender(this->make_sndr(), stdexec::env<>{});
 
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 1, 0, 2)
-
-    //! @c stdexec::connect with length of 1.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto opstate_from_lvalue_functor_1 =
-        stdexec::connect(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 1, 0, 2)
-
-    //! @c stdexec::transform_sender with length of 2.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_2 = stdexec::transform_sender(
-        stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 2, 0, 5)
-
-    //! @c stdexec::connect with length of 2.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto opstate_from_lvalue_functor_2 = stdexec::connect(
-        stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter),
-        Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 2, 0, 5)
-
-    //! @c stdexec::transform_sender with length of 3.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_3 = stdexec::transform_sender(
-        stdexec::then(stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
-        stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 3, 0, 9)
-
-    //! @c stdexec::connect with length of 3.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto opstate_from_lvalue_functor_3 = stdexec::connect(
-        stdexec::then(stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
-        Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 3, 0, 9)
-
-    //! @c stdexec::transform_sender with length of 4.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_4 = stdexec::transform_sender(
-        stdexec::then(
-            stdexec::then(
-                stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
-            counter),
-        stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 4, 0, 14)
-
-    //! @c stdexec::connect with length of 4.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto opstate_from_lvalue_functor_4 = stdexec::connect(
-        stdexec::then(
-            stdexec::then(
-                stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
-            counter),
-        Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 4, 0, 14)
-
-    //! @c stdexec::transform_sender with length of 5.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_5 = stdexec::transform_sender(
-        stdexec::then(
-            stdexec::then(
-                stdexec::then(
-                    stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
-                counter),
-            counter),
-        stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 5, 0, 20)
-
-    //! @c stdexec::connect with length of 5.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto opstate_from_lvalue_functor_5 = stdexec::connect(
-        stdexec::then(
-            stdexec::then(
-                stdexec::then(
-                    stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter), counter),
-                counter),
-            counter),
-        Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 5, 0, 20)
-
-    //! @c stdexec::transform_sender with length of 6.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto trnsfrmd_sndr_from_lvalue_functor_6 = stdexec::transform_sender(
-        stdexec::then(
-            stdexec::then(
-                stdexec::then(
-                    stdexec::then(
-                        stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter),
-                        counter),
-                    counter),
-                counter),
-            counter),
-        stdexec::env<>{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 6, 0, 27)
-
-    //! @c stdexec::connect with length of 6.
-    counter_t::reset();
-
-    [[maybe_unused]]
-    const auto opstate_from_lvalue_functor_6 = stdexec::connect(
-        stdexec::then(
-            stdexec::then(
-                stdexec::then(
-                    stdexec::then(
-                        stdexec::then(stdexec::then(stdexec::schedule(stc.get_scheduler()), counter), counter),
-                        counter),
-                    counter),
-                counter),
-            counter),
-        Tests::Utils::SinkReceiver{});
-
-    CHECK_COUNTER_MOVES_AND_COPIES(EXPECT, 0, 6, 0, 27)
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2)
 }
+
+/**
+ * For a sender with @c N  @c stdexec::then sender adapters:
+ * - copy each functor into the by-value parameter of @c stdexec::then (N copies)
+ * - move each functor from that parameter into its adapter (N moves)
+ * - move each child with its subtree into its parent (N * (N-1) / 2 moves)
+ * - move each functor into the operation state (N moves)
+ *
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ */
+TYPED_TEST_P(ThenCopiesAndMovesTest, connect) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2)
+}
+
+REGISTER_TYPED_TEST_SUITE_P(ThenCopiesAndMovesTest, transform_sender, connect);
+
+using then_copies_and_moves_types_t = ::testing::Types<
+    std::integral_constant<size_t, 1>,
+    std::integral_constant<size_t, 2>,
+    std::integral_constant<size_t, 3>,
+    std::integral_constant<size_t, 4>,
+    std::integral_constant<size_t, 5>,
+    std::integral_constant<size_t, 6>
+>;
+
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    ThenCopiesAndMovesTestInstantiation,
+    ThenCopiesAndMovesTest,
+    then_copies_and_moves_types_t);
 
 } // namespace Tests

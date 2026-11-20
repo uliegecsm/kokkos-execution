@@ -112,7 +112,7 @@ struct CounterRef {
 };
 
 //! Check move and copy counts.
-#define CHECK_COUNTER_MOVES_AND_COPIES(                                                                                \
+#define CHECK_COUNTER_COPIES_AND_MOVES(                                                                                \
     _HOW_, _copy_assignments_, _copy_constructions_, _move_assignments_, _move_constructions_)                         \
     _HOW_##_EQ(counter_t::copy_assignments, _copy_assignments_);                                                       \
     _HOW_##_EQ(counter_t::copy_constructions, _copy_constructions_);                                                   \
