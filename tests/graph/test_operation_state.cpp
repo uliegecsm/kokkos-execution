@@ -119,7 +119,7 @@ consteval bool test_op_state_flattened_from_two() {
                   clsr_1_t&&
     >);
 
-    //! The operation state cannot be constructed from @c lvalue closures.
+    //! The operation state takes its closures by rvalue reference: they cannot be passed as lvalues.
     static_assert(!std::is_constructible_v<
                   op_state_t,
                   typename TEST_CATEGORY(OpStateTest)::schedule_sender_t,

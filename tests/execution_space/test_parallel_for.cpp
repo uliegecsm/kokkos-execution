@@ -564,7 +564,7 @@ TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest));
  * - build: move each child with its subtree into its parent (N * (N-1) / 2 moves)
  * - transform: move the child with its subtree into the transformed sender (N - 1 moves)
  * - transform: move the parallel for data into the transformed sender closure (1 move)
- * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue reference.
  */
 TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender) {
     using counter_t = typename TestFixture::counter_t;
@@ -583,7 +583,7 @@ TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender) {
  * - build: move each child with its subtree into its parent (N * (N-1) / 2 moves)
  * - connect: recursively transform each sender (N * (N+1) / 2 moves)
  * - connect: move each closure into the operation state (N moves)
- * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue reference.
  */
 TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), connect) {
     using counter_t = typename TestFixture::counter_t;
