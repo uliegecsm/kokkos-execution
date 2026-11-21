@@ -15,7 +15,7 @@ struct Receiver {
 
     ParentOp* parent_op;
 
-    void set_value() && noexcept {
+    constexpr void set_value() && noexcept {
         parent_op->complete(stdexec::set_value);
     }
 

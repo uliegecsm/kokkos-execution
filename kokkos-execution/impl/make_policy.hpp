@@ -4,6 +4,7 @@
 #include "kokkos-execution/stdexec.hpp"
 
 #include "Kokkos_Macros.hpp"
+#include "impl/Kokkos_Utilities.hpp"
 #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
 import kokkos.core;
 import kokkos.core_impl;
@@ -13,6 +14,7 @@ import kokkos.core_impl;
 
 #include "kokkos-execution/impl/iteration_space.hpp"
 #include "kokkos-execution/impl/properties.hpp"
+#include "kokkos-execution/utils/execution_policy.hpp"
 
 namespace Kokkos::Execution::Impl {
 
@@ -55,28 +57,66 @@ struct IndexTypeFor<Kokkos::range_slice<FirstType, LastType, StrideType>> {
     using type = underlying_index_t<LastType>;
 };
 
+template <Kokkos::ExecutionPolicy ExecPolicy>
+struct IndexTypeFor<ExecPolicy> {
+    using type = typename ExecPolicy::index_type;
+};
+
 //! Get the index type for @p IterSpace.
 template <typename IterSpace>
 using index_type_for_t = typename IndexTypeFor<IterSpace>::type;
 
-template <typename IterSpace, typename Tag, typename Exec, template <typename...> typename PolicyType, typename... Args>
+/**
+ * @brief Add the index type deduced from @p IterSpace (with @ref index_type_for_t) to the @p ExecPolicy.
+ *
+ * @note If @p ExecPolicy already contains @c Kokkos::IndexType, it will be replaced.
+ */
+template <iteration_space IterSpace, Kokkos::ExecutionPolicy ExecPolicy>
 struct AddIndexType {
-    /**
-     * According to https://eel.is/c++draft/exec#bulk-4, the callable is invoked using an index
-     * whose type is the same as the @c stdexec::bulk_t shape argument type.
-     *
-     * See also https://github.com/NVIDIA/stdexec/pull/2359.
-     */
+    using index_type = Kokkos::IndexType<index_type_for_t<IterSpace>>;
+
+    using helper_t = Utils::ExtractExecutionPolicyProperties<ExecPolicy>;
+
+    //! Retrieve the old properties. It may already contain @c Kokkos::IndexType.
+    using old_properties_t = typename helper_t::properties_t;
+
+    //! Build the new properties by filtering out any index type property from @ref old_properties_t, and then adding @ref index_type.
+    using new_properties_t = Kokkos::Impl::concat_type_list_t<
+        Kokkos::Impl::filter_type_list_t<Utils::is_index_type, old_properties_t>,
+        Kokkos::Impl::type_list<index_type>
+    >;
+
+    using type =
+        typename Utils::RebindExecutionPolicy<ExecPolicy, typename helper_t::execution_space, new_properties_t>::type;
+};
+
+template <typename, typename, typename>
+struct MakePolicyType;
+
+/**
+ * According to https://eel.is/c++draft/exec#bulk-4, the callable is invoked using an index
+ * whose type is the same as the @c stdexec::bulk_t shape argument type.
+ *
+ * See also https://github.com/NVIDIA/stdexec/pull/2359.
+ */
+template <iteration_space IterSpace, typename Tag, Kokkos::ExecutionPolicy ExecPolicy>
+struct MakePolicyType<IterSpace, Tag, ExecPolicy> {
     using type = std::conditional_t<
         std::same_as<Tag, stdexec::bulk_t>,
-        PolicyType<Exec, Kokkos::IndexType<index_type_for_t<IterSpace>>, Args...>,
-        PolicyType<Exec, Args...>
+        typename AddIndexType<IterSpace, ExecPolicy>::type,
+        ExecPolicy
     >;
 };
 
-//! If required, add the index type to the @c PolicyType.
-template <typename IterSpace, typename Tag, typename Exec, template <typename...> typename PolicyType, typename... Args>
-using add_index_type_t = typename AddIndexType<IterSpace, Tag, Exec, PolicyType, Args...>::type;
+//! Keep the incoming type unchanged.
+template <Kokkos::ExecutionPolicy ExecPolicy, typename U, typename V>
+struct MakePolicyType<ExecPolicy, U, V> {
+    using type = ExecPolicy;
+};
+
+//! Build a @c Kokkos execution policy type.
+template <typename... Args>
+using make_policy_type_t = typename MakePolicyType<Args...>::type;
 
 /**
  * @brief Utility functions that wrap constructors of @c Kokkos execution policies.
@@ -97,7 +137,7 @@ struct make_policy_t {
     requires(Extents::rank() == 1)
     [[nodiscard]]
     auto operator()(const Exec& exec, const Extents& extents) const noexcept
-        -> add_index_type_t<Extents, Tag, Exec, Kokkos::RangePolicy, Properties...> {
+        -> make_policy_type_t<Extents, Tag, Kokkos::RangePolicy<Exec, Properties...>> {
         return {exec, 0, extents.extent(0)};
     }
 
@@ -107,14 +147,14 @@ struct make_policy_t {
         == 1)
     [[nodiscard]]
     auto operator()(const Exec& exec, const RangeSlice& rgsl) const noexcept
-        -> add_index_type_t<RangeSlice, Tag, Exec, Kokkos::RangePolicy, Kokkos::LaunchBounds<1>, Properties...> {
+        -> make_policy_type_t<RangeSlice, Tag, Kokkos::RangePolicy<Exec, Kokkos::LaunchBounds<1>, Properties...>> {
         return {exec, rgsl.first, rgsl.last};
     }
 
     template <range_slice_with_default_stride RangeSlice>
     [[nodiscard]]
     auto operator()(const Exec& exec, const RangeSlice& rgsl) const noexcept
-        -> add_index_type_t<RangeSlice, Tag, Exec, Kokkos::RangePolicy, Properties...> {
+        -> make_policy_type_t<RangeSlice, Tag, Kokkos::RangePolicy<Exec, Properties...>> {
         return {exec, rgsl.first, rgsl.last};
     }
 

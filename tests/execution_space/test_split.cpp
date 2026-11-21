@@ -1,6 +1,7 @@
 #include "kokkos-execution/utils/ignore_warnings.hpp"
 PRAGMA_DIAGNOSTIC_PUSH
 KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
+#include "exec/single_thread_context.hpp"
 #include "exec/split.hpp"
 #include "exec/static_thread_pool.hpp"
 PRAGMA_DIAGNOSTIC_POP
@@ -44,13 +45,24 @@ class SplitTest
     >;
 };
 
-//! @test Use @c experimental::execution::split and @c stdexec::sync_wait right after.
+//! @test Use @c experimental::execution::split and @c stdexec::sync_wait right after should not generate any event.
 TEST_F(SplitTest, split_and_sync_wait) {
     const context_t esc{exec};
 
     stdexec::sender auto chain = stdexec::schedule(esc.get_scheduler()) | experimental::execution::split();
 
     ASSERT_THAT(Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(chain)), testing::IsEmpty());
+}
+
+//! @test Use @c experimental::execution::split and @c stdexec::continues_on right after should not generate any event.
+TEST_F(SplitTest, continues_on_after_split) {
+    exec::single_thread_context stc{};
+    const context_t esc{exec};
+
+    stdexec::sender auto sndr = stdexec::schedule(stc.get_scheduler()) | experimental::execution::split()
+                              | stdexec::continues_on(esc.get_scheduler());
+
+    ASSERT_THAT(Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)), testing::IsEmpty());
 }
 
 /**

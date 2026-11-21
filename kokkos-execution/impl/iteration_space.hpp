@@ -3,6 +3,8 @@
 
 #include <type_traits>
 
+#include "kokkos-execution/stdexec.hpp"
+
 #include "Kokkos_Macros.hpp"
 #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
 import kokkos.core;
@@ -48,6 +50,40 @@ concept execution_policy_or_iteration_space = Kokkos::ExecutionPolicy<T> || iter
 template <std::integral T>
 constexpr auto make_iter_space(const T work_count) noexcept -> Kokkos::dims<1, T> {
     return Kokkos::dims<1, T>{work_count};
+}
+
+template <extents Extents>
+requires(Extents::rank() == 1)
+constexpr decltype(auto) begin(const Extents&) noexcept {
+    return 0;
+}
+
+template <extents Extents>
+requires(Extents::rank() == 1)
+constexpr decltype(auto) end(const Extents& range) noexcept {
+    return range.extent(0);
+}
+
+template <range_slice RangeSlice>
+constexpr decltype(auto) begin(const RangeSlice& rgsl) noexcept {
+    return rgsl.first;
+}
+
+template <range_slice RangeSlice>
+constexpr decltype(auto) end(const RangeSlice& rgsl) noexcept {
+    return rgsl.last;
+}
+
+template <Kokkos::ExecutionPolicy ExecPolicy>
+requires stdexec::__is_instance_of<ExecPolicy, Kokkos::RangePolicy>
+constexpr decltype(auto) begin(const ExecPolicy& rgpl) noexcept {
+    return rgpl.begin();
+}
+
+template <Kokkos::ExecutionPolicy ExecPolicy>
+requires stdexec::__is_instance_of<ExecPolicy, Kokkos::RangePolicy>
+constexpr decltype(auto) end(const ExecPolicy& rgpl) noexcept {
+    return rgpl.end();
 }
 
 } // namespace Kokkos::Execution::Impl
