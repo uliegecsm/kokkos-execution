@@ -1,10 +1,16 @@
+#include "kokkos-utils/callbacks/RecorderListener.hpp"
+#include "kokkos-utils/tests/scoped/callbacks/Manager.hpp"
+
 #include "kokkos-execution/execution_space.hpp"
 
+#include "tests/utils/callback_matchers.hpp"
 #include "tests/utils/execution_space_context.hpp"
 #include "tests/utils/functors/labeled.hpp"
 #include "tests/utils/functors/sum_indices.hpp"
+#include "tests/utils/schedulers/inline_scheduler_with_domain.hpp"
 #include "tests/utils/sink_receiver.hpp"
 #include "tests/utils/stdexec.hpp"
+#include "tests/utils/sync_wait.hpp"
 
 /**
  * @addtogroup unittests
@@ -20,7 +26,14 @@
 
 namespace Tests::ExecutionSpaceImpl {
 
-class OpStateTest : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE> { };
+using namespace Kokkos::utils::callbacks;
+
+class OpStateTest
+    : public Tests::Utils::ExecutionSpaceContextTest<TEST_EXECUTION_SPACE>
+    , public Kokkos::utils::tests::scoped::callbacks::Manager {
+   public:
+    using recorder_listener_t = RecorderListener<ProfileEvent>;
+};
 
 //! @test Check traits of @c Kokkos::Execution::ExecutionSpaceImpl::OpState.
 consteval bool test_op_state_traits() {
@@ -336,5 +349,49 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
 }
 
 static_assert(test_op_state_flattened_from_three_mixed_tags());
+
+struct StartingDomain : public stdexec::default_domain {
+    template <stdexec::sender Sndr, typename Env>
+    decltype(auto) transform_sender(stdexec::start_t, Sndr&& sndr, const Env&) const noexcept {
+        Kokkos::Profiling::markEvent("StartingDomain::transform_sender for tag stdexec::start_t");
+        return std::forward<Sndr>(sndr);
+    }
+};
+
+/**
+ * @test Check construction of flattened operation state from two parallel for senders,
+ *       with a starting domain transform.
+ */
+TEST_F(OpStateTest, op_state_flattened_from_two_with_starting_domain_transform) {
+    constexpr size_t size = 10;
+
+    const view_s_t witness(Kokkos::view_alloc(exec, "witness - shared space"));
+
+    const context_t esc{exec};
+
+    using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
+
+    auto sndr = stdexec::just()
+              | stdexec::continues_on(Tests::Utils::Schedulers::InlineSchedulerWithDomain<StartingDomain>{})
+              | stdexec::let_value([&]() {
+                    return Kokkos::Execution::parallel_for(
+                        Kokkos::Execution::parallel_for(
+                            stdexec::schedule(esc.get_scheduler()),
+                            "hello from pfor",
+                            Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+                            functor_t{.data = witness}),
+                        "hello again from pfor",
+                        Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
+                        functor_t{.data = witness});
+                });
+
+    ASSERT_THAT(
+        Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(sndr)), // NOLINT(performance-move-const-arg)
+        testing::Contains(
+            AProfileEventWithName(testing::StrEq("StartingDomain::transform_sender for tag stdexec::start_t")))
+            .Times(3));
+
+    ASSERT_EQ(witness(), 90);
+}
 
 } // namespace Tests::ExecutionSpaceImpl

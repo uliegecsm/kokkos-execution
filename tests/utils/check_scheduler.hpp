@@ -16,7 +16,7 @@ consteval bool check_scheduler() {
      *
      * Related to https://github.com/NVIDIA/stdexec/issues/1406.
      */
-    static_assert(std::derived_from<typename SchedulerType::scheduler_concept, stdexec::scheduler_t>);
+    static_assert(std::derived_from<typename SchedulerType::scheduler_concept, stdexec::scheduler_tag>);
 
     //! According to https://eel.is/c++draft/exec.sched#1, a @c schedule invocation must return a sender.
     static_assert(stdexec::sender<decltype(stdexec::schedule(std::declval<const SchedulerType&>()))>);
