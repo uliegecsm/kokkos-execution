@@ -29,13 +29,6 @@ struct MakeOpState {
         using huddle_fn_t = Huddle<child_of_sndr_t, Rcvr, clsr_of_sndr_t, Clsrs...>;
         using type = typename huddle_fn_t::type;
 
-        static constexpr bool sndr_has_nothrow_transform_sender = stdexec::__detail::__has_nothrow_transform_sender<
-            DomainType,
-            stdexec::set_value_t,
-            Sndr&&,
-            stdexec::env_of_t<Rcvr>
-        >;
-
         static constexpr bool is_nothrow_huddle =
             std::is_nothrow_invocable_v<huddle_fn_t, child_of_sndr_t&&, Rcvr&&, clsr_of_sndr_t&&, Clsrs&&...>;
 
@@ -46,8 +39,9 @@ struct MakeOpState {
          * See https://github.com/NVIDIA/stdexec/blob/0a3afb8de52b4fde8ca7ab62ca09a23a8aa6a30f/include/stdexec/__detail/__sender_introspection.hpp#L244-L246.
          */
         // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-        constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs&&... clsrs) const
-            noexcept(sndr_has_nothrow_transform_sender && is_nothrow_huddle) -> type {
+        constexpr auto operator()(Sndr&& sndr, Rcvr&& rcvr, Clsrs&&... clsrs) const noexcept(
+            noexcept(stdexec::transform_sender(std::declval<Sndr>(), std::declval<const stdexec::env_of_t<Rcvr>&>()))
+            && is_nothrow_huddle) -> type {
             auto trnsfrmd_sndr = stdexec::transform_sender(std::forward<Sndr>(sndr), stdexec::get_env(rcvr));
             return huddle_fn_t{}(
                 stdexec::__forward_like<Sndr>(trnsfrmd_sndr.sndr),
