@@ -6,13 +6,20 @@
 namespace Kokkos::Execution::Impl::ScheduleFrom {
 
 template <typename InnerOp, typename Rcvr>
-concept signals_submitted = Impl::signals_submitted<InnerOp> && Impl::supports_submitted_order_on<Rcvr>;
+concept signals_submitted_order_on = Impl::signals_submitted_order_on<InnerOp> && Impl::supports_submitted<Rcvr>;
+
+template <typename InnerOp, typename Rcvr>
+concept signals_submitted_depend_on = Impl::signals_submitted_depend_on<InnerOp> && Impl::supports_submitted<Rcvr>;
 
 template <typename InnerOp, typename Rcvr>
 using completion_signal_policy_t = std::conditional_t<
-    ScheduleFrom::signals_submitted<InnerOp, Rcvr>,
+    ScheduleFrom::signals_submitted_order_on<InnerOp, Rcvr>,
     Impl::SubmittedPolicy::OrderOnExec,
-    Impl::SyncPolicy::InlineFenceExec
+    std::conditional_t<
+        ScheduleFrom::signals_submitted_depend_on<InnerOp, Rcvr>,
+        Impl::SubmittedPolicy::DependOnEvent,
+        Impl::SyncPolicy::InlineFenceExec
+    >
 >;
 
 } // namespace Kokkos::Execution::Impl::ScheduleFrom
