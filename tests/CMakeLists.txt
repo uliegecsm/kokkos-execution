@@ -136,3 +136,4 @@ add_subdirectory(utils)
 
 add_one_test(NAME parallel_for)
 add_one_test(NAME parallel_reduce)
+add_one_test(NAME reuse)

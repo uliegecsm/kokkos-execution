@@ -108,6 +108,7 @@ target_sources(
             kokkos-execution/graph.hpp
             kokkos-execution/parallel_for.hpp
             kokkos-execution/parallel_reduce.hpp
+            kokkos-execution/reuse.hpp
             kokkos-execution/stdexec.hpp
             kokkos-execution/execution_space/bulk.hpp
             kokkos-execution/execution_space/continues_on.hpp
