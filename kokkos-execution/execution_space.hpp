@@ -16,6 +16,7 @@ import kokkos.core;
 #include "kokkos-execution/execution_space/env.hpp"
 #include "kokkos-execution/execution_space/parallel_for.hpp"
 #include "kokkos-execution/execution_space/parallel_reduce.hpp"
+#include "kokkos-execution/execution_space/path.hpp"
 #include "kokkos-execution/execution_space/schedule_from.hpp"
 #include "kokkos-execution/execution_space/scoped_region.hpp"
 #include "kokkos-execution/execution_space/sync_wait.hpp"
