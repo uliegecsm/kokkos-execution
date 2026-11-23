@@ -1,4 +1,5 @@
 # This file contains setup w.r.t. mapping from enabled Kokkos devices to execution space type.
+include_guard(GLOBAL)
 
 set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_CUDA "Cuda")
 set(KOKKOS_DEVICE_TO_EXECUTION_SPACE_HIP "HIP")
