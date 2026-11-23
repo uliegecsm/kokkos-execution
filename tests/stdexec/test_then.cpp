@@ -6,6 +6,8 @@ KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/single_thread_context.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
+#include "kokkos-execution/stdexec.hpp"
+
 #include "tests/utils/functors/counter.hpp"
 #include "tests/utils/sink_receiver.hpp"
 
@@ -41,7 +43,7 @@ struct ThenCopiesAndMovesTest : public testing::Test {
         return make_sndr_impl<N>();
     }
 
-    exec::single_thread_context stc;
+    experimental::execution::single_thread_context stc;
     counter_t counter;
 };
 
