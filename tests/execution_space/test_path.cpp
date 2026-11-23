@@ -57,19 +57,18 @@ TYPED_TEST_P(TEST_CATEGORY(PathCopiesAndMovesTest), transform_sender) {
 }
 
 //! @test TODO
-// TYPED_TEST_P(TEST_CATEGORY(PathCopiesAndMovesTest), connect) {
-//     using counter_t = typename TestFixture::counter_t;
+TYPED_TEST_P(TEST_CATEGORY(PathCopiesAndMovesTest), connect) {
+    using counter_t = typename TestFixture::counter_t;
 
-//     counter_t::reset();
+    counter_t::reset();
 
-//     [[maybe_unused]]
-//     const stdexec::operation_state auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
+    [[maybe_unused]]
+    const stdexec::operation_state auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
 
-//     CHECK_COUNTER_COPIES_AND_MOVES(
-//         EXPECT, 0, this->N, 0, (this->N * (this->N - 1)) / 2 + (this->N * (this->N + 1)) / 2 + this->N)
-// }
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, 6 * this->N)
+}
 
-REGISTER_TYPED_TEST_SUITE_P(TEST_CATEGORY(PathCopiesAndMovesTest), transform_sender /*, connect*/);
+REGISTER_TYPED_TEST_SUITE_P(TEST_CATEGORY(PathCopiesAndMovesTest), transform_sender, connect);
 
 using path_copies_and_moves_types_t = ::testing::Types<
     std::integral_constant<size_t, 1>,

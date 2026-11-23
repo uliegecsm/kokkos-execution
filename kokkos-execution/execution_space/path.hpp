@@ -1,6 +1,7 @@
 #ifndef KOKKOS_EXECUTION_EXECUTION_SPACE_PATH_HPP
 #define KOKKOS_EXECUTION_EXECUTION_SPACE_PATH_HPP
 
+#include "kokkos-execution/execution_space/operation_state.hpp"
 #include "kokkos-execution/path.hpp"
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
@@ -8,23 +9,20 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 template <typename Sndr, typename...>
 struct PathSender;
 
-template <typename Sndr, typename... Clsrs>
+template <typename Sndr, Closure... Clsrs>
 struct PathSender<Sndr, stdexec::__tuple<Clsrs...>> {
     using sender_concept = stdexec::sender_tag;
 
     stdexec::__tuple<Clsrs...> clsrs;
     Sndr sndr; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 
-    // TODO
-    // KOKKOS_EXECUTION_COMPL_SIGS_ADD(PathSender, Sndr, stdexec::set_error_t(std::exception_ptr))
+    //! May need some further refinement.
+    KOKKOS_EXECUTION_COMPL_SIGS_ADD(PathSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
-    // template <stdexec::receiver Rcvr>
-    // constexpr auto connect(Rcvr rcvr) && { /*noexcept(noexcept(make_op_state_t<Sndr, Rcvr, closure_t>{}(
-    //     std::declval<Sndr>(),
-    //     std::declval<Rcvr>(),
-    //     std::declval<closure_t>()))) -> op_state_t<Sndr, Rcvr, closure_t>*/ {
-    //     return make_op_state_t<Sndr, Rcvr, closure_t>{}(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsr));
-    // }
+    template <stdexec::receiver Rcvr>
+        constexpr auto connect(Rcvr rcvr)
+        && STDEXEC_AUTO_RETURN(
+            OpState<Sndr, Rcvr, Clsrs...>(std::forward<Sndr>(sndr), std::move(rcvr), std::move(clsrs)))
 
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 };
