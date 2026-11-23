@@ -53,7 +53,7 @@ TYPED_TEST_P(TEST_CATEGORY(PathCopiesAndMovesTest), transform_sender) {
     [[maybe_unused]]
     const auto trnsfrmd_sndr = stdexec::transform_sender(this->make_sndr(), stdexec::env<>{});
 
-    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, 4 * this->N)
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, 5 * this->N)
 }
 
 //! @test TODO

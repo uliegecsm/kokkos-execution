@@ -65,13 +65,13 @@ struct ClosureFor;
 template <
     typename Tag,
     Kokkos::ExecutionSpace Exec,
-    typename Tag,
+    typename TagClsr,
     typename Functor,
     typename ExecPolicyOrIterSpace,
     typename... Args
 >
-struct ClosureFor<Tag, Exec, stdexec::__closure<Tag, Functor, ExecPolicyOrIterSpace, Args...>> {
-    static_assert(std::same_as<Tag, Tag>);
+struct ClosureFor<Tag, Exec, stdexec::__closure<TagClsr, Functor, ExecPolicyOrIterSpace, Args...>> {
+    static_assert(std::same_as<Tag, TagClsr>);
 
     using type =
         ParallelForClosure<Tag, Exec, parallel_for_t::parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Args...>>;
