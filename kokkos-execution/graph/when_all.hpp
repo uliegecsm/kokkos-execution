@@ -390,10 +390,7 @@ struct TransformSenderFor<stdexec::when_all_t> {
 
             //! Ensure that all senders are on the same execution space type.
             if constexpr ((std::same_as<Impl::exec_of_t<Sndrs, Env>, execution_space> && ...)) {
-                PRAGMA_DIAGNOSTIC_PUSH
-                PRAGMA_DIAGNOSTIC_IGNORED("-Wmissing-braces")
-                return trnsfrmd_sndr_t<Env, Sndrs...>{.sndrs = {std::forward<Sndrs>(sndrs)...}};
-                PRAGMA_DIAGNOSTIC_POP
+                return trnsfrmd_sndr_t<Env, Sndrs...>{.sndrs = stdexec::__mktuple(std::forward<Sndrs>(sndrs)...)};
             } else {
                 //! From https://github.com/NVIDIA/stdexec/blob/da7640aa1002cfcd665254f03434d3c949844361/include/nvexec/stream/when_all.cuh#L550-L554.
                 STDEXEC_CONSTEXPR_LOCAL bool map[] = {
