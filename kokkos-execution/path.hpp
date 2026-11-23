@@ -34,16 +34,20 @@ struct PathSender;
  */
 struct path_t {
     template <stdexec::__sender_adaptor_closure... Clsrs>
+    requires(sizeof...(Clsrs) > 0)
+    STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto
         operator()(Clsrs&&... clsrs) const STDEXEC_AUTO_RETURN(stdexec::__closure(*this, std::forward<Clsrs>(clsrs)...))
 
     template <stdexec::sender Sndr, stdexec::__sender_adaptor_closure... Clsrs>
+    STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(Sndr&& sndr, Clsrs&&... clsrs) const KOKKOS_EXECUTION_RETURNS_BRACED(
         (Impl::PathSender<Sndr, Clsrs...>),
         {path_t{}, stdexec::__mktuple(std::forward<Clsrs>(clsrs)...), std::forward<Sndr>(sndr)})
 };
 
 namespace Impl {
+
 template <typename Sndr, typename... Clsrs>
 struct PathSender : public stdexec::__tuple<path_t, stdexec::__tuple<Clsrs...>, Sndr> {
     using sender_concept = stdexec::sender_tag;
@@ -56,7 +60,8 @@ struct PathSender : public stdexec::__tuple<path_t, stdexec::__tuple<Clsrs...>, 
 
     using base_t = stdexec::__tuple<path_t, __data_t, Sndr>;
 
-    // completion signatures?
+    //! To be revised.
+    KOKKOS_EXECUTION_COMPL_SIGS_ADD(PathSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
     template <stdexec::receiver Rcvr>
     constexpr auto connect(Rcvr) && = delete;

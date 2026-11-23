@@ -59,49 +59,11 @@ struct ParallelForSender {
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 };
 
-template <typename...>
-struct ClosureFor;
-
-template <
-    typename Tag,
-    Kokkos::ExecutionSpace Exec,
-    typename TagClsr,
-    typename Functor,
-    typename ExecPolicyOrIterSpace,
-    typename... Args
->
-struct ClosureFor<Tag, Exec, stdexec::__closure<TagClsr, Functor, ExecPolicyOrIterSpace, Args...>> {
-    static_assert(std::same_as<Tag, TagClsr>);
-
-    using type =
-        ParallelForClosure<Tag, Exec, parallel_for_t::parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Args...>>;
-
-    template <typename Data>
-    auto operator()(Impl::State<Exec>* state, Data&& data) {
-        return type{
-            .state = state,
-            .data = stdexec::__apply(
-                []<typename... T>(T&&... args) {
-                    return parallel_for_t::parallel_for_data_t<Functor, ExecPolicyOrIterSpace, Args...>{
-                        std::forward<T>(args)...};
-                },
-                stdexec::__forward_like<Data>(data.__args_))};
-    }
-};
-
 template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
     using trnsfrmd_sndr_t =
         ParallelForSender<parallel_for_t, Sndr, Impl::exec_of_t<Sndr, Env>, std::remove_cvref_t<Data>>;
-
-    template <typename Tag, Kokkos::ExecutionSpace Exec, typename Data>
-    using closure_for_t = typename ClosureFor<Tag, Exec, Data>::type;
-
-    template <typename Tag, typename Exec, typename Data>
-    static constexpr auto make_closure(Impl::State<Exec>* state, Data&& data) {
-        return ClosureFor<Tag, Exec, std::remove_cvref_t<Data>>{}(state, std::forward<Data>(data));
-    }
 
     template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && execution_space_completing_sender<Sndr, Env>)

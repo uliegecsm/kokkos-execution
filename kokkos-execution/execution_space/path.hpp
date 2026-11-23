@@ -29,44 +29,36 @@ struct PathSender<Sndr, stdexec::__tuple<Clsrs...>> {
     KOKKOS_EXECUTION_IMPL_FORWARDING_ATTRIBUTES_GET_ENV(Sndr, sndr)
 };
 
-template <typename...>
-struct TypesForClosure; // check if tag_of works?
-
-template <typename Tag, typename... Args>
-struct TypesForClosure<stdexec::__closure<Tag, Args...>> {
-    using tag = Tag;
-    using data = stdexec::__tuple<Args...>;
-};
-
-template <typename T>
-using tag_for_closure_t = typename TypesForClosure<T>::tag;
-
-template <typename T>
-using data_for_closure_t = typename TypesForClosure<T>::data;
+template <stdexec::sender Sndr, typename... Env>
+using closure_of_t = typename stdexec::transform_sender_result_t<Sndr, Env...>::closure_t;
 
 template <>
 struct TransformSenderFor<Kokkos::Execution::path_t> {
 
     template <typename Env, typename Data, typename Sndr>
-    struct Transformer;
-
-    template <typename Env, typename... Clsrs, typename Sndr>
-    struct Transformer<Env, stdexec::__tuple<Clsrs...>, Sndr> {
+    requires stdexec::__is_instance_of<Data, stdexec::__tuple>
+    struct Transformer {
         using execution_space = Impl::exec_of_t<Sndr, Env>;
 
-        using Data = stdexec::__tuple<Clsrs...>;
+        template <typename Clsr>
+        using fake_sndr_t = std::invoke_result_t<Clsr, stdexec::schedule_result_t<Scheduler<execution_space>>>;
 
-        using closures_t = stdexec::__tuple<
-            typename TransformSenderFor<tag_for_closure_t<std::remove_cvref_t<Clsrs>>>::template closure_for_t<
-                tag_for_closure_t<std::remove_cvref_t<Clsrs>>,
-                execution_space,
-                std::remove_cvref_t<Clsrs>
-            >...
+        using fake_sndrs_t = stdexec::__mapply<
+            stdexec::__mtransform<stdexec::__mbind_front_q<fake_sndr_t>, stdexec::__q<stdexec::__tuple>>,
+            Data
+        >;
+
+        static_assert(
+            stdexec::__mapply<stdexec::__mall_of<stdexec::__q<Impl::is_dispatching_sender_t>>, fake_sndrs_t>::value);
+
+        using closures_t = stdexec::__mapply<
+            stdexec::__mtransform<stdexec::__mbind_back_q<closure_of_t, Env>, stdexec::__q<stdexec::__tuple>>,
+            fake_sndrs_t
         >;
 
         using sndr_t = PathSender<Sndr, closures_t>;
 
-        auto operator()(const Env& env, stdexec::__tuple<Clsrs...>& data, std::remove_reference_t<Sndr>& sndr) const
+        auto operator()(const Env& env, std::remove_reference_t<Data>& data, std::remove_reference_t<Sndr>& sndr) const
             STDEXEC_AUTO_RETURN(
                 sndr_t{
                     .clsrs = stdexec::__apply(
@@ -79,12 +71,8 @@ struct TransformSenderFor<Kokkos::Execution::path_t> {
                                 stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env));
                             return stdexec::__mktuple(
                                 stdexec::transform_sender(std::forward<T>(clsr)(std::move(schd_sndr)), env).clsr...);
-                            //     TransformSenderFor<tag_for_closure_t<std::remove_cvref_t<T>>>::template make_closure<
-                            //         tag_for_closure_t<std::remove_cvref_t<T>>,
-                            //         execution_space
-                            //     >(state, std::forward<T>(clsr))...);
                         },
-                        stdexec::__forward_like<Data>(data)),
+                        std::forward<Data>(data)),
                     .sndr = std::forward<Sndr>(sndr)})
     };
 
