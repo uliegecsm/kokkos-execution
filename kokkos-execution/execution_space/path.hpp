@@ -61,14 +61,10 @@ struct TransformSenderFor<Kokkos::Execution::path_t> {
                 sndr_t{
                     .clsrs = stdexec::__apply(
                         [&sndr, &env]<typename... T>(T&&... clsr) -> closures_t {
-                            // todo don't get state each time
-                            // auto* const state =
-                            // stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env)
-                            // .state;
                             auto schd_sndr = stdexec::schedule(
                                 stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env));
                             return stdexec::__mktuple(
-                                stdexec::transform_sender(std::forward<T>(clsr)(std::move(schd_sndr)), env).clsr...);
+                                stdexec::transform_sender(std::forward<T>(clsr)(schd_sndr), env).clsr...);
                         },
                         std::forward<Data>(data)),
                     .sndr = std::forward<Sndr>(sndr)})
