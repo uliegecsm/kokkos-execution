@@ -29,13 +29,13 @@ using ThrowsWhenCopied = Tests::Utils::Functors::ThrowsWhenCopied;
  *
  * See also https://github.com/NVIDIA/stdexec/blob/236b5f55ce7b04257fa0356bd106c4699fbe11d7/include/stdexec/__detail/__sender_adaptor_closure.hpp#L115-L117.
  */
-consteval bool test_closure_is_an_aggregate() {
+consteval bool test_closure_is_not_an_aggregate() {
     static_assert(!std::is_aggregate_v<stdexec::__closure<stdexec::then_t, ThrowsWhenCopied>>);
 
     return true;
 }
 
-static_assert(test_closure_is_an_aggregate());
+static_assert(test_closure_is_not_an_aggregate());
 
 //! @test An @c rvalue is move-constructed and can be in a constant expression.
 consteval bool test_closure_from_rvalue() {
