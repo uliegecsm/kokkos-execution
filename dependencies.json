@@ -6,11 +6,11 @@
         "googletest": "1.18.0",
         "hpx": "1.11.0",
         "kokkos": {
-            "sha": "528ace27057f1417ba293bddf23d6afebfabf5ad",
+            "sha": "9a451605b2dd825d0dac64ce9b1ea96b5e5e7f85",
             "username": "kokkos"
         },
         "kokkos-utils": {
-            "sha": "85dbd638aea34c24f7f4ecbb91702463d88841df",
+            "sha": "2f06e10e51d23609a9b384280b94f788f1d16ac8",
             "version": "0.0.7"
         }
     }
