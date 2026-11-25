@@ -13,6 +13,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "tests/utils/functors/store_thread_id.hpp"
 #include "tests/utils/return_thread_id.hpp"
+#include "tests/utils/stdexec.hpp"
 
 /**
  * @addtogroup unittests
@@ -37,6 +38,38 @@ consteval bool test_completion_behavior() {
 }
 
 static_assert(test_completion_behavior());
+
+/**
+ * @test The schedule sender of @c stdexec::inline_scheduler has no completion scheduler.
+ *
+ * However, if the environment provides a @c stdexec::get_start_scheduler_t, it is served as the completion scheduler.
+ *
+ * See also https://github.com/NVIDIA/stdexec/blob/4781797199f20ef742b39ea00785a1503badd218/include/stdexec/__detail/__inline_scheduler.hpp#L37-L45.
+ */
+consteval bool test_has_no_completion_scheduler() {
+    using sndr_t = stdexec::schedule_result_t<stdexec::inline_scheduler>;
+
+    static_assert(stdexec::__sends<stdexec::set_value_t, sndr_t, stdexec::env<>>);
+
+    using attrs_t = stdexec::env_of_t<sndr_t>;
+
+    static_assert(std::same_as<attrs_t, stdexec::__inline_attrs>);
+
+    static_assert(!Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, stdexec::env<>>);
+
+    using start_scheduler_env_t = stdexec::prop<stdexec::get_start_scheduler_t, stdexec::run_loop::scheduler>;
+
+    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, start_scheduler_env_t>);
+
+    static_assert(std::same_as<
+                  stdexec::__completion_scheduler_of_t<stdexec::set_value_t, sndr_t, start_scheduler_env_t>,
+                  stdexec::run_loop::scheduler
+    >);
+
+    return true;
+}
+
+static_assert(test_has_no_completion_scheduler());
 
 //! @test It uses the main thread when nothing else is provided.
 TEST(inline_scheduler, main_thread) {
