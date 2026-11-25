@@ -203,8 +203,7 @@ TEST_F(BulkTest, bulk_schedule) {
             >
         >);
 
-    //! The sender environment advertises the default domain, and completes on the @ref Kokkos::Execution::GraphImpl::Domain domain.
-    static_assert(std::same_as<stdexec::__domain_of_t<stdexec::env_of_t<sndr_t>>, stdexec::default_domain>);
+    //! The sender completes on the @ref Kokkos::Execution::GraphImpl::Domain domain.
     static_assert(std::same_as<
                   stdexec::__detail::__completing_domain_t<stdexec::set_value_t, sndr_t>,
                   Kokkos::Execution::GraphImpl::Domain

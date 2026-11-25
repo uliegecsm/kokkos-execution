@@ -43,22 +43,22 @@ struct when_all_algo : stdexec::__when_all::__algo {
     static constexpr auto extend(const Env& env, MakeEnv&& make_env) noexcept {
         if constexpr (std::same_as<extend_env_with_exec_policy_t<Env>, WithExecEnvPolicy>) {
             const auto& exec = Impl::get_exec(env).get();
-            return join_env_with_exec(make_env(), exec);
+            return join_env_with_exec(std::forward<MakeEnv>(make_env)(), exec);
         } else {
-            return make_env();
+            return std::forward<MakeEnv>(make_env)();
         }
     }
 };
 
 } // namespace Kokkos::Execution::ExecutionSpaceImpl
 
-namespace stdexec {
+namespace stdexec::__facade {
 
 template <>
-struct __facade::__algorithm<Kokkos::Execution::ExecutionSpaceImpl::when_all_t>
+struct __algorithm<Kokkos::Execution::ExecutionSpaceImpl::when_all_t>
     : Kokkos::Execution::ExecutionSpaceImpl::when_all_algo { };
 
-} // namespace stdexec
+} // namespace stdexec::__facade
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 

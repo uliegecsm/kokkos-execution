@@ -402,29 +402,27 @@ TEST_F(TEST_CATEGORY(ParallelForTest), starts_on_parallel_region) {
         stdexec::get_completion_signatures<starts_on_t>()
         == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
 
-    /**
-     * Note that @c stdexec transforms the @c stdexec::starts_on sender into a sequence sender. This is why the operation
-     * state of the customized sender does not let the @c stdexec::sync_wait handle the synchronization.
-     *
-     * See https://github.com/NVIDIA/stdexec/blob/5473e9daf50cb8829cfe12fb6b64f5f74a08bcf7/include/stdexec/__detail/__starts_on.hpp#L128.
-     */
+    using expt_starts_on_t = stdexec::__facade::__sender<
+        stdexec::starts_on_t,
+        typename TEST_CATEGORY(ParallelForTest)::scheduler_t,
+        Kokkos::Execution::Impl::ParallelForSender<
+            stdexec::just_t::__sender<>,
+            Kokkos::Execution::Impl::ParallelForData<
+                functor_t,
+                Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+                Kokkos::Execution::Impl::Label<std::string>
+            >
+        >
+    >;
+
+    static_assert(std::same_as<starts_on_t, expt_starts_on_t>);
+
     static_assert(std::same_as<
                   stdexec::transform_sender_result_t<
                       decltype(starts_on),
                       stdexec::env_of_t<Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE>>
                   >,
-                  stdexec::__facade::__sender<
-                      stdexec::starts_on_t,
-                      typename TEST_CATEGORY(ParallelForTest)::scheduler_t,
-                      Kokkos::Execution::Impl::ParallelForSender<
-                          stdexec::just_t::__sender<>,
-                          Kokkos::Execution::Impl::ParallelForData<
-                              functor_t,
-                              Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
-                              Kokkos::Execution::Impl::Label<std::string>
-                          >
-                      >
-                  >&&
+                  expt_starts_on_t&&
     >);
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on));

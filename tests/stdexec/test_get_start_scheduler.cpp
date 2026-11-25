@@ -105,6 +105,8 @@ TEST(get_start_scheduler, continues_on) {
     auto sndr = stdexec::schedule(pool.get_scheduler()) | THEN_STORE_THREAD_ID(&pool_tid)
               | stdexec::continues_on(stdexec::inline_scheduler{}) | THEN_STORE_THREAD_ID(&tid);
 
+    static_assert(stdexec::dependent_sender<decltype(sndr)>);
+
     using start_scheduler_env_t = stdexec::prop<stdexec::get_start_scheduler_t, stdexec::run_loop::scheduler>;
 
     static_assert(stdexec::__sends<stdexec::set_value_t, decltype(sndr), start_scheduler_env_t>);
@@ -146,23 +148,14 @@ TEST(get_start_scheduler, continues_on_error_completion) {
     static_assert(stdexec::__sends<stdexec::set_error_t, decltype(sndr), start_scheduler_env_t>);
 
     static_assert(
-        !Tests::Utils::has_completion_scheduler_for<decltype(sndr), stdexec::set_value_t, start_scheduler_env_t>);
+        Tests::Utils::has_completion_scheduler_for<decltype(sndr), stdexec::set_value_t, start_scheduler_env_t>);
     static_assert(
-        !Tests::Utils::has_completion_scheduler_for<decltype(sndr), stdexec::set_error_t, start_scheduler_env_t>);
+        Tests::Utils::has_completion_scheduler_for<decltype(sndr), stdexec::set_error_t, start_scheduler_env_t>);
 
-    using attrs_t = stdexec::env_of_t<decltype(sndr)>;
-
-    // fails
-    static_assert(requires(const attrs_t& attrs, const start_scheduler_env_t& env) {
-        stdexec::get_completion_scheduler<stdexec::set_value_t>(attrs, env);
-    });
-
-    // fails
-    static_assert(requires(const attrs_t& attrs, const start_scheduler_env_t& env) {
-        stdexec::get_completion_scheduler<stdexec::set_error_t>(attrs, env);
-    });
-
-    // does not work
+    static_assert(std::same_as<
+                  stdexec::__completion_scheduler_of_t<stdexec::set_value_t, decltype(sndr), start_scheduler_env_t>,
+                  decltype(pool.get_scheduler())
+    >);
     static_assert(std::same_as<
                   stdexec::__completion_scheduler_of_t<stdexec::set_error_t, decltype(sndr), start_scheduler_env_t>,
                   decltype(pool.get_scheduler())
@@ -171,6 +164,7 @@ TEST(get_start_scheduler, continues_on_error_completion) {
     auto sndr_with_upon_error = std::move(sndr) // NOLINT(performance-move-const-arg)
                               | UPON_ERROR_STORE_THREAD_ID(&tid);
 
+    static_assert(stdexec::__sends<stdexec::set_value_t, decltype(sndr_with_upon_error), start_scheduler_env_t>);
     static_assert(stdexec::__never_sends<stdexec::set_error_t, decltype(sndr_with_upon_error), start_scheduler_env_t>);
 
     static_assert(std::same_as<
