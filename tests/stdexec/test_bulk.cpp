@@ -10,6 +10,9 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos-execution/stdexec.hpp"
 
+#include "tests/utils/functors/counter.hpp"
+#include "tests/utils/sink_receiver.hpp"
+
 /**
  * @addtogroup unittests
  *
@@ -96,5 +99,73 @@ TEST(BulkTest, sender_transformation_decay_copies_child) {
     static_assert(!std::same_as<trnsfrm_xvalue_result_t, sndr_t>);
     ASSERT_EQ(sptr.use_count(), 4);
 }
+
+template <typename T>
+struct BulkCopiesAndMovesTest : public testing::Test {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    static constexpr typename T::value_type N = T::value; // NOLINT(readability-identifier-length)
+
+    //! @note All senders use @ref counter taken by @c lvalue.
+    template <typename T::value_type M>
+    stdexec::sender auto make_sndr_impl() {
+        if constexpr (M == 0) {
+            return stdexec::schedule(stc.get_scheduler());
+        } else {
+            return stdexec::bulk(make_sndr_impl<M - 1>(), stdexec::par, 42, counter);
+        }
+    }
+
+    stdexec::sender auto make_sndr() {
+        return make_sndr_impl<N>();
+    }
+
+    experimental::execution::single_thread_context stc;
+    counter_t counter;
+};
+
+TYPED_TEST_SUITE_P(BulkCopiesAndMovesTest);
+
+//! @test Check how many copies and moves are needed to transform a @c stdexec::bulk sender.
+TYPED_TEST_P(BulkCopiesAndMovesTest, transform_sender) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto trnsfrmd_sndr = stdexec::transform_sender(this->make_sndr(), stdexec::env<>{});
+
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2 + 1)
+}
+
+//! @test Check how many copies and moves are needed to connect a @c stdexec::bulk sender.
+TYPED_TEST_P(BulkCopiesAndMovesTest, connect) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
+
+    CHECK_COUNTER_COPIES_AND_MOVES(
+        EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2 + this->N * (this->N + 1) / 2 + this->N)
+}
+
+REGISTER_TYPED_TEST_SUITE_P(BulkCopiesAndMovesTest, transform_sender, connect);
+
+using bulk_copies_and_moves_types_t = ::testing::Types<
+    std::integral_constant<size_t, 1>,
+    std::integral_constant<size_t, 2>,
+    std::integral_constant<size_t, 3>,
+    std::integral_constant<size_t, 4>,
+    std::integral_constant<size_t, 5>,
+    std::integral_constant<size_t, 6>,
+    std::integral_constant<size_t, 9>
+>;
+
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    BulkCopiesAndMovesTestInstantiation,
+    BulkCopiesAndMovesTest,
+    bulk_copies_and_moves_types_t);
 
 } // namespace Tests
