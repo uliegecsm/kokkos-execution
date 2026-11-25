@@ -54,14 +54,10 @@ TYPED_TEST_P(ThenSetValueAndSetErrorTest, get_completion_scheduler) {
     static_assert(stdexec::__sends<stdexec::set_error_t, sndr_t, stdexec::env<>>);
 
     static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, stdexec::env<>>);
-    if constexpr (std::same_as<TypeParam, experimental::execution::single_thread_context>)
-        static_assert(!Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_error_t, stdexec::env<>>);
-    else
-        static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_error_t, stdexec::env<>>);
+    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_error_t, stdexec::env<>>);
 
     static_assert(
         std::same_as<stdexec::__completion_scheduler_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>, scheduler_t>);
-    if constexpr (!std::same_as<TypeParam, experimental::execution::single_thread_context>)
         static_assert(std::same_as<
                       stdexec::__completion_scheduler_of_t<stdexec::set_error_t, sndr_t, stdexec::env<>>,
                       scheduler_t

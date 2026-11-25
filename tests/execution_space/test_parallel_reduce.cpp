@@ -417,12 +417,14 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), starts_on_parallel_region) {
 
     const view_s_t target(Kokkos::view_alloc(exec, "data - shared space"));
 
+    using functor_t = Tests::Utils::Functors::ReduceIndices;
+
     auto chain =
         stdexec::just()
         | Kokkos::Execution::parallel_reduce(
             std::format("{}: hello from pred", Kokkos::Execution::Impl::display_string_of<TEST_EXECUTION_SPACE>()),
             Kokkos::RangePolicy<TEST_EXECUTION_SPACE>(0, size),
-            Tests::Utils::Functors::ReduceIndices{},
+            functor_t{},
             target);
 
     using chain_t = decltype(chain);
@@ -439,6 +441,23 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), starts_on_parallel_region) {
 
     using starts_on_t = decltype(starts_on);
 
+    static_assert(std::same_as<
+                  decltype(starts_on),
+                  stdexec::__facade::__sender<
+                      stdexec::starts_on_t,
+                      typename TEST_CATEGORY(ParallelReduceTest)::scheduler_t,
+                      Kokkos::Execution::Impl::ParallelReduceSender<
+                          stdexec::just_t::__sender<>,
+                          Kokkos::Execution::Impl::ParallelReduceData<
+                              functor_t,
+                              Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+                              view_s_t,
+                              Kokkos::Execution::Impl::Label<std::string>
+                          >
+                      >
+                  >
+    >);
+
     static_assert(stdexec::__has_eptr_completion<chain_t>);
     static_assert(!stdexec::dependent_sender<starts_on_t>);
     static_assert(
@@ -451,12 +470,24 @@ TEST_F(TEST_CATEGORY(ParallelReduceTest), starts_on_parallel_region) {
      *
      * See https://github.com/NVIDIA/stdexec/blob/5473e9daf50cb8829cfe12fb6b64f5f74a08bcf7/include/stdexec/__detail/__starts_on.hpp#L128.
      */
-    static_assert(stdexec::__is_instance_of<
+    static_assert(std::same_as<
                   stdexec::transform_sender_result_t<
                       decltype(starts_on),
                       stdexec::env_of_t<Kokkos::Execution::Impl::SyncWait::Receiver<TEST_EXECUTION_SPACE>>
                   >,
-                  stdexec::__seq::__sndr
+                  stdexec::__facade::__sender<
+                      stdexec::starts_on_t,
+                      typename TEST_CATEGORY(ParallelReduceTest)::scheduler_t,
+                      Kokkos::Execution::Impl::ParallelReduceSender<
+                          stdexec::just_t::__sender<>,
+                          Kokkos::Execution::Impl::ParallelReduceData<
+                              functor_t,
+                              Kokkos::RangePolicy<TEST_EXECUTION_SPACE>,
+                              view_s_t,
+                              Kokkos::Execution::Impl::Label<std::string>
+                          >
+                      >
+                  >&&
     >);
 
     const auto recorded_events = Tests::Utils::record_sync_wait<recorder_listener_t>(std::move(starts_on));

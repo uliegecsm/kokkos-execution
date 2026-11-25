@@ -23,10 +23,10 @@ consteval bool check_continues_on() {
     //! Check the complete sender type.
     static_assert(std::same_as<
                   sndr_t,
-                  stdexec::__sexpr<
+                  stdexec::__facade::__sender<
                       stdexec::continues_on_t,
                       Schd,
-                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
+                      stdexec::__facade::__sender<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
                   >
     >);
 

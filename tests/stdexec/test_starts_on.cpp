@@ -21,28 +21,27 @@ PRAGMA_DIAGNOSTIC_POP
 
 namespace Tests {
 
-consteval bool test_starts_on_is_dependent_if_sch_sender_and_child_do_not_have_eptr_completion() {
+/**
+ * @test Check that for an eptr-free schedule sender and child, @c stdexec::starts_on is a dependent sender.
+ *
+ * While older versions, such as
+ *  * https://github.com/NVIDIA/stdexec/blob/c4b51c48e0179f99439ccf23bf69d0b153185249/include/stdexec/__detail/__starts_on.hpp#L210
+ *  * https://github.com/NVIDIA/stdexec/blob/c4b51c48e0179f99439ccf23bf69d0b153185249/include/stdexec/__detail/__sequence.hpp#L372-L376
+ * lead to a dependent sender, https://github.com/NVIDIA/stdexec/commit/3717a4ca4059f6c03acd5919c62bc925d285ceae changed that.
+ */
+consteval bool test_starts_on_is_not_dependent_event_if_sch_sender_and_child_do_not_have_eptr_completion() {
     static_assert(!stdexec::__has_eptr_completion<decltype(stdexec::schedule(stdexec::inline_scheduler{}))>);
 
     using chain_t = decltype(stdexec::just());
     static_assert(!stdexec::__has_eptr_completion<chain_t>);
 
     static_assert(
-        stdexec::dependent_sender<decltype(stdexec::starts_on(stdexec::inline_scheduler{}, std::declval<chain_t>()))>);
+        !stdexec::dependent_sender<decltype(stdexec::starts_on(stdexec::inline_scheduler{}, std::declval<chain_t>()))>);
 
     return true;
 }
 
-/**
- * @test Check that for an eptr-free schedule sender and child, @c stdexec::starts_on is a dependent sender.
- *
- * See also:
- *  * https://github.com/NVIDIA/stdexec/blob/c4b51c48e0179f99439ccf23bf69d0b153185249/include/stdexec/__detail/__starts_on.hpp#L210
- *  * https://github.com/NVIDIA/stdexec/blob/c4b51c48e0179f99439ccf23bf69d0b153185249/include/stdexec/__detail/__sequence.hpp#L372-L376
- */
-TEST(starts_on, is_dependent_if_sch_sender_and_child_do_not_have_eptr_completion) {
-    static_assert(test_starts_on_is_dependent_if_sch_sender_and_child_do_not_have_eptr_completion());
-}
+static_assert(test_starts_on_is_not_dependent_event_if_sch_sender_and_child_do_not_have_eptr_completion());
 
 consteval bool test_starts_on_may_be_non_dependent_if_child_has_eptr_completion() {
     using chain_t = decltype(stdexec::just() | stdexec::then([]() { }));
