@@ -1,6 +1,7 @@
 add_one_test(NAME bulk)
 add_one_test(NAME closure)
 add_one_test(NAME completion_signatures)
+add_one_test(NAME continues_on)
 add_one_test(NAME get_start_scheduler)
 add_one_test(NAME inline_scheduler)
 add_one_test(NAME lifetime)
