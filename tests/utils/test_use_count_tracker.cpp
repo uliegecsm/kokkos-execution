@@ -193,26 +193,8 @@ TEST_F(UseCountTrackerTest, reset_high_water_restarts_from_the_current_count) {
     EXPECT_EQ(source.high_water(), 2);
 }
 
-//! GCC defines @c __SANITIZE_THREAD__. Clang exposes @c __has_feature(thread_sanitizer).
-#if defined(__SANITIZE_THREAD__)
-#    define KOKKOS_EXECUTION_TSAN_DETECTED 1 // NOLINT(cppcoreguidelines-macro-usage)
-#elif defined(__has_feature)
-#    if __has_feature(thread_sanitizer)
-#        define KOKKOS_EXECUTION_TSAN_DETECTED 1
-#    endif
-#endif
-
-#ifdef KOKKOS_EXECUTION_TSAN_DETECTED
-#    define KOKKOS_EXECUTION_SKIP_IF_TSAN(reason) GTEST_SKIP() << reason // NOLINT(cppcoreguidelines-macro-usage)
-#else
-#    define KOKKOS_EXECUTION_SKIP_IF_TSAN(...)
-#endif
-
 //! @test @ref Tests::Utils::Functors::UseCountTracker is thread-safe.
 TEST_F(UseCountTrackerTest, concurrent_copies_reach_the_expected_high_water) {
-    //! See https://github.com/kokkos/kokkos/pull/9773.
-    KOKKOS_EXECUTION_SKIP_IF_TSAN("Kokkos::Impl::HostSharedPtr::use_count generates TSan warnings.");
-
     constexpr unsigned short int num_threads = 18;
 
     const Utils::Functors::UseCountTracker l_a{source};
