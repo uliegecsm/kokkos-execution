@@ -4,12 +4,14 @@
 PRAGMA_DIAGNOSTIC_PUSH
 KOKKOS_EXECUTION_STDEXEC_PRAGMA_DIAGNOSTIC_IGNORED
 #include "exec/single_thread_context.hpp"
+#include "exec/static_thread_pool.hpp"
 PRAGMA_DIAGNOSTIC_POP
 
 #include "kokkos-execution/stdexec.hpp"
 
 #include "tests/utils/functors/counter.hpp"
 #include "tests/utils/sink_receiver.hpp"
+#include "tests/utils/stdexec.hpp"
 
 /**
  * @addtogroup unittests
@@ -23,6 +25,60 @@ PRAGMA_DIAGNOSTIC_POP
  */
 
 namespace Tests {
+
+template <typename ViewType>
+struct ThenSetValueAndSetErrorTest : public testing::Test { };
+
+TYPED_TEST_SUITE_P(ThenSetValueAndSetErrorTest);
+
+/**
+ * @test Ensure that a schedule sender followed by a @c stdexec::then that
+ *       may throw properly advertises a completion scheduler on both value and error channels.
+ */
+TYPED_TEST_P(ThenSetValueAndSetErrorTest, get_completion_scheduler) {
+    TypeParam scheduler_provider{};
+
+    auto scheduler = scheduler_provider.get_scheduler();
+
+    using scheduler_t = decltype(scheduler);
+
+    auto sndr = stdexec::schedule(scheduler) | stdexec::then([]() { throw std::runtime_error{"error"}; });
+
+    using sndr_t = decltype(sndr);
+
+    static_assert(
+        stdexec::get_completion_signatures<sndr_t, stdexec::env<>>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
+
+    static_assert(stdexec::__sends<stdexec::set_value_t, sndr_t, stdexec::env<>>);
+    static_assert(stdexec::__sends<stdexec::set_error_t, sndr_t, stdexec::env<>>);
+
+    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, stdexec::env<>>);
+    if constexpr (std::same_as<TypeParam, experimental::execution::single_thread_context>)
+        static_assert(!Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_error_t, stdexec::env<>>);
+    else
+        static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_error_t, stdexec::env<>>);
+
+    static_assert(
+        std::same_as<stdexec::__completion_scheduler_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>, scheduler_t>);
+    if constexpr (!std::same_as<TypeParam, experimental::execution::single_thread_context>)
+        static_assert(std::same_as<
+                      stdexec::__completion_scheduler_of_t<stdexec::set_error_t, sndr_t, stdexec::env<>>,
+                      scheduler_t
+        >);
+
+    ASSERT_THROW(stdexec::sync_wait(std::move(sndr)), std::runtime_error);
+}
+
+REGISTER_TYPED_TEST_SUITE_P(ThenSetValueAndSetErrorTest, get_completion_scheduler);
+
+using then_set_value_and_set_error_types_t =
+    testing::Types<experimental::execution::single_thread_context, experimental::execution::static_thread_pool>;
+
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    ThenSetValueAndSetErrorTestInstantiation,
+    ThenSetValueAndSetErrorTest,
+    then_set_value_and_set_error_types_t);
 
 template <typename T>
 struct ThenCopiesAndMovesTest : public testing::Test {
