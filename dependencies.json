@@ -6,7 +6,7 @@
         "googletest": "1.18.0",
         "hpx": "1.11.0",
         "kokkos": {
-            "sha": "9a451605b2dd825d0dac64ce9b1ea96b5e5e7f85",
+            "sha": "c41dcab9769655fe5c07d4a1766380c5d9ae8117",
             "username": "kokkos"
         },
         "kokkos-utils": {
