@@ -102,7 +102,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     static_assert(std::same_as<
                   when_all_sndr_t,
-                  stdexec::__sexpr<
+                  stdexec::__facade::__sender<
                       stdexec::when_all_t,
                       stdexec::__,
                       typename TEST_CATEGORY(WhenAllTest)::schedule_sender_t,

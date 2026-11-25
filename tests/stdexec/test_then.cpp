@@ -10,6 +10,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "tests/utils/functors/counter.hpp"
 #include "tests/utils/sink_receiver.hpp"
+#include "tests/utils/stdexec.hpp"
 
 /**
  * @addtogroup unittests
@@ -23,6 +24,46 @@ PRAGMA_DIAGNOSTIC_POP
  */
 
 namespace Tests {
+
+template <typename ViewType>
+struct ThenSetErrorTest : public testing::Test { };
+
+TYPED_TEST_SUITE_P(ThenSetErrorTest);
+
+//! @test
+TYPED_TEST_P(ThenSetErrorTest, set_error_t) {
+    TypeParam scheduler_provider{};
+
+    auto scheduler = scheduler_provider.get_scheduler();
+
+    using scheduler_t = decltype(scheduler);
+
+    auto sndr = stdexec::schedule(scheduler) | stdexec::then([]() { throw std::runtime_error{"error"}; });
+
+    using sndr_t = decltype(sndr);
+
+    static_assert(
+        stdexec::get_completion_signatures<sndr_t, stdexec::env<>>()
+        == stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>{});
+
+    static_assert(stdexec::__sends<stdexec::set_value_t, sndr_t, stdexec::env<>>);
+    static_assert(stdexec::__sends<stdexec::set_error_t, sndr_t, stdexec::env<>>);
+
+    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, stdexec::env<>>);
+    static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_error_t, stdexec::env<>>);
+
+    static_assert(
+        std::same_as<stdexec::__completion_scheduler_of_t<stdexec::set_value_t, sndr_t, stdexec::env<>>, scheduler_t>);
+    static_assert(
+        std::same_as<stdexec::__completion_scheduler_of_t<stdexec::set_error_t, sndr_t, stdexec::env<>>, scheduler_t>);
+}
+
+REGISTER_TYPED_TEST_SUITE_P(ThenSetErrorTest, set_error_t);
+
+using then_set_error_types_t =
+    ::testing::Types<experimental::execution::single_thread_context, experimental::execution::static_thread_pool>;
+
+INSTANTIATE_TYPED_TEST_SUITE_P(ThenSetErrorTestInstantiation, ThenSetErrorTest, then_set_error_types_t);
 
 template <typename T>
 struct ThenCopiesAndMovesTest : public testing::Test {

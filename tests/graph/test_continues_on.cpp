@@ -121,10 +121,10 @@ consteval bool test_sndr_nothrow_transformable() {
 
     static_assert(std::same_as<
                   continues_on_sndr_t,
-                  stdexec::__sexpr<
+                  stdexec::__facade::__sender<
                       stdexec::continues_on_t,
                       typename TEST_CATEGORY(ContinuesOnTest)::scheduler_t,
-                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
+                      stdexec::__facade::__sender<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
                   >
     >);
 
@@ -140,7 +140,7 @@ consteval bool test_sndr_nothrow_transformable() {
 
     static_assert(std::same_as<
                   schedule_from_sndr_t,
-                  stdexec::__sexpr<
+                  stdexec::__facade::__sender<
                       stdexec::schedule_from_t,
                       stdexec::__,
                       typename TEST_CATEGORY(ContinuesOnTest)::schedule_sender_t
@@ -176,16 +176,16 @@ TEST_F(TEST_CATEGORY(ContinuesOnTest), then_continues_on_single_thread_context_c
               | stdexec::continues_on(stc.get_scheduler()) | stdexec::continues_on(gctx.get_scheduler())
               | stdexec::then(functor_t{.prev = 4, .value = 3, .data = data.data()});
 
-    using inner_sndr_t = stdexec::__sexpr<
+    using inner_sndr_t = stdexec::__facade::__sender<
         stdexec::continues_on_t,
         typename TEST_CATEGORY(ContinuesOnTest)::scheduler_t,
-        stdexec::__sexpr<
+        stdexec::__facade::__sender<
             stdexec::schedule_from_t,
             stdexec::__,
-            stdexec::__sexpr<
+            stdexec::__facade::__sender<
                 stdexec::continues_on_t,
                 stdexec::run_loop::scheduler,
-                stdexec::__sexpr<
+                stdexec::__facade::__sender<
                     stdexec::schedule_from_t,
                     stdexec::__,
                     stdexec::then_t::__sender<functor_t, typename TEST_CATEGORY(ContinuesOnTest)::schedule_sender_t>

@@ -97,10 +97,10 @@ TEST_F(ContinuesOnTest, queryable_get_exec) {
                   decltype(schs_A_then_con_B_then),
                   stdexec::then_t::__sender<
                       Tests::Utils::Functors::Labeled<'B'>,
-                      stdexec::__sexpr<
+                      stdexec::__facade::__sender<
                           stdexec::continues_on_t,
                           scheduler_t,
-                          stdexec::__sexpr<
+                          stdexec::__facade::__sender<
                               stdexec::schedule_from_t,
                               stdexec::__,
                               stdexec::then_t::__sender<Tests::Utils::Functors::Labeled<'A'>, schedule_sender_t>
@@ -425,10 +425,10 @@ consteval bool test_sndr_nothrow_transformable() {
 
     static_assert(std::same_as<
                   continues_on_sndr_t,
-                  stdexec::__sexpr<
+                  stdexec::__facade::__sender<
                       stdexec::continues_on_t,
                       typename ContinuesOnTest::scheduler_t,
-                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
+                      stdexec::__facade::__sender<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
                   >
     >);
 
@@ -444,7 +444,11 @@ consteval bool test_sndr_nothrow_transformable() {
 
     static_assert(std::same_as<
                   schedule_from_sndr_t,
-                  stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, typename ContinuesOnTest::schedule_sender_t>
+                  stdexec::__facade::__sender<
+                      stdexec::schedule_from_t,
+                      stdexec::__,
+                      typename ContinuesOnTest::schedule_sender_t
+                  >
     >);
 
     static_assert(stdexec::__detail::__has_nothrow_transform_sender<

@@ -65,11 +65,8 @@ endif()
 string(JSON CPM_VERSION GET "${DEPENDENCIES_JSON}" "github" "cpm")
 include(/opt/cpm-${CPM_VERSION}/CPM.cmake)
 
+# Apply any stdexec patch here.
 include(cmake/functions/patch.cmake)
-
-if(SYCL IN_LIST Kokkos_DEVICES AND CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
-  apply_patch(${CMAKE_SOURCE_DIR}/external/stdexec-icpx-ice-when-all.patch ${CMAKE_SOURCE_DIR}/external/stdexec)
-endif()
 
 cpmaddpackage(
   NAME
