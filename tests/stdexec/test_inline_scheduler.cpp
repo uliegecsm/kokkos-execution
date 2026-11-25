@@ -61,6 +61,11 @@ consteval bool test_has_no_completion_scheduler() {
 
     static_assert(Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, start_scheduler_env_t>);
 
+    static_assert(std::same_as<
+                  stdexec::__completion_scheduler_of_t<stdexec::set_value_t, sndr_t, start_scheduler_env_t>,
+                  stdexec::run_loop::scheduler
+    >);
+
     return true;
 }
 
