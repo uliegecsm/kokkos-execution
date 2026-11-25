@@ -75,6 +75,8 @@ struct CounterRef {
         unsigned int copy_assignments = 0;
         unsigned int move_constructions = 0;
         unsigned int move_assignments = 0;
+
+        friend constexpr auto operator<=>(const counters&, const counters&) noexcept = default;
     };
 
     counters& m_counts; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
