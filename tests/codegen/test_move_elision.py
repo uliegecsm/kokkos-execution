@@ -12,6 +12,7 @@ import cmake_file_api.kinds.toolchains.v1
 import cmake_file_api.reply.v1
 import ijson
 import pytest
+import regex
 
 # ADD PYTLINT/RUFF/... and others to the pre-commit!
 
@@ -168,6 +169,23 @@ class TestMoveElision:
 
         with open(output, 'w+') as out:
             subprocess.check_call(args=cmd, cwd=command[0]['directory'], stdout=out, stderr=subprocess.STDOUT)
+
+        # We are looking for:
+        #   * 'not inlined into'
+        #   * 'inlined into'
+        # A typical line looks like:
+        #   /opt/.../Kokkos_SharedAlloc.hpp:632:30: remark: '__clang_call_terminate' not inlined into 'mangled-symbol-A' because it should never be inlined (cost=never): noinline function attribute [-Rpass-missed=inline]
+        PATTERN: typing.Final[regex.Pattern] = r'[a-zA-Z0-9._/]+: remark: \'(.*)\' not inlined into \'([a-zA-Z0-9._$]+)'
+        with open(output) as out:
+            for line in out:
+                if 'not inlined into' in line:
+                    line = line.lstrip()
+                    print(line)
+                    if (matched := regex.search(pattern=PATTERN, string=line)) is not None:
+                        print("HOURRAY")
+                        print(matched.groups())
+                        for symbol in matched.groups():
+                            print(subprocess.check_output(args=('llvm-cxxfilt', '--types', symbol)).decode().strip())
 
     def test(self, cmake_file_api: FileAPI, compile_commands: dict) -> None:
         cxx_compiler = cmake_file_api.toolchains['CXX']['compiler']
