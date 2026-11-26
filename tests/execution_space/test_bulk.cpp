@@ -179,8 +179,7 @@ TEST_F(BulkTest, bulk) {
 
     using chain_t = decltype(chain);
 
-    //! The chain environment advertises the default domain, and completes on the @ref Kokkos::Execution::ExecutionSpaceImpl::Domain domain.
-    static_assert(std::same_as<stdexec::__domain_of_t<stdexec::env_of_t<chain_t>>, stdexec::default_domain>);
+    //! The chain completes in @ref Kokkos::Execution::ExecutionSpaceImpl::Domain.
     static_assert(std::same_as<
                   stdexec::__detail::__completing_domain_t<stdexec::set_value_t, chain_t>,
                   Kokkos::Execution::ExecutionSpaceImpl::Domain

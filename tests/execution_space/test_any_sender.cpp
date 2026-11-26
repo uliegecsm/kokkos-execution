@@ -76,10 +76,10 @@ TEST_F(AnySenderTest, then) {
 
     static_assert(std::same_as<
                   decltype(continues_on),
-                  stdexec::__sexpr<
+                  stdexec::__facade::__sender<
                       stdexec::continues_on_t,
                       typename AnySenderTest::scheduler_t,
-                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, any_sender_t>
+                      stdexec::__facade::__sender<stdexec::schedule_from_t, stdexec::__, any_sender_t>
                   >
     >);
 

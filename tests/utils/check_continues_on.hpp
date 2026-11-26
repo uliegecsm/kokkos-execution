@@ -23,10 +23,10 @@ consteval bool check_continues_on() {
     //! Check the complete sender type.
     static_assert(std::same_as<
                   sndr_t,
-                  stdexec::__sexpr<
+                  stdexec::__facade::__sender<
                       stdexec::continues_on_t,
                       Schd,
-                      stdexec::__sexpr<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
+                      stdexec::__facade::__sender<stdexec::schedule_from_t, stdexec::__, stdexec::just_t::__sender<>>
                   >
     >);
 
@@ -37,8 +37,7 @@ consteval bool check_continues_on() {
         stdexec::__diagnose_sender_concept_failure<sndr_t, stdexec::env<>>();
     }
 
-    //! Check the completing domain;
-    static_assert(std::same_as<stdexec::__domain_of_t<stdexec::env_of_t<sndr_t>>, stdexec::default_domain>);
+    //! Check the completing domain.
     static_assert(std::same_as<
                   stdexec::__detail::__completing_domain_t<stdexec::set_value_t, sndr_t>,
                   std::invoke_result_t<stdexec::get_completion_domain_t<stdexec::set_value_t>, Schd>

@@ -74,12 +74,11 @@ TEST_F(EnsureStartedTest, then) {
 
         ASSERT_THAT(recorder_listener->recorded_events, ::testing::SizeIs(2));
 
-        //! The chain environment advertises the default domain, and completes on the default domain.
-        static_assert(std::same_as<stdexec::__domain_of_t<stdexec::env_of_t<sndr_t>>, stdexec::default_domain>);
-        static_assert(std::same_as<
-                      stdexec::__detail::__completing_domain_t<stdexec::set_value_t, sndr_t, stdexec::env<>>,
-                      stdexec::default_domain
-        >);
+        static_assert(
+            std::same_as<
+                stdexec::__detail::__completing_domain_t<stdexec::set_value_t, sndr_t, stdexec::env<>>,
+                stdexec::indeterminate_domain<Kokkos::Execution::ExecutionSpaceImpl::Domain, stdexec::default_domain>
+            >);
 
         //! It has no completion scheduler for the value channel.
         static_assert(!Tests::Utils::has_completion_scheduler_for<sndr_t, stdexec::set_value_t, stdexec::env<>>);

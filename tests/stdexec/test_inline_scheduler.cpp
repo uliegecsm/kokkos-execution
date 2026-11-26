@@ -28,6 +28,18 @@ PRAGMA_DIAGNOSTIC_POP
 
 namespace Tests {
 
+//! @test Check the completion signatures of the @c stdexec::inline_scheduler schedule sender.
+consteval bool test_schedule_sender_completion() {
+    using sndr_t = stdexec::schedule_result_t<stdexec::inline_scheduler>;
+
+    static_assert(
+        stdexec::get_completion_signatures<sndr_t>() == stdexec::completion_signatures<stdexec::set_value_t()>{});
+
+    return true;
+}
+
+static_assert(test_schedule_sender_completion());
+
 //! @test Check that the completion behavior of @c stdexec::inline_scheduler is @c exec::completion_behavior::inline_completion.
 consteval bool test_completion_behavior() {
     static_assert(

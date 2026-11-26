@@ -11,114 +11,68 @@ namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 struct when_all_t { };
 
-} // namespace Kokkos::Execution::ExecutionSpaceImpl
+/**
+ * Implementation of our @ref Kokkos::Execution::ExecutionSpaceImpl::when_all_t, using the
+ * @c stdexec::__facade algorithm of @c stdexec::when_all_t, see
+ * https://github.com/NVIDIA/stdexec/blob/4781797199f20ef742b39ea00785a1503badd218/include/stdexec/__detail/__when_all.hpp#L670.
+ *
+ * It is the same algorithm as @c stdexec::when_all, except that, if the environment of the receiver can be queried with
+ * @ref Impl::get_exec_t, the environment of the children is extended with it.
+ */
+struct when_all_algo : stdexec::__when_all::__algo {
+    using base_t = stdexec::__when_all::__algo;
 
-namespace stdexec {
-template <>
-struct __sexpr_impl<Kokkos::Execution::ExecutionSpaceImpl::when_all_t> : stdexec::__when_all::__when_all_impl {
-    using base_t = stdexec::__when_all::__when_all_impl;
-
-    template <typename State>
-    using state_env_t = stdexec::env_of_t<decltype(std::declval<const State&>().__rcvr_)>;
-
-    template <typename State>
-    using state_exec_env_policy_t =
-        Kokkos::Execution::ExecutionSpaceImpl::extend_env_with_exec_policy_t<state_env_t<State>>;
-
-    template <typename State>
-    using base_env_t = decltype(base_t::__get_env(stdexec::__ignore{}, std::declval<const State&>()));
-
-    template <typename ExecEnvPolicy, typename State>
-    struct get_env_impl;
-
-    template <typename State>
-    struct get_env_impl<Kokkos::Execution::ExecutionSpaceImpl::WithExecEnvPolicy, State> {
-        using execution_space = Kokkos::Execution::Impl::exec_of_t<state_env_t<State>>;
-
-        using type = decltype(Kokkos::Execution::ExecutionSpaceImpl::join_env_with_exec(
-            std::declval<base_env_t<State>>(),
-            std::declval<execution_space>()));
-
-        [[nodiscard]]
-        static constexpr auto get_env(const State& state) noexcept -> type {
-            return Kokkos::Execution::ExecutionSpaceImpl::join_env_with_exec(
-                base_t::__get_env(stdexec::__ignore{}, state),
-                Kokkos::Execution::Impl::get_exec(stdexec::get_env(state.__rcvr_)).get());
-        }
-    };
-
-    template <typename State>
-    struct get_env_impl<Kokkos::Execution::ExecutionSpaceImpl::WithoutExecEnvPolicy, State> {
-        using type = base_env_t<State>;
-
-        [[nodiscard]]
-        static constexpr auto get_env(const State& state) noexcept -> type {
-            return base_t::__get_env(stdexec::__ignore{}, state);
-        }
-    };
-
-    /**
-     * Customize the environment of the receivers that @c stdexec::when_all connects the child senders with.
-     *
-     * See:
-     * - https://github.com/NVIDIA/stdexec/blob/56613d3498bc39724dfbae0914cff2aaf3f9dcc6/include/stdexec/__detail/__basic_sender.hpp#L269-L274
-     * - https://github.com/NVIDIA/stdexec/blob/56613d3498bc39724dfbae0914cff2aaf3f9dcc6/include/stdexec/__detail/__when_all.hpp#L454-L458
-     */
-    static constexpr auto __get_env = // NOLINT(bugprone-reserved-identifier)
-        []<typename State>(stdexec::__ignore, const State& state) noexcept ->
-        typename get_env_impl<state_exec_env_policy_t<State>, State>::type {
-            return get_env_impl<state_exec_env_policy_t<State>, State>::get_env(state);
-        };
-
-    /**
-     * Needed by @ref __get_completion_signatures, adapted from
-     * https://github.com/NVIDIA/stdexec/blob/2184dd714f82df1e00d39961817be97f31c02744/include/stdexec/__detail/__when_all.hpp#L633
-     * to support the tag @ref Kokkos::Execution::ExecutionSpaceImpl::when_all_t.
-     */
-    template <class CpCvref>
-    static constexpr auto mk_fold_cmplsigs_fn() noexcept {
-        return []<class... Child>(__sexpr<Kokkos::Execution::ExecutionSpaceImpl::when_all_t, __, Child...> const *) {
-            return __fold_cmplsigs(STDEXEC::get_completion_signatures<__mcall1<CpCvref, Child>>()...);
-        };
+    template <typename Key, typename Sender, typename Env>
+    [[nodiscard]]
+    static constexpr auto
+        __env_for(const Key& key, const Sender& sndr, Env&& env) noexcept // NOLINT(bugprone-reserved-identifier)
+        -> decltype(auto) {
+        return extend(env, [&]() -> decltype(auto) { return base_t::__env_for(key, sndr, std::forward<Env>(env)); });
     }
 
-    /**
-     * Needed by @ref __get_completion_signatures, adapted from
-     * https://github.com/NVIDIA/stdexec/blob/2184dd714f82df1e00d39961817be97f31c02744/include/stdexec/__detail/__when_all.hpp#L643
-     * to support the tag @ref Kokkos::Execution::ExecutionSpaceImpl::when_all_t.
-     */
-    template <class CpCvref, class Env>
-    static constexpr auto mk_fold_cmplsigs_fn() noexcept {
-        return []<class... Child>(__sexpr<Kokkos::Execution::ExecutionSpaceImpl::when_all_t, __, Child...> const *) {
-            using env_t = __when_all::__env_t<Env, __mcall1<CpCvref, Child>...>;
-            return __fold_cmplsigs(STDEXEC::get_completion_signatures<__mcall1<CpCvref, Child>, env_t>()...);
-        };
+    template <typename Key, typename State>
+    [[nodiscard]]
+    static constexpr auto
+        __get_env(const Key& key, const State& state) noexcept -> decltype(auto) // NOLINT(bugprone-reserved-identifier)
+    {
+        return extend(stdexec::get_env(state.__rcvr_), [&]() -> decltype(auto) {
+            return base_t::__get_env(key, state);
+        });
     }
 
-    /**
-     * This code reproduces the implementation of @c __get_completion_signatures of @c stdexec::when_all, except that it
-     * does not statically assert that the tag is @c stdexec::when_all_t. This workaround is necessary because this sender
-     * uses the tag @ref Kokkos::Execution::ExecutionSpaceImpl::when_all_t to distinguish from @c stdexec::when_all_t.
-     *
-     * See:
-     * - https://github.com/NVIDIA/stdexec/blob/2184dd714f82df1e00d39961817be97f31c02744/include/stdexec/__detail/__when_all.hpp#L662
-     */
-    template <typename Self, typename... Envs>
-    static consteval auto __get_completion_signatures() { // NOLINT(bugprone-reserved-identifier)
-        return mk_fold_cmplsigs_fn<stdexec::__copy_cvref_fn<Self>, Envs...>()(std::add_pointer_t<Self>());
+   private:
+    //! Extend the environment returned by @p make_env with the execution space of @p env, if it has one.
+    template <typename Env, typename MakeEnv>
+    static constexpr auto extend(const Env& env, MakeEnv&& make_env) noexcept -> decltype(auto) {
+        if constexpr (std::same_as<extend_env_with_exec_policy_t<Env>, WithExecEnvPolicy>) {
+            const auto& exec = Impl::get_exec(env).get();
+            return join_env_with_exec(std::forward<MakeEnv>(make_env)(), exec);
+        } else {
+            return std::forward<MakeEnv>(make_env)();
+        }
     }
 };
 
-} // namespace stdexec
+} // namespace Kokkos::Execution::ExecutionSpaceImpl
+
+namespace stdexec::__facade {
+
+template <>
+struct __algorithm<Kokkos::Execution::ExecutionSpaceImpl::when_all_t>
+    : Kokkos::Execution::ExecutionSpaceImpl::when_all_algo { };
+
+} // namespace stdexec::__facade
 
 namespace Kokkos::Execution::ExecutionSpaceImpl {
 
 template <>
 struct TransformSenderFor<stdexec::when_all_t> {
-    template <typename Env, typename... Sndrs>
-    auto operator()(const Env&, stdexec::when_all_t, stdexec::__, Sndrs&&... sndrs) const {
-        return stdexec::__sexpr{
-            Kokkos::Execution::ExecutionSpaceImpl::when_all_t{}, stdexec::__{}, std::forward<Sndrs>(sndrs)...};
+    template <typename Env, typename Data, typename... Sndrs>
+    auto operator()(const Env&, stdexec::when_all_t, Data&& data, Sndrs&&... sndrs) const {
+        return stdexec::__facade::__sender{
+            Kokkos::Execution::ExecutionSpaceImpl::when_all_t{},
+            std::forward<Data>(data),
+            std::forward<Sndrs>(sndrs)...};
     }
 };
 
