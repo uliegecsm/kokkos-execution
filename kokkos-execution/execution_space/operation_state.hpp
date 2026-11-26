@@ -62,6 +62,13 @@ struct OpStateBase {
         , clsrs(stdexec::__mktuple(std::move(clsr_), std::move(clsrs_)...)) {
     }
 
+    constexpr explicit OpStateBase(Rcvr rcvr, closures_t&& clsrs_) noexcept(
+        std::is_nothrow_constructible_v<completion_signal_t, Rcvr&&>
+        && std::is_nothrow_move_constructible_v<closures_t>)
+        : completion_signal(std::move(rcvr))
+        , clsrs(std::move(clsrs_)) {
+    }
+
     void complete(stdexec::set_value_t) noexcept {
         this->submit();
     }
@@ -106,6 +113,7 @@ struct OpState
 
     using inner_op_state_t = stdexec::connect_result_t<Sndr, rcvr_t>;
 
+    // to be moved to the constructor
     static constexpr bool op_state_base_is_nothrow_constructible =
         std::is_nothrow_constructible_v<base_t, Rcvr&&, Clsrs&&...>;
 
@@ -120,9 +128,16 @@ struct OpState
 
     constexpr explicit OpState(
         Sndr&& sndr, // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
-        Rcvr rcvr_,
+        Rcvr&& rcvr_,
         Clsrs&&... clsrs_) noexcept(op_state_base_is_nothrow_constructible && inner_op_state_is_nothrow_constructible)
         : base_t(std::move(rcvr_), std::move(clsrs_)...)
+        , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
+    }
+
+    constexpr explicit OpState(Sndr&& sndr, Rcvr&& rcvr_, typename base_t::closures_t&& clsrs_) noexcept(
+        std::is_nothrow_constructible_v<base_t, Rcvr&&, typename base_t::closures_t&&>
+        && inner_op_state_is_nothrow_constructible)
+        : base_t(std::move(rcvr_), std::move(clsrs_))
         , inner_op_state(stdexec::connect(std::forward<Sndr>(sndr), rcvr_t{this})) {
     }
 

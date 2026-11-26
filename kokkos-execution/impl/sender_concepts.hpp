@@ -20,6 +20,9 @@ concept dispatching_sender = stdexec::sender<Sndr> && requires {
     >;
 };
 
+template <typename Sndr>
+using is_dispatching_sender_t = stdexec::__mbool<dispatching_sender<Sndr>>;
+
 } // namespace Kokkos::Execution::Impl
 
 #endif // KOKKOS_EXECUTION_IMPL_SENDER_CONCEPTS_HPP

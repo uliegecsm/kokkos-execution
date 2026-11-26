@@ -9,6 +9,7 @@ import kokkos.core;
 
 #include "kokkos-execution/parallel_for.hpp"
 
+#include "tests/utils/category.hpp"
 #include "tests/utils/functors/counter.hpp"
 #include "tests/utils/functors/no_op.hpp"
 #include "tests/utils/properties.hpp"
@@ -379,5 +380,85 @@ TEST(ParallelForTest, closure_object_creation_perfectly_forwards_functor) {
     ASSERT_EQ(counter_t::copy_constructions, 1);
     ASSERT_EQ(counter_t::move_constructions, 2);
 }
+
+template <typename T>
+struct TEST_CATEGORY(ParallelForCopiesAndMovesTest)
+    : public virtual testing::Test {
+    using counter_t = Tests::Utils::Functors::Counter;
+
+    static constexpr typename T::value_type N = T::value; // NOLINT(readability-identifier-length)
+
+    template <typename T::value_type M>
+    stdexec::sender auto make_sndr_nested_impl() {
+        if constexpr (M == 0) {
+            return stdexec::just();
+        } else {
+            return Kokkos::Execution::parallel_for(make_sndr_nested_impl<M - 1>(), Kokkos::dims<1>(42), this->counter);
+        }
+    }
+
+    template <typename T::value_type M>
+    auto make_sndr_pipe_impl() {
+        if constexpr (M == 0) {
+            return stdexec::just();
+        } else {
+            return make_sndr_pipe_impl<M - 1>() | Kokkos::Execution::parallel_for(Kokkos::dims<1>(42), this->counter);
+        }
+    }
+
+    stdexec::sender auto make_sndr_nested() {
+        return make_sndr_nested_impl<T::value>();
+    }
+
+    stdexec::sender auto make_sndr_pipe() {
+        return make_sndr_pipe_impl<T::value>();
+    }
+
+    counter_t counter{};
+};
+
+TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest));
+
+//! @test Check how many copies and moves are needed to build a sender of @ref Kokkos::Execution::parallel_for_t with @c operator|.
+TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), build_sender_pipe) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::sender auto sndr = this->make_sndr_pipe();
+
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N - 1)) / 2 + this->N)
+}
+
+//! @test Check how many copies and moves are needed to build a sender of @ref Kokkos::Execution::parallel_for_t using nested construction.
+TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), build_sender_nested) {
+    using counter_t = typename TestFixture::counter_t;
+
+    counter_t::reset();
+
+    [[maybe_unused]]
+    const stdexec::sender auto sndr = this->make_sndr_nested();
+
+    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N - 1)) / 2)
+}
+
+REGISTER_TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), build_sender_pipe, build_sender_nested);
+
+using parallel_for_copies_and_moves_types_t = ::testing::Types<
+    std::integral_constant<size_t, 1>,
+    std::integral_constant<size_t, 2>,
+    std::integral_constant<size_t, 3>,
+    std::integral_constant<size_t, 4>,
+    std::integral_constant<size_t, 5>,
+    std::integral_constant<size_t, 6>,
+    std::integral_constant<size_t, 9>
+>;
+
+STDEXEC_PP_EVAL(
+    INSTANTIATE_TYPED_TEST_SUITE_P,
+    TEST_CATEGORY(ParallelForCopiesAndMovesTestInstantiation),
+    TEST_CATEGORY(ParallelForCopiesAndMovesTest),
+    parallel_for_copies_and_moves_types_t);
 
 } // namespace Tests

@@ -108,6 +108,7 @@ target_sources(
             kokkos-execution/graph.hpp
             kokkos-execution/parallel_for.hpp
             kokkos-execution/parallel_reduce.hpp
+            kokkos-execution/path.hpp
             kokkos-execution/stdexec.hpp
             kokkos-execution/execution_space/bulk.hpp
             kokkos-execution/execution_space/continues_on.hpp
@@ -118,6 +119,7 @@ target_sources(
             kokkos-execution/execution_space/operation_state.hpp
             kokkos-execution/execution_space/parallel_for.hpp
             kokkos-execution/execution_space/parallel_reduce.hpp
+            kokkos-execution/execution_space/path.hpp
             kokkos-execution/execution_space/schedule_from.hpp
             kokkos-execution/execution_space/scoped_region.hpp
             kokkos-execution/execution_space/sender_concepts.hpp

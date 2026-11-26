@@ -422,24 +422,17 @@ TEST_F(TEST_CATEGORY(ParallelForTest), perfect_forwarding_connect) {
 
 template <typename T>
 struct TEST_CATEGORY(ParallelForCopiesAndMovesTest)
-    : public virtual testing::Test
-    , public Kokkos::utils::tests::scoped::ExecutionSpace<TEST_EXECUTION_SPACE> {
+    : public Tests::Utils::GraphContextTest<TEST_EXECUTION_SPACE> {
     using counter_t = Tests::Utils::Functors::Counter;
 
     static constexpr typename T::value_type N = T::value; // NOLINT(readability-identifier-length)
-
-    TEST_CATEGORY(ParallelForCopiesAndMovesTest)()
-        : gctx{this->exec}
-        , policy(0, 1)
-        , counter{} {
-    }
 
     template <typename T::value_type M>
     stdexec::sender auto make_sndr_impl() {
         if constexpr (M == 0) {
             return stdexec::schedule(gctx.get_scheduler());
         } else {
-            return Kokkos::Execution::parallel_for(make_sndr_impl<M - 1>(), this->policy, this->counter);
+            return Kokkos::Execution::parallel_for(make_sndr_impl<M - 1>(), Kokkos::dims<1>(42), this->counter);
         }
     }
 
@@ -447,9 +440,8 @@ struct TEST_CATEGORY(ParallelForCopiesAndMovesTest)
         return make_sndr_impl<N>();
     }
 
-    Kokkos::Execution::GraphContext<TEST_EXECUTION_SPACE> gctx;
-    Kokkos::RangePolicy<TEST_EXECUTION_SPACE> policy;
-    counter_t counter;
+    Kokkos::Execution::GraphContext<TEST_EXECUTION_SPACE> gctx{this->exec};
+    counter_t counter{};
 };
 
 TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest));
