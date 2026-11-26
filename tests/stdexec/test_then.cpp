@@ -61,6 +61,11 @@ TYPED_TEST_P(ThenSetValueAndSetErrorTest, get_completion_scheduler) {
     static_assert(
         std::same_as<stdexec::__completion_scheduler_of_t<stdexec::set_error_t, sndr_t, stdexec::env<>>, scheduler_t>);
 
+    ASSERT_EQ(
+        stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), stdexec::env<>{}), scheduler);
+    ASSERT_EQ(
+        stdexec::get_completion_scheduler<stdexec::set_error_t>(stdexec::get_env(sndr), stdexec::env<>{}), scheduler);
+
     ASSERT_THROW(stdexec::sync_wait(std::move(sndr)), std::runtime_error);
 }
 

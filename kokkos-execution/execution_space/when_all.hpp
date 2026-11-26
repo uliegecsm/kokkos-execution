@@ -26,21 +26,24 @@ struct when_all_algo : stdexec::__when_all::__algo {
     [[nodiscard]]
     static constexpr auto
         __env_for(const Key& key, const Sender& sndr, Env&& env) noexcept // NOLINT(bugprone-reserved-identifier)
-    {
-        return extend(env, [&] { return base_t::__env_for(key, sndr, std::forward<Env>(env)); });
+        -> decltype(auto) {
+        return extend(env, [&]() -> decltype(auto) { return base_t::__env_for(key, sndr, std::forward<Env>(env)); });
     }
 
     template <typename Key, typename State>
     [[nodiscard]]
-    static constexpr auto __get_env(const Key& key, const State& state) noexcept // NOLINT(bugprone-reserved-identifier)
+    static constexpr auto
+        __get_env(const Key& key, const State& state) noexcept -> decltype(auto) // NOLINT(bugprone-reserved-identifier)
     {
-        return extend(stdexec::get_env(state.__rcvr_), [&] { return base_t::__get_env(key, state); });
+        return extend(stdexec::get_env(state.__rcvr_), [&]() -> decltype(auto) {
+            return base_t::__get_env(key, state);
+        });
     }
 
    private:
     //! Extend the environment returned by @p make_env with the execution space of @p env, if it has one.
     template <typename Env, typename MakeEnv>
-    static constexpr auto extend(const Env& env, MakeEnv&& make_env) noexcept {
+    static constexpr auto extend(const Env& env, MakeEnv&& make_env) noexcept -> decltype(auto) {
         if constexpr (std::same_as<extend_env_with_exec_policy_t<Env>, WithExecEnvPolicy>) {
             const auto& exec = Impl::get_exec(env).get();
             return join_env_with_exec(std::forward<MakeEnv>(make_env)(), exec);
