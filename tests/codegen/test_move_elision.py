@@ -140,12 +140,13 @@ class TestMoveElision:
         with open(pathlib.Path(os.environ['CMAKE_BINARY_DIR']) / 'compile_commands.json', encoding='utf-8') as fin:
             return json.load(fin)
 
-    def collect(self, target: typing.Any, compile_commands: dict) -> str:
+    def collect(self, name: str, cmake_file_api: FileAPI, compile_commands: dict) -> str:
         """
         Run the compile command, with::
 
             -Rpass-missed=inline -Rpass=inline
         """
+        target = cmake_file_api.target(name=name)
         logging.info(target)
 
         path = target['artifacts'][0]['path']
@@ -157,9 +158,16 @@ class TestMoveElision:
 
         logging.info(command[0])
 
-        cmd = shlex.split(s=command[0]['command']) + ['-Rpass-missed=inline', '-Rpass=inline']
+        launcher = cmake_file_api.cache['CMAKE_CXX_COMPILER_LAUNCHER']['value']
 
-        subprocess.check_output(args=cmd, cwd=command[0]['directory'])
+        cmd = shlex.split(s=launcher) + shlex.split(s=command[0]['command']) + ['-Rpass-missed=inline', '-Rpass=inline']
+
+        output: pathlib.Path = pathlib.Path(os.environ['CMAKE_CURRENT_BINARY_DIR']) / f'{name}.log'
+
+        logging.info(f'Compiling target {name} with:\n\t{cmd}\nand dumping into:\n\t{output}')
+
+        with open(output, 'w+') as out:
+            subprocess.check_call(args=cmd, cwd=command[0]['directory'], stdout=out, stderr=subprocess.STDOUT)
 
     def test(self, cmake_file_api: FileAPI, compile_commands: dict) -> None:
         cxx_compiler = cmake_file_api.toolchains['CXX']['compiler']
@@ -168,6 +176,6 @@ class TestMoveElision:
 
         match cxx_compiler['id']:
             case 'Clang':
-                self.collect(target=cmake_file_api.target(name='tests_codegen_move_elision.4'), compile_commands=compile_commands)
+                self.collect(name='tests_codegen_move_elision.4', cmake_file_api=cmake_file_api, compile_commands=compile_commands)
             case _:
                 raise ValueError(cxx_compiler)
