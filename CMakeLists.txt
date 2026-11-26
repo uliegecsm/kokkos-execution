@@ -291,6 +291,22 @@ endif()
 # Testing.
 if(KokkosExecution_ENABLE_TESTS)
   enable_testing()
+  include(cmake/functions/environment.cmake)
+
+  # Ask CMake to dump file-based detailed information about the build system. See also
+  # https://cmake.org/cmake/help/latest/manual/cmake-file-api.7.html. Note that this requires CMake 3.27 or newer.
+  cmake_file_api(
+    QUERY
+    API_VERSION
+    1
+    CACHE
+    2
+    TOOLCHAINS
+    1
+    CODEMODEL
+    2
+  )
+
   add_subdirectory(tests)
 endif()
 

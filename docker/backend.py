@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import json
 import logging
@@ -5,14 +7,17 @@ import pathlib
 
 import typeguard
 
+
 @typeguard.typechecked
 def on_or_off(value: str) -> bool:
     """
     Accept either `ON` or `OFF`.
     """
     match value:
-        case 'ON': return True
-        case 'OFF': return False
+        case 'ON':
+            return True
+        case 'OFF':
+            return False
         case _:
             raise ValueError(f'Expecting ON or OFF but got \'{value}\'')
 
@@ -24,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--dependencies', type=pathlib.Path, required=True)
     parser.add_argument('--cxxmodules', type=on_or_off, required=True)
     parser.add_argument('--cxxstd', type=int, required=True)
-    parser.add_argument('--input', type=pathlib.Path, required=True)
+    parser.add_argument('--dockerfile', type=pathlib.Path, required=True)
     parser.add_argument('--output', type=pathlib.Path, required=True)
     return parser.parse_args()
 
@@ -87,8 +92,8 @@ ENV HPX_ROOT=/opt/hpx-${{HPX_REF}}
 """
 
 @typeguard.typechecked
-def main(*, dependencies: pathlib.Path, cxxstd: int, cxxmodules: bool, kokkos_backends: str, input: pathlib.Path, output: pathlib.Path, compiler_family: str) -> None:
-    with open(dependencies, 'r') as f:
+def main(*, dependencies: pathlib.Path, cxxstd: int, cxxmodules: bool, kokkos_backends: str, dockerfile: pathlib.Path, output: pathlib.Path, compiler_family: str) -> None:
+    with open(dependencies) as f:
         deps = json.load(f)
 
     content: list[str] = []
@@ -102,7 +107,7 @@ def main(*, dependencies: pathlib.Path, cxxstd: int, cxxmodules: bool, kokkos_ba
             case _:
                 logging.info(f'There is no requirement yet for Kokkos backend {x}.')
 
-    output.write_text(input.read_text().replace(
+    output.write_text(dockerfile.read_text().replace(
         'REPLACE_REQUIREMENTS_BACKEND', '\n'.join(content)).replace(
         'REPLACE_KOKKOS_CMAKE_CONFIGURE', kokkos_cmake_configure))
 

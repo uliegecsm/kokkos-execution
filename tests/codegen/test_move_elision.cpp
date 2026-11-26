@@ -27,8 +27,8 @@
  * The tests can be found in @ref tests/codegen/elide_moves.cpp.
  */
 
-#if !defined(CHAIN_LENGTH)
-#    error "CHAIN_LENGTH must be defined."
+#if !defined(COMPOSITION_LENGTH)
+#    error "COMPOSITION_LENGTH must be defined."
 #endif
 
 namespace Tests::Codegen {
@@ -42,9 +42,9 @@ using value_t = int;
 using view_s_t = Kokkos::View<value_t, Kokkos::SharedSpace>;
 using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
 
-using array_of_functors_t = std::array<functor_t, CHAIN_LENGTH>;
+using array_of_functors_t = std::array<functor_t, COMPOSITION_LENGTH>;
 
-auto compose(const scheduler_t schd, array_of_functors_t& array_of_functors) {
+auto compose(const scheduler_t& schd, array_of_functors_t& array_of_functors) {
     return std::apply(
         [&](auto&... functors) {
             return (stdexec::schedule(schd) | ... | Kokkos::Execution::parallel_for(10, std::move(functors)));
