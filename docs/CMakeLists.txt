@@ -20,6 +20,7 @@ set(DOXYGEN_MACRO_EXPANSION YES)
 # The __cpp_explicit_this_parameter predefined macro is needed to tackle
 # https://github.com/doxygen/doxygen/issues/12422.
 set(DOXYGEN_PREDEFINED __DOXYGEN__ __cpp_explicit_this_parameter=202110L)
+set(DOXYGEN_MARKDOWN_SUPPORT YES)
 set(DOXYGEN_REFERENCES_RELATION YES)
 set(DOXYGEN_SOURCE_BROWSER YES)
 set(DOXYGEN_TIMESTAMP YES)
