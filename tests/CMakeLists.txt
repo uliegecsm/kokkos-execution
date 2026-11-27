@@ -126,6 +126,7 @@ target_sources(test_common PRIVATE utils/init_gtest_and_kokkos.cpp)
 target_link_libraries(test_common PUBLIC GTest::gtest Kokkos::kokkoscore)
 
 # Include subdirectories.
+add_subdirectory(codegen)
 add_subdirectory(execution_space)
 add_subdirectory(graph)
 add_subdirectory(impl)

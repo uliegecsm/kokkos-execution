@@ -120,12 +120,14 @@ RUN <<EOF
         libclang-rt-${COMPILER_VERSION}-dev \
         clang-tidy-${COMPILER_VERSION}      \
         clang-format-${COMPILER_VERSION}    \
+        llvm-${COMPILER_VERSION}            \
         libomp-${COMPILER_VERSION}-dev
 
     update-alternatives-helpers --prefix /usr/bin --level 10 \
         --display --for-each-of                              \
         clang=clang-${COMPILER_VERSION}                      \
         clang++=clang++-${COMPILER_VERSION}                  \
+        llvm-cxxfilt=llvm-cxxfilt-${COMPILER_VERSION}        \
         clang-tidy=clang-tidy-${COMPILER_VERSION}            \
         clang-format=clang-format-${COMPILER_VERSION}
 
