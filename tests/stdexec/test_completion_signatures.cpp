@@ -15,6 +15,12 @@
 
 namespace Tests {
 
+/**
+ * @test Check that the equality operator for @c stdexec::completion_signatures checks for set equality.
+ *
+ * See also:
+ *  * https://github.com/NVIDIA/stdexec/blob/ead186b1d8db3ebe37a946ff84a6ce08bf795153/include/stdexec/__detail/__completion_signatures.hpp#L419-L426
+ */
 consteval bool test_completion_signatures_operator_equal_checks_for_set_equality() {
     constexpr auto empty = stdexec::completion_signatures<>{};
     constexpr auto sigs1 =
@@ -40,14 +46,10 @@ consteval bool test_completion_signatures_operator_equal_checks_for_set_equality
     return true;
 }
 
-/**
- * @test Check that the equality operator for @c stdexec::completion_signatures checks for set equality.
- *
- * See also:
- *  * https://github.com/NVIDIA/stdexec/blob/ead186b1d8db3ebe37a946ff84a6ce08bf795153/include/stdexec/__detail/__completion_signatures.hpp#L419-L426
- */
-TEST(completion_signatures, operator_equal_checks_for_set_equality) {
-    static_assert(test_completion_signatures_operator_equal_checks_for_set_equality());
+static_assert(test_completion_signatures_operator_equal_checks_for_set_equality());
+
+//! Because we need at least one discoverable runtime test per unit.
+TEST(is, useless) {
 }
 
 } // namespace Tests
