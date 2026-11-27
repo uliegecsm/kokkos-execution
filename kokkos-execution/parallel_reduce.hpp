@@ -71,7 +71,7 @@ struct parallel_reduce_t {
                 std::forward<Reducer>(reducer)))
 
     template <typename Label, typename Functor, std::integral T, typename Reducer>
-    requires Impl::label<std::remove_cvref_t<Label>>
+    requires Impl::label<std::remove_cvref_t<Label>> && (!std::same_as<T, bool>)
     constexpr auto
         operator()(Label&& label, const T work_count, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
             stdexec::__closure(
@@ -82,6 +82,7 @@ struct parallel_reduce_t {
                 Impl::Label{std::forward<Label>(label)}))
 
     template <typename Functor, std::integral T, typename Reducer>
+    requires(!std::same_as<T, bool>)
     constexpr auto operator()(const T work_count, Functor&& functor, Reducer&& reducer) const STDEXEC_AUTO_RETURN(
         stdexec::__closure(
             *this,

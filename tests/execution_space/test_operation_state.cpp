@@ -183,7 +183,7 @@ consteval bool test_op_state_flattened_from_two() {
                   clsr_1_t&&
     >);
 
-    //! The operation state cannot be constructed from @c lvalue closures.
+    //! The operation state takes its closures by rvalue reference: they cannot be passed as lvalues.
     static_assert(!std::is_constructible_v<
                   op_state_t,
                   typename OpStateTest::schedule_sender_t,
@@ -336,5 +336,72 @@ consteval bool test_op_state_flattened_from_three_mixed_tags() {
 }
 
 static_assert(test_op_state_flattened_from_three_mixed_tags());
+
+/**
+ * @test Check construction of flattened operation state from two parallel for senders,
+ *       with a non-dispatching child, not @c const, held by reference.
+ */
+TEST_F(OpStateTest, op_state_flattened_from_two_with_child_held_by_reference) {
+    constexpr size_t size = 10;
+
+    const view_s_t witness(Kokkos::view_alloc(exec, "witness - shared space"));
+
+    const context_t esc{exec};
+
+    using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
+
+    auto schd_sndr = stdexec::schedule(esc.get_scheduler());
+
+    auto sndr = Kokkos::Execution::parallel_for(
+        Kokkos::Execution::parallel_for(schd_sndr, "hello from pfor", size, functor_t{.data = witness}),
+        "hello again from pfor",
+        size,
+        functor_t{.data = witness});
+
+    auto op_state = stdexec::connect(std::move(sndr), Tests::Utils::SinkReceiver{});
+
+    op_state.start();
+    exec.fence();
+
+    ASSERT_EQ(witness(), 2 * (size / 2 * (size - 1)));
+}
+
+/**
+ * @test Check construction of flattened operation state from three parallel for senders, the first of which is
+ *       not @c const and held by reference by the second.
+ */
+TEST_F(OpStateTest, op_state_flattened_from_three_with_first_held_by_reference) {
+    constexpr size_t size = 10;
+
+    const view_s_t witness(Kokkos::view_alloc(exec, "witness - shared space"));
+
+    const context_t esc{exec};
+
+    using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
+
+    auto first = Kokkos::Execution::parallel_for(
+        stdexec::schedule(esc.get_scheduler()), "hello from pfor", size, functor_t{.data = witness});
+
+    ASSERT_EQ(witness.use_count(), 2);
+
+    auto sndr = Kokkos::Execution::parallel_for(
+        Kokkos::Execution::parallel_for(first, "hello again from pfor", size, functor_t{.data = witness}),
+        "hello once more from pfor",
+        size,
+        functor_t{.data = witness});
+
+    ASSERT_EQ(witness.use_count(), 4);
+
+    auto op_state = stdexec::connect(std::move(sndr), Tests::Utils::SinkReceiver{});
+
+    //! The sender held by reference still holds the view: its data was copied, not moved.
+    ASSERT_EQ(witness.use_count(), 5);
+    ASSERT_GT(stdexec::__get<1>(first).functor.data.use_count(), 0);
+
+    op_state.start();
+    exec.fence();
+
+    ASSERT_EQ(witness(), 3 * (size / 2 * (size - 1)));
+}
 
 } // namespace Tests::ExecutionSpaceImpl

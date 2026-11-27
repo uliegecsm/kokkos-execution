@@ -61,7 +61,7 @@ struct parallel_for_t {
                 std::forward<Functor>(functor)))
 
     template <typename Label, typename Functor, std::integral T>
-    requires Impl::label<std::remove_cvref_t<Label>>
+    requires Impl::label<std::remove_cvref_t<Label>> && (!std::same_as<T, bool>)
     constexpr auto operator()(Label&& label, const T work_count, Functor&& functor) const STDEXEC_AUTO_RETURN(
         stdexec::__closure(
             *this,
@@ -70,6 +70,7 @@ struct parallel_for_t {
             Impl::Label{std::forward<Label>(label)}))
 
     template <typename Functor, std::integral T>
+    requires(!std::same_as<T, bool>)
     constexpr auto operator()(const T work_count, Functor&& functor) const STDEXEC_AUTO_RETURN(
         stdexec::__closure(*this, Impl::make_iter_space(work_count), std::forward<Functor>(functor)))
 
@@ -107,6 +108,15 @@ struct parallel_for_t {
         STDEXEC_AUTO_RETURN(this->operator()(
             std::forward<Sndr>(sndr),
             std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space),
+            std::forward<Functor>(functor),
+            Impl::Label{std::forward<Label>(label)}))
+
+    template <stdexec::sender Sndr, typename Label, typename Functor, std::integral T>
+    requires Impl::label<std::remove_cvref_t<Label>> && (!std::same_as<T, bool>)
+    constexpr auto operator()(Sndr&& sndr, Label&& label, const T work_count, Functor&& functor) const
+        STDEXEC_AUTO_RETURN(this->operator()(
+            std::forward<Sndr>(sndr),
+            Impl::make_iter_space(work_count),
             std::forward<Functor>(functor),
             Impl::Label{std::forward<Label>(label)}))
 };

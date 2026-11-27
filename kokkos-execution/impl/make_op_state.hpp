@@ -40,8 +40,9 @@ struct MakeOpState {
             std::is_nothrow_invocable_v<huddle_fn_t, child_of_sndr_t&&, Rcvr&&, clsr_of_sndr_t&&, Clsrs&&...>;
 
         /**
-         * @note @c stdexec::__forward_like is used because @c stdexec propagates the value category
-         *       of the parent sender to its child.
+         * @note The child is passed on with @c std::forward<child_of_sndr_t>. A child that @c Sndr holds by value
+         *       takes the value category of @c Sndr. A child that @c Sndr holds by lvalue reference stays an
+         *       lvalue, whereas @c stdexec::__forward_like<Sndr> would make it an rvalue when @c Sndr is an rvalue.
          *
          * See https://github.com/NVIDIA/stdexec/blob/0a3afb8de52b4fde8ca7ab62ca09a23a8aa6a30f/include/stdexec/__detail/__sender_introspection.hpp#L244-L246.
          */
@@ -50,7 +51,7 @@ struct MakeOpState {
             noexcept(sndr_has_nothrow_transform_sender && is_nothrow_huddle) -> type {
             auto trnsfrmd_sndr = stdexec::transform_sender(std::forward<Sndr>(sndr), stdexec::get_env(rcvr));
             return huddle_fn_t{}(
-                stdexec::__forward_like<Sndr>(trnsfrmd_sndr.sndr),
+                std::forward<child_of_sndr_t>(trnsfrmd_sndr.sndr),
                 std::forward<Rcvr>(rcvr),
                 std::move(trnsfrmd_sndr.clsr),
                 std::move(clsrs)...);

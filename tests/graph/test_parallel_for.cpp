@@ -454,7 +454,7 @@ struct TEST_CATEGORY(ParallelForCopiesAndMovesTest)
 
 TYPED_TEST_SUITE_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest));
 
-//! @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+//! @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue reference.
 TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender) {
     using counter_t = typename TestFixture::counter_t;
 
@@ -469,7 +469,7 @@ TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), transform_sender) {
 /**
  * For a sender with @c N  @c Kokkos::Execution::parallel_for sender adapters:
  * - @c Kokkos::Graph introduces 2 * N additional copies.
- * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue.
+ * @note All senders use @ref Tests::Utils::Functors::Counter taken by @c lvalue reference.
  */
 TYPED_TEST_P(TEST_CATEGORY(ParallelForCopiesAndMovesTest), connect) {
     using counter_t = typename TestFixture::counter_t;
