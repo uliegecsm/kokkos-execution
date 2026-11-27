@@ -5,7 +5,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/modules/kokkos_exec_mapping.cmake)
 # Function to add a basic test.
 function(add_one_basic_test)
 
-  cmake_parse_arguments(aost_args "" "NAME;CXX_STANDARD" "ADDITIONAL_LINK_LIBRARIES" ${ARGN})
+  cmake_parse_arguments(aost_args "" "NAME" "ADDITIONAL_LINK_LIBRARIES;COMPILE_FEATURES" ${ARGN})
 
   # Set executable name and primary source file.
   cmake_path(SET SOURCE_FILE "test_${aost_args_NAME}.cpp")
@@ -29,14 +29,14 @@ function(add_one_basic_test)
     target_link_libraries(${aost_args_EXECUTABLE_NAME} PRIVATE ${aost_args_ADDITIONAL_LINK_LIBRARIES})
   endif()
 
-  # Set the CXX standard if required.
-  if(DEFINED aost_args_CXX_STANDARD)
-    set_target_properties(
-      ${aost_args_EXECUTABLE_NAME} PROPERTIES CXX_STANDARD ${aost_args_CXX_STANDARD} CXX_STANDARD_REQUIRED ON
-    )
+  # Set target compile features if required.
+  if(DEFINED aost_args_COMPILE_FEATURES)
+    target_compile_features(${aost_args_EXECUTABLE_NAME} PUBLIC ${aost_args_COMPILE_FEATURES})
   endif()
 
-  add_test(NAME ${aost_args_EXECUTABLE_NAME} COMMAND $<TARGET_FILE:${aost_args_EXECUTABLE_NAME}>)
+  add_test(NAME ${aost_args_EXECUTABLE_NAME} COMMAND $<TARGET_FILE:${aost_args_EXECUTABLE_NAME}>
+                                                     --gtest_fail_if_no_test_linked
+  )
 
   # Labels.
   set_tests_properties(${aost_args_EXECUTABLE_NAME} PROPERTIES LABELS "unittests")

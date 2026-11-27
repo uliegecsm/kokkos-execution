@@ -1,3 +1,5 @@
+#include "gtest/gtest.h"
+
 #include <stdexcept>
 
 /**
@@ -34,5 +36,9 @@ consteval bool test_catch_exception() {
 }
 
 static_assert(test_catch_exception());
+
+//! Because we need at least one discoverable runtime test per unit.
+TEST(is, useless) {
+}
 
 } // namespace Tests::Std

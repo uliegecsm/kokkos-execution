@@ -41,6 +41,9 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD "${Kokkos_CXX_STANDARD}")
 endif()
 
+# Support for std::mdspan.
+include(cmake/modules/mdspan.cmake)
+
 # Support for constexpr exceptions.
 include(cmake/modules/constexpr_exception.cmake)
 
