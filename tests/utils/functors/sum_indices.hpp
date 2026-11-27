@@ -13,6 +13,8 @@ import kokkos.core;
 #    include "Kokkos_Core.hpp"
 #endif
 
+#include "tests/utils/first_element.hpp"
+
 namespace Tests::Utils::Functors {
 
 template <typename ViewType>
@@ -21,15 +23,16 @@ struct SumIndices {
 
     template <std::integral T>
     KOKKOS_FUNCTION void operator()(const T index) const {
-        Kokkos::atomic_add(data.data(), index);
+        Kokkos::atomic_add(std::addressof(first_element(data)), index);
     }
 
     template <Kokkos::TeamHandle TeamHandleType>
     KOKKOS_FUNCTION void operator()(const TeamHandleType& team_handle) const {
         const auto start_index = team_handle.league_rank() * team_handle.team_size();
         Kokkos::parallel_for(
-            Kokkos::TeamThreadRange(team_handle, team_handle.team_size()),
-            [&]<std::integral T>(const T index) { Kokkos::atomic_add(data.data(), start_index + index); });
+            Kokkos::TeamThreadRange(team_handle, team_handle.team_size()), [&]<std::integral T>(const T index) {
+                Kokkos::atomic_add(std::addressof(first_element(data)), start_index + index);
+            });
     }
 };
 
