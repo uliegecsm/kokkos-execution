@@ -170,6 +170,7 @@ target_sources(
             kokkos-execution/impl/make_policy.hpp
             kokkos-execution/impl/optional_ref.hpp
             kokkos-execution/impl/optional_storage.hpp
+            kokkos-execution/impl/parallel_for.hpp
             kokkos-execution/impl/properties.hpp
             kokkos-execution/impl/queryable.hpp
             kokkos-execution/impl/receiver.hpp
@@ -184,6 +185,7 @@ target_sources(
             kokkos-execution/impl/sync_wait.hpp
             kokkos-execution/impl/type_info.hpp
             kokkos-execution/impl/type_traits.hpp
+            kokkos-execution/utils/execution_policy.hpp
             kokkos-execution/utils/ignore_warnings.hpp
             kokkos-execution/utils/streamers.hpp
 )
