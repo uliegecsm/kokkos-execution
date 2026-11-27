@@ -1,0 +1,133 @@
+preview = true
+
+[lint.isort]
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "first-party",
+  "local-folder",
+]
+
+[lint]
+extend-select = [
+    "builtin-argument-shadowing",
+    "builtin-attribute-shadowing",
+    "mutable-argument-default",
+    "get-attr-with-constant",
+    "zip-without-explicit-strict",
+    "blind-except",
+    "C4", # flake8-comprehensions
+    "COM", # flake8-commas
+    "blank-line-after-function",
+    "under-indentation",
+    "empty-docstring",
+    "docstring-extraneous-parameter",
+    "docstring-extraneous-returns",
+    "docstring-extraneous-yields",
+    "docstring-extraneous-exception",
+    "DTZ", # flake8-datetimez
+    "E1",
+    "whitespace-before-punctuation",
+    "whitespace-after-decorator",
+    "tab-before-operator",
+    "tab-after-operator",
+    "missing-whitespace-around-operator",
+    "missing-whitespace-around-arithmetic-operator",
+    "missing-whitespace-around-bitwise-or-shift-operator",
+    "missing-whitespace",
+    "unexpected-spaces-around-keyword-parameter-equals",
+    "missing-whitespace-around-parameter-equals",
+    "E4",
+    "redundant-backslash",
+    "E7",
+    "E9",
+    "commented-out-code",
+    "EXE", # flake8-executable
+    "F", # Pyflakes
+    "FA", # flake8-future-annotations
+    "boolean-type-hint-positional-argument",
+    "FIX", # flake8-fixme
+    "if-exp-instead-of-or-operator",
+    "int-on-sliced-str",
+    "I", # isort
+    "INT", # flake8-gettext
+    "ISC", # flake8-implicit-str-concat
+    "numpy-deprecated-type-alias",
+    "numpy-legacy-random",
+    "numpy-deprecated-function",
+    "PD", # pandas-vet
+    "PERF", # Perflint
+    "PGH", # pygrep-hooks
+    "PIE", # flake8-pie
+    "PLC02",
+    "PT00",
+    "pytest-assert-in-except",
+    "PT02",
+    "PT03",
+    "PYI", # flake8-pyi
+    "RET", # flake8-return
+    "RSE", # flake8-raise
+    "RUF", # Ruff-specific rules
+    "try-except-pass",
+    "duplicate-isinstance-call",
+    "needless-bool",
+    "suppressible-exception",
+    "uncapitalized-environment-variables",
+    "enumerate-for-loop",
+    "SIM20",
+    "SIM21",
+    "yoda-conditions",
+    "SIM9",
+    "SLOT", # flake8-slots
+    "TID", # flake8-tidy-imports
+    "raise-vanilla-class",
+    "type-check-without-type-error",
+    "TRY2",
+    "TRY3",
+    "TRY4",
+    "useless-metaclass-type",
+    "type-of-primitive",
+    "useless-object-inheritance",
+    "deprecated-unittest-alias",
+    "non-pep585-annotation",
+    "non-pep604-annotation-union",
+    "super-call-with-parameters",
+    "utf8-encoding-declaration",
+    "unnecessary-future-import",
+    "lru-cache-without-parameters",
+    "unnecessary-encode-utf8",
+    "convert-typed-dict-functional-to-class",
+    "convert-named-tuple-functional-to-class",
+    "redundant-open-modes",
+    "datetime-timezone-utc",
+    "native-literals",
+    "typing-text-str-alias",
+    "open-alias",
+    "replace-universal-newlines",
+    "replace-stdout-stderr",
+    "deprecated-c-element-tree",
+    "os-error-alias",
+    "unicode-kind-prefix",
+    "deprecated-mock-import",
+    "yield-in-for-loop",
+    "unnecessary-builtin-import",
+    "format-literals",
+    "printf-string-formatting",
+    "f-string",
+    "extraneous-parentheses",
+    "outdated-version-block",
+    "quoted-annotation",
+    "unnecessary-class-parentheses",
+    "non-pep695-type-alias",
+    "timeout-error-alias",
+    "non-pep604-annotation-optional",
+    "W",
+    "YTT", # flake8-2020
+]
+ignore = [
+    "root-logger-call",
+    "collection-literal-concatenation",
+    "assignment-in-assert",
+    "float-equality-comparison",
+]
