@@ -50,6 +50,17 @@ import kokkos.core;
             Kokkos::utils::callbacks::BeginDeepCopyEvent{                                                              \
                 .dst = KOKKOS_IMPL_STRIP_PARENS(_dst_), .src = KOKKOS_IMPL_STRIP_PARENS(_src_)}))
 
+#define MATCHER_FOR_ALLOCATE_DATA(_label_)                                                                             \
+    AAllocateDataEvent(                                                                                                \
+        testing::Field(                                                                                                \
+            &Kokkos::utils::callbacks::AllocateDataEvent::alloc,                                                       \
+            testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq(_label_))))
+
+#define MATCHER_FOR_DEALLOCATE_DATA(_label_)                                                                           \
+    ADeallocateDataEvent(                                                                                              \
+        testing::Field(                                                                                                \
+            &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,                                                     \
+            testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq(_label_))))
 // NOLINTEND(cppcoreguidelines-macro-usage)
 
 //! Get the dispatch label from @p Exec and @p label.
