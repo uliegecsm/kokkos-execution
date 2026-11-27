@@ -105,9 +105,8 @@ consteval bool test_sndr_traits() {
                   typename ExptTransformSenderType<Kokkos::Execution::GraphImpl::ParallelForSender< // NOLINT(modernize-type-traits)
                       Kokkos::Execution::parallel_for_t,
                       schd_sndr_t,
-                      Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, label_t>,
-                      functor_t,
-                      policy_t
+                      TEST_EXECUTION_SPACE,
+                      Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<label_t>>
                   >>::type
     >);
 
@@ -127,9 +126,8 @@ template <typename Sndr, typename Exec, typename Label, typename Functor, typena
 using pfor_impl_t = Kokkos::Execution::GraphImpl::ParallelForSender<
     Kokkos::Execution::parallel_for_t,
     Sndr,
-    Kokkos::Execution::GraphImpl::node_props_t<Exec, Label>,
-    Functor,
-    Policy
+    Exec,
+    Kokkos::Execution::Impl::ParallelForData<Functor, Policy, Kokkos::Execution::Impl::Label<Label>>
 >;
 
 static_assert(test_sndr_traits<pfor_generic_t, true, std::type_identity>());
@@ -143,15 +141,17 @@ consteval bool test_closure_traits() {
     using iter_space_t = Kokkos::dims<1, int>;
     using closure_policy_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
         Kokkos::Execution::parallel_for_t,
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
-        functor_t,
-        policy_t
+        TEST_EXECUTION_SPACE,
+        Kokkos::Execution::Impl::ParallelForData<functor_t, policy_t, Kokkos::Execution::Impl::Label<std::string_view>>
     >;
     using closure_iter_space_t = Kokkos::Execution::GraphImpl::ParallelForClosure<
         Kokkos::Execution::parallel_for_t,
-        Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
-        functor_t,
-        iter_space_t
+        TEST_EXECUTION_SPACE,
+        Kokkos::Execution::Impl::ParallelForData<
+            functor_t,
+            iter_space_t,
+            Kokkos::Execution::Impl::Label<std::string_view>
+        >
     >;
 
     //! Models the @ref Kokkos::Execution::GraphImpl::Closure concept.
@@ -304,7 +304,6 @@ TEST_F(TEST_CATEGORY(ParallelForTest), static_range_slice) {
 
     using range_slice_t = Kokkos::range_slice<std::integral_constant<size_t, 42>, std::integral_constant<size_t, 43>>;
     using functor_t = Tests::Utils::Functors::SumIndices<view_s_t>;
-    using node_props_t = Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>>;
 
     using expt_node_t = Kokkos::Experimental::GraphNodeRef<
         TEST_EXECUTION_SPACE,
@@ -328,9 +327,8 @@ TEST_F(TEST_CATEGORY(ParallelForTest), static_range_slice) {
                       Tests::Utils::SinkReceiver,
                       Kokkos::Execution::GraphImpl::ParallelForClosure<
                           Kokkos::Execution::parallel_for_t,
-                          node_props_t,
-                          functor_t,
-                          range_slice_t
+                          TEST_EXECUTION_SPACE,
+                          Kokkos::Execution::Impl::ParallelForData<functor_t, range_slice_t>
                       >
                   >
     >);
@@ -503,7 +501,6 @@ STDEXEC_PP_EVAL(
 
 //! @test Ensure that the data lifetime is extended only by the underlying @c Kokkos::Experimental::Graph node.
 TEST_F(TEST_CATEGORY(ParallelForTest), lifetime) {
-    using node_props_t = Kokkos::Impl::NodeCtorProps<Kokkos::Impl::DeviceHandle<TEST_EXECUTION_SPACE>>;
     using use_count_tracker_source_t = Tests::Utils::Functors::UseCountTrackerSource;
     using use_count_tracker_t = Tests::Utils::Functors::UseCountTracker;
 
@@ -533,15 +530,13 @@ TEST_F(TEST_CATEGORY(ParallelForTest), lifetime) {
                           Tests::Utils::SinkReceiver,
                           Kokkos::Execution::GraphImpl::ParallelForClosure<
                               Kokkos::Execution::parallel_for_t,
-                              node_props_t,
-                              use_count_tracker_t&,
-                              Kokkos::dims<1, int>&
+                              TEST_EXECUTION_SPACE,
+                              Kokkos::Execution::Impl::ParallelForData<use_count_tracker_t, Kokkos::dims<1, int>>&
                           >,
                           Kokkos::Execution::GraphImpl::ParallelForClosure<
                               Kokkos::Execution::parallel_for_t,
-                              node_props_t,
-                              use_count_tracker_t&,
-                              Kokkos::dims<1, int>&
+                              TEST_EXECUTION_SPACE,
+                              Kokkos::Execution::Impl::ParallelForData<use_count_tracker_t, Kokkos::dims<1, int>>&
                           >
                       >
         >);
@@ -567,15 +562,13 @@ TEST_F(TEST_CATEGORY(ParallelForTest), lifetime) {
                           Tests::Utils::SinkReceiver,
                           Kokkos::Execution::GraphImpl::ParallelForClosure<
                               Kokkos::Execution::parallel_for_t,
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>
+                              TEST_EXECUTION_SPACE,
+                              Kokkos::Execution::Impl::ParallelForData<use_count_tracker_t, Kokkos::dims<1, int>>
                           >,
                           Kokkos::Execution::GraphImpl::ParallelForClosure<
                               Kokkos::Execution::parallel_for_t,
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>
+                              TEST_EXECUTION_SPACE,
+                              Kokkos::Execution::Impl::ParallelForData<use_count_tracker_t, Kokkos::dims<1, int>>
                           >
                       >
         >);
@@ -604,15 +597,13 @@ TEST_F(TEST_CATEGORY(ParallelForTest), lifetime) {
                           Tests::Utils::SinkReceiver,
                           Kokkos::Execution::GraphImpl::ParallelForClosure<
                               Kokkos::Execution::parallel_for_t,
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>
+                              TEST_EXECUTION_SPACE,
+                              Kokkos::Execution::Impl::ParallelForData<use_count_tracker_t, Kokkos::dims<1, int>>
                           >,
                           Kokkos::Execution::GraphImpl::ParallelForClosure<
                               Kokkos::Execution::parallel_for_t,
-                              node_props_t,
-                              use_count_tracker_t,
-                              Kokkos::dims<1, int>
+                              TEST_EXECUTION_SPACE,
+                              Kokkos::Execution::Impl::ParallelForData<use_count_tracker_t, Kokkos::dims<1, int>>
                           >
                       >
         >);

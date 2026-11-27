@@ -89,7 +89,7 @@ static_assert(Tests::Utils::check_continues_on_after_just_stopped<
 //! @test Check @c noexcept specification of sender transformation.
 consteval bool test_sndr_nothrow_transformable() {
     using sndr_bulk_t =
-        decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, false, false>{}));
+        decltype(std::declval<typename BulkTest::schedule_sender_t>() | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, false, false>{}));
 
     static_assert(std::same_as<
                   sndr_bulk_t,
@@ -108,7 +108,7 @@ consteval bool test_sndr_nothrow_transformable() {
     >);
 
     using sndr_bulk_maythrow_on_move_t =
-        decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, false, true>{}));
+        decltype(std::declval<typename BulkTest::schedule_sender_t>() | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, false, true>{}));
 
     static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
                   Kokkos::Execution::GraphImpl::Domain,
@@ -116,6 +116,19 @@ consteval bool test_sndr_nothrow_transformable() {
                   sndr_bulk_maythrow_on_move_t&&,
                   stdexec::env<>
     >);
+
+    using sndr_bulk_maythrow_on_copy_t =
+        decltype(std::declval<typename BulkTest::schedule_sender_t>() | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, true, false>{}));
+
+    static_assert(!stdexec::__detail::__has_nothrow_transform_sender<
+                  Kokkos::Execution::GraphImpl::Domain,
+                  stdexec::set_value_t,
+                  const sndr_bulk_maythrow_on_copy_t&,
+                  stdexec::env<>
+    >);
+
+    static_assert(
+        !noexcept(stdexec::transform_sender(std::declval<const sndr_bulk_maythrow_on_copy_t&>(), stdexec::env<>{})));
 
     return true;
 }
@@ -128,7 +141,7 @@ consteval bool test_sndr_nothrow_connectable() {
     static_assert(!std::is_nothrow_constructible_v<Kokkos::Experimental::Graph<TEST_EXECUTION_SPACE>>);
 
     using sndr_bulk_t =
-        decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, false, false>{}));
+        decltype(std::declval<typename BulkTest::schedule_sender_t>() | stdexec::bulk(stdexec::par, 42, Tests::Utils::Functors::NoOp<false, false, false>{}));
 
     static_assert(!stdexec::__nothrow_connectable<sndr_bulk_t, Tests::Utils::SinkReceiver>);
 
@@ -142,7 +155,7 @@ consteval bool test_bulk_op_state_traits() {
     using functor_t = Tests::Utils::Functors::NoOp<false, false, false>;
 
     using sndr_t =
-        decltype(stdexec::schedule(std::declval<typename BulkTest::scheduler_t>()) | stdexec::bulk(stdexec::par, 42, functor_t{}) | stdexec::bulk(stdexec::par, 42, functor_t{}));
+        decltype(std::declval<typename BulkTest::schedule_sender_t>() | stdexec::bulk(stdexec::par, 42, functor_t{}) | stdexec::bulk(stdexec::par, 42, functor_t{}));
     using connect_result_t = stdexec::connect_result_t<sndr_t, Tests::Utils::SinkReceiver>;
 
     static_assert(stdexec::__is_instance_of<connect_result_t, Kokkos::Execution::GraphImpl::OpState>);
@@ -197,9 +210,12 @@ TEST_F(BulkTest, bulk_schedule) {
                     load_check_add_t,
                     stdexec::__facade::__sender<stdexec::bulk_t, bulk_data_t, typename BulkTest::schedule_sender_t>
                 >,
-                Kokkos::Execution::GraphImpl::node_props_t<TEST_EXECUTION_SPACE, std::string>,
-                sum_indices_t,
-                Kokkos::dims<1, int>
+                TEST_EXECUTION_SPACE,
+                Kokkos::Execution::Impl::ParallelForData<
+                    sum_indices_t,
+                    Kokkos::dims<1, int>,
+                    Kokkos::Execution::Impl::Label<std::string_view>
+                >
             >
         >);
 

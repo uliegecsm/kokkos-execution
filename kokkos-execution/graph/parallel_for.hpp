@@ -10,35 +10,41 @@
 #include "kokkos-execution/impl/attributes.hpp"
 #include "kokkos-execution/impl/make_policy.hpp"
 #include "kokkos-execution/impl/sender_introspection.hpp"
+#include "kokkos-execution/impl/state.hpp"
 #include "kokkos-execution/parallel_for.hpp"
 
 namespace Kokkos::Execution::GraphImpl {
 
-template <typename Tag, typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
+template <typename Tag, Kokkos::ExecutionSpace Exec, typename Data>
+requires Impl::parallel_for_data<std::remove_cvref_t<Data>>
 struct ParallelForClosure {
-    static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
+    using execution_space = Exec;
 
-    using node_props_t = NodeProps;
-    using device_handle_t = device_handle_of_t<NodeProps>;
-    using execution_space = exec_of_t<device_handle_t>;
-    using policy_t = Impl::make_policy_result_t<Impl::make_policy_t<Tag, execution_space>, ExecPolicyOrIterSpace&&>;
+    using device_handle_t = Kokkos::Impl::DeviceHandle<execution_space>;
+
+    using node_props_t = make_node_props_result_t<Data, execution_space>;
+    using policy_t = Impl::make_policy_result_t<
+        Impl::make_policy_t<Tag, execution_space>,
+        const typename std::remove_cvref_t<Data>::policy_or_iter_space_t&
+    >;
+    using functor_t = typename std::remove_cvref_t<Data>::functor_t;
 
     template <NodeRef Predecessor>
     using node_t = decltype(std::declval<const Predecessor&>().then_parallel_for(
         std::declval<node_props_t&&>(),
         std::declval<policy_t&&>(),
-        std::declval<Functor&&>()));
+        std::declval<stdexec::__copy_cvref_t<Data, functor_t>>()));
 
     //! @warning Unconditionally **not** @c noexcept because adding a node may throw.
     template <NodeRef Predecessor>
     auto add_node(const Predecessor& predecessor) && noexcept(false) -> node_t<Predecessor> {
+        node_props_t node_props = std::move(*this).get_node_props();
+        policy_t policy = this->get_policy();
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
-        const auto label = get_label_or_display_string_of<Functor>(node_props);
+        auto label = get_label_or_display_string_of<functor_t>(node_props); // NOLINT(misc-const-correctness)
 #endif
         auto node = predecessor.then_parallel_for(
-            std::move(node_props),
-            Impl::make_policy<Tag, execution_space>(std::forward<ExecPolicyOrIterSpace>(policy_or_iter_space)),
-            std::forward<Functor>(functor));
+            std::move(node_props), std::move(policy), stdexec::__forward_like<Data>(data.functor));
 #if defined(KOKKOS_EXECUTION_ENABLE_EVENT_DISPATCH) || defined(KOKKOS_EXECUTION_ENABLE_DEBUG_LOGGING)
         KOKKOS_EXECUTION_IMPL_GRAPH_ADD_NODE_DEBUG_LOGGING(label, node, predecessor)
         graph_add_node_event(std::move(label), predecessor, node);
@@ -46,21 +52,32 @@ struct ParallelForClosure {
         return node;
     }
 
-    node_props_t node_props;
-    /// @name Holding a reference is fine, because it will be stored into the graph node in @ref add_node.
-    ///@{
-    Functor functor;                            // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-    ExecPolicyOrIterSpace policy_or_iter_space; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-    ///@}
+    template <typename Self>
+    [[nodiscard]]
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(get_node_props)(this Self&& self) // NOLINT(cppcoreguidelines-missing-std-forward)
+        STDEXEC_AUTO_RETURN(make_node_props<stdexec::__copy_cvref_t<Self, Data>>(self.get_device_handle(), self.data))
+    STDEXEC_EXPLICIT_THIS_END(get_node_props)
+
+    [[nodiscard]]
+    auto get_policy() const & noexcept -> policy_t {
+        return Impl::make_policy<Tag, execution_space>(data.policy_or_iter_space);
+    }
+
+    [[nodiscard]]
+    auto get_device_handle() const & noexcept -> device_handle_t {
+        return Kokkos::Experimental::get_device_handle(state->exec);
+    }
+
+    const Impl::State<execution_space>* state;
+    Data data; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
-template <typename Tag, stdexec::sender Sndr, typename NodeProps, typename Functor, typename ExecPolicyOrIterSpace>
+template <typename Tag, stdexec::sender Sndr, Kokkos::ExecutionSpace Exec, typename Data>
+requires Impl::parallel_for_data<std::remove_cvref_t<Data>>
 struct ParallelForSender {
     using sender_concept = stdexec::sender_tag;
 
-    static_assert(Impl::execution_policy_or_iteration_space<std::remove_cvref_t<ExecPolicyOrIterSpace>>);
-
-    using closure_t = ParallelForClosure<Tag, NodeProps, Functor, ExecPolicyOrIterSpace>;
+    using closure_t = ParallelForClosure<Tag, Exec, Data>;
 
     KOKKOS_EXECUTION_COMPL_SIGS_ADD(ParallelForSender, Sndr, stdexec::set_error_t(std::exception_ptr))
 
@@ -75,13 +92,8 @@ struct ParallelForSender {
 template <>
 struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
     template <typename Env, typename Data, typename Sndr>
-    using trnsfrmd_sndr_t = ParallelForSender<
-        Kokkos::Execution::parallel_for_t,
-        Sndr,
-        make_node_props_t<Impl::exec_of_t<Sndr, Env>, Data>,
-        stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::functor_t>,
-        stdexec::__copy_cvref_t<Data, typename std::remove_cvref_t<Data>::policy_or_iter_space_t>
-    >;
+    using trnsfrmd_sndr_t =
+        ParallelForSender<Kokkos::Execution::parallel_for_t, Sndr, Impl::exec_of_t<Sndr, Env>, Data>;
 
     template <typename Env, typename Data, typename Sndr>
     requires(stdexec::__sends<stdexec::set_value_t, Sndr, Env> && graph_completing_sender<Sndr, Env>)
@@ -90,21 +102,12 @@ struct TransformSenderFor<Kokkos::Execution::parallel_for_t> {
         Kokkos::Execution::parallel_for_t,
         Data&& data, // NOLINT(cppcoreguidelines-missing-std-forward)
         Sndr&& sndr) const
-        noexcept(std::is_nothrow_constructible_v<
-                 trnsfrmd_sndr_t<Env, Data, Sndr>,
-                 typename trnsfrmd_sndr_t<Env, Data, Sndr>::closure_t&&,
-                 Sndr&&
-        >) {
-        const auto schd = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
-
-        return trnsfrmd_sndr_t<Env, Data, Sndr>{
-            .clsr =
-                {.node_props = make_node_props(schd.state->exec, std::forward<Data>(data)),
-                       .functor = stdexec::__forward_like<Data>(data.functor), // NOLINT(bugprone-use-after-move)
-                 .policy_or_iter_space = stdexec::__forward_like<Data>(data.policy_or_iter_space)},
-            .sndr = std::forward<Sndr>(sndr)
-        };
-    }
+        STDEXEC_AUTO_RETURN(
+            trnsfrmd_sndr_t<Env, Data, Sndr>{
+                {.state = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env).state,
+                 .data = std::forward<Data>(data)},
+                std::forward<Sndr>(sndr)
+    })
 
     template <typename Env, typename Data, typename Sndr>
     requires stdexec::__sends<stdexec::set_value_t, Sndr, Env>
