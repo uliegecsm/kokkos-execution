@@ -29,7 +29,7 @@ namespace GraphImpl {
 template <Kokkos::ExecutionSpace Exec>
 struct Scheduler {
     //! As per https://eel.is/c++draft/exec.sched#1.
-    using scheduler_concept = stdexec::scheduler_t;
+    using scheduler_concept = stdexec::scheduler_tag;
 
     using execution_space = Exec;
 
