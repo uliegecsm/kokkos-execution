@@ -193,33 +193,21 @@ TEST_F(LetValueTest, scoped_allocation) {
     ASSERT_THAT(recorded_events, [&]() {
         if constexpr (Kokkos::Execution::Impl::has_non_blocking_dispatch<TEST_EXECUTION_SPACE>) {
             return ContainsInOrder<variant_t>(
-                Kokkos::utils::callbacks::AAllocateDataEvent(
-                    testing::Field(
-                        &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
-                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))),
+                MATCHER_FOR_ALLOCATE_DATA("scratch"),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
                 MATCHER_FOR_RECORD_EVENT(exec),
                 MATCHER_FOR_WAIT_EVENT(recorded_events.at(4)),
-                Kokkos::utils::callbacks::ADeallocateDataEvent(
-                    testing::Field(
-                        &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
-                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))));
+                MATCHER_FOR_DEALLOCATE_DATA("scratch"));
         } else {
             return ContainsInOrder<variant_t>(
-                Kokkos::utils::callbacks::AAllocateDataEvent(
-                    testing::Field(
-                        &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
-                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))),
+                MATCHER_FOR_ALLOCATE_DATA("scratch"),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "schedule_from")),
                 MATCHER_FOR_BEGIN_PFOR(exec, dispatch_label(exec, "bulk")),
                 MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "after dispatch")),
-                Kokkos::utils::callbacks::ADeallocateDataEvent(
-                    testing::Field(
-                        &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
-                        testing::Field(&Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("scratch")))));
+                MATCHER_FOR_DEALLOCATE_DATA("scratch"));
         }
     }());
 

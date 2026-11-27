@@ -258,19 +258,11 @@ TEST_F(ThenTest, then_lifetime) {
     ASSERT_THAT(
         recorder_listener_t::record(run_test),
         ContainsInOrder<variant_t>(
-            Kokkos::utils::callbacks::AAllocateDataEvent(
-                testing::Field(
-                    &Kokkos::utils::callbacks::AllocateDataEvent::alloc,
-                    testing::Field(
-                        &Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("data - shared space")))),
+            MATCHER_FOR_ALLOCATE_DATA("data - shared space"),
             MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_SINGLE(exec, dispatch_label(exec, "then")),
             MATCHER_FOR_BEGIN_FENCE(exec, dispatch_label(exec, "sync_wait")),
-            Kokkos::utils::callbacks::ADeallocateDataEvent(
-                testing::Field(
-                    &Kokkos::utils::callbacks::DeallocateDataEvent::alloc,
-                    testing::Field(
-                        &Kokkos::utils::callbacks::AllocDescriptor::name, testing::StrEq("data - shared space"))))));
+            MATCHER_FOR_DEALLOCATE_DATA("data - shared space")));
 }
 
 //! @test Check @c noexcept specification of sender transformation.
