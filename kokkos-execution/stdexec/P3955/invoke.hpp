@@ -38,7 +38,7 @@ struct t {
     constexpr ::STDEXEC::sender auto operator()(Sender&& sender, F&& f) const noexcept(
         std::is_nothrow_constructible_v<std::remove_cvref_t<Sender>, Sender>
         && std::is_nothrow_constructible_v<std::remove_cvref_t<F>, F>) {
-        return ::STDEXEC::__sexpr{t(), (F&&) f, (Sender&&) sender};
+        return ::STDEXEC::__facade::__sender{t(), (F&&) f, (Sender&&) sender};
     }
 
     template <typename F>
@@ -51,7 +51,8 @@ struct t {
         noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Sender>, Sender>) {
         auto&& [_, f, predecessor] = (Sender&&) sender;
         static_assert(::STDEXEC::sender<decltype(predecessor)>);
-        return ::STDEXEC::__sexpr{tag(), std::tuple((decltype(f)&&) f, (decltype(predecessor)&&) predecessor)};
+        return ::STDEXEC::__facade::__sender{
+            tag(), std::tuple((decltype(f)&&) f, (decltype(predecessor)&&) predecessor)};
     }
 };
 
@@ -300,7 +301,10 @@ struct get_state_result<Tuple, Receiver, std::tuple<F, Sender>> {
     using type = state<::STDEXEC::__copy_cvref_t<Tuple, Sender>, F, Receiver>;
 };
 
-struct impl : public ::STDEXEC::__sexpr_defaults {
+//  The operation state connects (and starts) the predecessor itself, and the
+//  completion signatures and attributes are given rather than derived by the
+//  facade from effect tokens
+struct impl : public ::STDEXEC::__facade::__defaults {
     template <typename Self, typename... Env>
     static consteval auto __get_completion_signatures() {
         using tuple = std::remove_cvref_t<::STDEXEC::__data_of<Self>>;
@@ -320,17 +324,25 @@ struct impl : public ::STDEXEC::__sexpr_defaults {
         }
     }
 
-    static constexpr auto __get_state = []<typename Sender, typename Receiver>(Sender&& sender, Receiver r) noexcept(
-                                            nothrow_get_state<Sender, Receiver>::value)
+    template <typename Sender>
+    static constexpr ::STDEXEC::env<> __get_attrs(const Sender&) noexcept {
+        return {};
+    }
+
+    template <typename Sender, typename Receiver>
+    static constexpr auto __get_state(Sender&& sender, Receiver r) noexcept(nothrow_get_state<Sender, Receiver>::value)
         -> get_state_result<::STDEXEC::__data_of<Sender>, Receiver>::type {
         auto&& [_, tuple] = (Sender&&) sender;
         auto&& [f, inner] = (decltype(tuple)&&) tuple;
         return typename get_state_result<::STDEXEC::__data_of<Sender>, Receiver>::type(
             (decltype(inner)&&) inner, (decltype(f)&&) f, (Receiver&&) r);
-    };
-    static constexpr auto __start = [](auto& state) noexcept {
+    }
+
+    template <typename State, typename Children>
+    static constexpr ::STDEXEC::__facade::__effects<> __start(State& state, Children&) noexcept {
         state.start();
-    };
+        return {};
+    }
 };
 
 } // namespace detail::invoke
@@ -343,15 +355,28 @@ inline constexpr invoke_t invoke;
 namespace STDEXEC {
 
 template <>
-struct __sexpr_impl<::exec::detail::invoke::tag> : ::exec::detail::invoke::impl { };
+struct __facade::__algorithm<::exec::detail::invoke::tag> : ::exec::detail::invoke::impl { };
 
+//  A sender of exec::invoke is lowered to the sender above by
+//  exec::invoke_t::transform_sender once there is an environment. Its
+//  completion signatures are those of the sender it is lowered to, it is a
+//  dependent sender without an environment, and its attributes are its
+//  predecessor's
 template <>
-struct __sexpr_impl<::exec::invoke_t> : ::STDEXEC::__sexpr_defaults {
-    template <class Sender, class... Env>
-    static consteval auto get_completion_signatures() {
-        using type = decltype(::STDEXEC::transform_sender(std::declval<Sender>(), std::declval<const Env&>()...));
+struct __facade::__algorithm<::exec::invoke_t> : ::STDEXEC::__facade::__defaults {
+    template <class Sender>
+    static constexpr bool __depends_on_env = true;
+
+    template <class Sender, class Env>
+    static consteval auto __get_completion_signatures() {
+        using type = decltype(::STDEXEC::transform_sender(std::declval<Sender>(), std::declval<const Env&>()));
         static_assert(!std::is_same_v<std::remove_cvref_t<type>, std::remove_cvref_t<Sender>>);
-        return ::STDEXEC::get_completion_signatures<type, Env...>();
+        return ::STDEXEC::get_completion_signatures<type, Env>();
+    }
+
+    template <class Sender>
+    static constexpr auto __get_attrs(const Sender& sender) noexcept {
+        return ::STDEXEC::__fwd_env(::STDEXEC::get_env(::STDEXEC::__facade::__get_child<0>(sender)));
     }
 };
 
