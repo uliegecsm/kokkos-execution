@@ -1,0 +1,391 @@
+From 330d6ce6c00b4e303497fc7a7a69711ae4943507 Mon Sep 17 00:00:00 2001
+From: romintomasetti <romin.tomasetti@gmail.com>
+Date: Thu, 26 Nov 2026 11:47:45 +0000
+Subject: [PATCH] async deallocation to reduce amount of synchronization
+
+Signed-off-by: romintomasetti <romin.tomasetti@gmail.com>
+---
+ cmake/KokkosCore_config.h.in        |  2 ++
+ cmake/kokkos_enable_options.cmake   |  3 +++
+ core/src/Cuda/Kokkos_Cuda.hpp       |  4 ++++
+ core/src/Cuda/Kokkos_CudaSpace.cpp  |  8 ++++++++
+ core/src/Cuda/Kokkos_CudaSpace.hpp  | 10 ++++++++++
+ core/src/HIP/Kokkos_HIP.hpp         |  4 ++++
+ core/src/HIP/Kokkos_HIP_Space.cpp   |  2 ++
+ core/src/HIP/Kokkos_HIP_Space.hpp   | 10 ++++++++++
+ core/src/HPX/Kokkos_HPX.hpp         |  4 ++++
+ core/src/Kokkos_HostSpace.hpp       |  4 ++++
+ core/src/OpenMP/Kokkos_OpenMP.hpp   |  4 ++++
+ core/src/SYCL/Kokkos_SYCL.hpp       |  4 ++++
+ core/src/SYCL/Kokkos_SYCL_Space.cpp |  2 ++
+ core/src/SYCL/Kokkos_SYCL_Space.hpp | 12 ++++++++++++
+ core/src/Serial/Kokkos_Serial.hpp   |  4 ++++
+ core/src/Threads/Kokkos_Threads.hpp |  4 ++++
+ core/src/View/Kokkos_ViewAlloc.hpp  | 25 ++++++++++++++++++++++++-
+ core/src/impl/Kokkos_HostSpace.cpp  |  4 ++++
+ 18 files changed, 109 insertions(+), 1 deletion(-)
+
+diff --git a/cmake/KokkosCore_config.h.in b/cmake/KokkosCore_config.h.in
+index 2d9d708f2..bdb3f9fb6 100644
+--- a/cmake/KokkosCore_config.h.in
++++ b/cmake/KokkosCore_config.h.in
+@@ -36,6 +36,8 @@
+ #cmakedefine KOKKOS_ENABLE_CXX23
+ #cmakedefine KOKKOS_ENABLE_CXX26
+ 
++#cmakedefine KOKKOS_ENABLE_IMPL_ASYNC
++
+ #cmakedefine KOKKOS_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE
+ #cmakedefine KOKKOS_ENABLE_CUDA_CONSTEXPR
+ #cmakedefine KOKKOS_ENABLE_IMPL_CUDA_MALLOC_ASYNC
+diff --git a/cmake/kokkos_enable_options.cmake b/cmake/kokkos_enable_options.cmake
+index dc7c865a1..65ad8aeef 100644
+--- a/cmake/kokkos_enable_options.cmake
++++ b/cmake/kokkos_enable_options.cmake
+@@ -22,6 +22,9 @@ endfunction()
+ kokkos_cfg_depends(OPTIONS DEVICES)
+ kokkos_cfg_depends(OPTIONS COMPILER_ID)
+ 
++# Reducing the amount of synchronization induced by Kokkos requires better programming patterns on the user side.
++kokkos_enable_option(IMPL_ASYNC OFF "Reduce synchronizations")
++
+ # Put a check in just in case people are using this option
+ kokkos_deprecated_list(OPTIONS ENABLE)
+ 
+diff --git a/core/src/Cuda/Kokkos_Cuda.hpp b/core/src/Cuda/Kokkos_Cuda.hpp
+index 4c96e47b9..46d248f77 100644
+--- a/core/src/Cuda/Kokkos_Cuda.hpp
++++ b/core/src/Cuda/Kokkos_Cuda.hpp
+@@ -117,6 +117,10 @@ class Cuda {
+   /** \brief  Return the maximum amount of concurrency.  */
+   int concurrency() const;
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_dispatch() noexcept { return true; }
++#endif
++
+   //! Print configuration information to the given output stream.
+   void print_configuration(std::ostream& os, bool verbose = false) const;
+ 
+diff --git a/core/src/Cuda/Kokkos_CudaSpace.cpp b/core/src/Cuda/Kokkos_CudaSpace.cpp
+index b49bb52bb..c2239d15b 100644
+--- a/core/src/Cuda/Kokkos_CudaSpace.cpp
++++ b/core/src/Cuda/Kokkos_CudaSpace.cpp
+@@ -361,12 +361,16 @@ void CudaSpace::impl_deallocate(
+   KOKKOS_IMPL_CUDA_SAFE_CALL(cudaFree(arg_alloc_ptr));
+ #elif (defined(KOKKOS_ENABLE_IMPL_CUDA_MALLOC_ASYNC) && CUDART_VERSION >= 11020)
+   if (arg_alloc_size >= memory_threshold_g) {
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+     Impl::cuda_device_synchronize(
+         "Kokkos::Cuda: backend fence before async free");
++#endif
+     KOKKOS_IMPL_CUDA_SAFE_CALL(cudaSetDevice(m_device));
+     KOKKOS_IMPL_CUDA_SAFE_CALL(cudaFreeAsync(arg_alloc_ptr, m_stream));
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+     Impl::cuda_device_synchronize(
+         "Kokkos::Cuda: backend fence after async free");
++#endif
+   } else {
+     KOKKOS_IMPL_CUDA_SAFE_CALL(cudaSetDevice(m_device));
+     KOKKOS_IMPL_CUDA_SAFE_CALL(cudaFree(arg_alloc_ptr));
+@@ -396,8 +400,10 @@ void CudaUVMSpace::impl_deallocate(
+     const char *arg_label, void *const arg_alloc_ptr,
+     const size_t /*arg_alloc_size*/, const size_t arg_reported_size,
+     const Kokkos::Tools::SpaceHandle arg_handle) const {
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+   Cuda::impl_static_fence(
+       "Kokkos::CudaUVMSpace::impl_deallocate: Pre UVM Deallocation");
++#endif
+   if (Kokkos::Profiling::profileLibraryLoaded()) {
+     Kokkos::Profiling::deallocateData(arg_handle, arg_label, arg_alloc_ptr,
+                                       arg_reported_size);
+@@ -406,8 +412,10 @@ void CudaUVMSpace::impl_deallocate(
+     KOKKOS_IMPL_CUDA_SAFE_CALL(cudaSetDevice(m_device));
+     KOKKOS_IMPL_CUDA_SAFE_CALL(cudaFree(arg_alloc_ptr));
+   }
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+   Cuda::impl_static_fence(
+       "Kokkos::CudaUVMSpace::impl_deallocate: Post UVM Deallocation");
++#endif
+ }
+ 
+ void CudaHostPinnedSpace::deallocate(void *const arg_alloc_ptr,
+diff --git a/core/src/Cuda/Kokkos_CudaSpace.hpp b/core/src/Cuda/Kokkos_CudaSpace.hpp
+index 2815239cc..4b9d40a61 100644
+--- a/core/src/Cuda/Kokkos_CudaSpace.hpp
++++ b/core/src/Cuda/Kokkos_CudaSpace.hpp
+@@ -90,6 +90,16 @@ class CudaSpace {
+   }
+ #endif
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_deallocate() noexcept {
++#if defined(KOKKOS_ENABLE_IMPL_CUDA_MALLOC_ASYNC)
++    return true;
++#else
++    return false;
++#endif
++  }
++#endif
++
+   /**\brief  Deallocate untracked memory in the cuda space */
+   void deallocate(void* const arg_alloc_ptr, const size_t arg_alloc_size) const;
+   void deallocate(const char* arg_label, void* const arg_alloc_ptr,
+diff --git a/core/src/HIP/Kokkos_HIP.hpp b/core/src/HIP/Kokkos_HIP.hpp
+index 0e2e557ef..03afee8fd 100644
+--- a/core/src/HIP/Kokkos_HIP.hpp
++++ b/core/src/HIP/Kokkos_HIP.hpp
+@@ -54,6 +54,10 @@ class HIP {
+   //! \name Functions that all Kokkos devices must implement.
+   //@{
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_dispatch() noexcept { return true; }
++#endif
++
+   /** \brief Wait until all dispatched functors complete.
+    *
+    * The parallel_for or parallel_reduce dispatch of a functor may return
+diff --git a/core/src/HIP/Kokkos_HIP_Space.cpp b/core/src/HIP/Kokkos_HIP_Space.cpp
+index 7b8bf235c..0634eb394 100644
+--- a/core/src/HIP/Kokkos_HIP_Space.cpp
++++ b/core/src/HIP/Kokkos_HIP_Space.cpp
+@@ -261,7 +261,9 @@ void HIPSpace::impl_deallocate(
+   }
+ #ifdef KOKKOS_ENABLE_IMPL_HIP_MALLOC_ASYNC
+   KOKKOS_IMPL_HIP_SAFE_CALL(hipSetDevice(m_device));
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+   KOKKOS_IMPL_HIP_SAFE_CALL(hipDeviceSynchronize());
++#endif
+   KOKKOS_IMPL_HIP_SAFE_CALL(hipFreeAsync(arg_alloc_ptr, m_stream));
+ #else
+   KOKKOS_IMPL_HIP_SAFE_CALL(hipSetDevice(m_device));
+diff --git a/core/src/HIP/Kokkos_HIP_Space.hpp b/core/src/HIP/Kokkos_HIP_Space.hpp
+index 3d753e77b..acb6fb383 100644
+--- a/core/src/HIP/Kokkos_HIP_Space.hpp
++++ b/core/src/HIP/Kokkos_HIP_Space.hpp
+@@ -84,6 +84,16 @@ class HIPSpace {
+   void* allocate(const char* arg_label, const size_t arg_alloc_size,
+                  const size_t arg_logical_size) const;
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_deallocate() noexcept {
++#if defined(KOKKOS_ENABLE_IMPL_HIP_MALLOC_ASYNC)
++    return true;
++#else
++    return false;
++#endif
++  }
++#endif
++
+   /**\brief  Deallocate untracked memory in the hip space */
+   void deallocate(void* const arg_alloc_ptr, const size_t arg_alloc_size) const;
+   void deallocate(const char* arg_label, void* const arg_alloc_ptr,
+diff --git a/core/src/HPX/Kokkos_HPX.hpp b/core/src/HPX/Kokkos_HPX.hpp
+index 3f9c30eb1..d4c429d25 100644
+--- a/core/src/HPX/Kokkos_HPX.hpp
++++ b/core/src/HPX/Kokkos_HPX.hpp
+@@ -108,6 +108,10 @@ class HPX {
+  public:
+   static constexpr uint32_t impl_default_instance_id() { return 1; }
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_dispatch() noexcept { return true; }
++#endif
++
+  private:
+   static bool m_hpx_initialized;
+   static std::atomic<uint32_t> m_next_instance_id;
+diff --git a/core/src/Kokkos_HostSpace.hpp b/core/src/Kokkos_HostSpace.hpp
+index cf2009bc1..2454b40cf 100644
+--- a/core/src/Kokkos_HostSpace.hpp
++++ b/core/src/Kokkos_HostSpace.hpp
+@@ -53,6 +53,10 @@ class HostSpace {
+ 
+   HostSpace() = default;
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_deallocate() noexcept { return false; }
++#endif
++
+   /**\brief  Allocate untracked memory in the space */
+   template <typename ExecutionSpace>
+   void* allocate(const ExecutionSpace&, const size_t arg_alloc_size) const {
+diff --git a/core/src/OpenMP/Kokkos_OpenMP.hpp b/core/src/OpenMP/Kokkos_OpenMP.hpp
+index 3e039bf0c..39fef7c5e 100644
+--- a/core/src/OpenMP/Kokkos_OpenMP.hpp
++++ b/core/src/OpenMP/Kokkos_OpenMP.hpp
+@@ -70,6 +70,10 @@ class OpenMP {
+ 
+   OpenMP();
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_dispatch() noexcept { return false; }
++#endif
++
+   explicit OpenMP(int pool_size);
+ 
+   /// \brief Print configuration information to the given output stream.
+diff --git a/core/src/SYCL/Kokkos_SYCL.hpp b/core/src/SYCL/Kokkos_SYCL.hpp
+index 26a695c56..98cf8f23a 100644
+--- a/core/src/SYCL/Kokkos_SYCL.hpp
++++ b/core/src/SYCL/Kokkos_SYCL.hpp
+@@ -60,6 +60,10 @@ class SYCL {
+ 
+   sycl::queue& sycl_queue() const noexcept { return m_space_instance->m_queue; }
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_dispatch() noexcept { return true; }
++#endif
++
+   //@}
+   //------------------------------------
+   //! \name Functions that all Kokkos devices must implement.
+diff --git a/core/src/SYCL/Kokkos_SYCL_Space.cpp b/core/src/SYCL/Kokkos_SYCL_Space.cpp
+index dd75f8a24..f34a5df62 100644
+--- a/core/src/SYCL/Kokkos_SYCL_Space.cpp
++++ b/core/src/SYCL/Kokkos_SYCL_Space.cpp
+@@ -225,8 +225,10 @@ void sycl_deallocate(const char* arg_label, void* const arg_alloc_ptr,
+                                       arg_reported_size);
+   }
+ 
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+   SYCL::impl_static_fence(
+       "Kokkos::Impl::sycl_deallocate: fence before deallocate");
++#endif
+   sycl::free(arg_alloc_ptr, queue);
+ }
+ 
+diff --git a/core/src/SYCL/Kokkos_SYCL_Space.hpp b/core/src/SYCL/Kokkos_SYCL_Space.hpp
+index d2c694115..0693e63da 100644
+--- a/core/src/SYCL/Kokkos_SYCL_Space.hpp
++++ b/core/src/SYCL/Kokkos_SYCL_Space.hpp
+@@ -34,6 +34,10 @@ class SYCLDeviceUSMSpace {
+   using size_type       = Impl::SYCLInternal::size_type;
+   using index_type      = Impl::SYCLInternal::index_type;
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_deallocate() noexcept { return true; }
++#endif
++
+   SYCLDeviceUSMSpace();
+   explicit SYCLDeviceUSMSpace(sycl::queue queue);
+ 
+@@ -71,6 +75,10 @@ class SYCLSharedUSMSpace {
+   using size_type       = Impl::SYCLInternal::size_type;
+   using index_type      = Impl::SYCLInternal::index_type;
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_deallocate() noexcept { return true; }
++#endif
++
+   SYCLSharedUSMSpace();
+   explicit SYCLSharedUSMSpace(sycl::queue queue);
+ 
+@@ -123,6 +131,10 @@ class SYCLHostUSMSpace {
+   using size_type       = Impl::SYCLInternal::size_type;
+   using index_type      = Impl::SYCLInternal::index_type;
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_deallocate() noexcept { return true; }
++#endif
++
+   SYCLHostUSMSpace();
+   explicit SYCLHostUSMSpace(sycl::queue queue);
+ 
+diff --git a/core/src/Serial/Kokkos_Serial.hpp b/core/src/Serial/Kokkos_Serial.hpp
+index 9d3ca0809..6498ffe44 100644
+--- a/core/src/Serial/Kokkos_Serial.hpp
++++ b/core/src/Serial/Kokkos_Serial.hpp
+@@ -183,6 +183,10 @@ class Serial {
+     return impl_thread_pool_size(0);
+   }
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_dispatch() noexcept { return false; }
++#endif
++
+   uint32_t impl_instance_id() const noexcept { return 1; }
+ 
+   static const char* name();
+diff --git a/core/src/Threads/Kokkos_Threads.hpp b/core/src/Threads/Kokkos_Threads.hpp
+index 191c72e1d..2faaa95b6 100644
+--- a/core/src/Threads/Kokkos_Threads.hpp
++++ b/core/src/Threads/Kokkos_Threads.hpp
+@@ -62,6 +62,10 @@ class Threads {
+   /// device have completed.
+   static void impl_static_fence(const std::string& name);
+ 
++#if defined(KOKKOS_ENABLE_IMPL_ASYNC)
++  static constexpr bool supports_async_dispatch() noexcept { return false; }
++#endif
++
+   void fence(const std::string& name =
+                  "Kokkos::Threads::fence: Unnamed Instance Fence") const;
+ 
+diff --git a/core/src/View/Kokkos_ViewAlloc.hpp b/core/src/View/Kokkos_ViewAlloc.hpp
+index 1029cfaa1..8a27e1c8d 100644
+--- a/core/src/View/Kokkos_ViewAlloc.hpp
++++ b/core/src/View/Kokkos_ViewAlloc.hpp
+@@ -112,10 +112,33 @@ struct ViewValueFunctor {
+     if (Kokkos::Profiling::profileLibraryLoaded()) {
+       Kokkos::Profiling::endParallelFor(kpID);
+     }
+-    if (default_exec_space || std::is_same_v<Tag, DestroyTag>) {
++
++    // Unconditionally fence if no execution space argument was provided to the
++    // view construction.
++    if (default_exec_space) {
+       space.fence(std::is_same_v<Tag, DestroyTag>
+                       ? "Kokkos::View::destruction before deallocate"
+                       : "Kokkos::View::initialization");
++      return;
++    }
++
++    if constexpr (std::is_same_v<Tag, DestroyTag>) {
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
++      // Unconditionally fence before deallocating.
++      space.fence("Kokkos::View::destruction before deallocate");
++#else
++      // For backends that support launching asynchronous parallel regions, but
++      // do not support asynchronous deallocation, fence as well.
++      constexpr bool supports_async_dispatch =
++          ExecSpace::supports_async_dispatch();
++      constexpr bool supports_async_deallocate =
++          ExecSpace::memory_space::supports_async_deallocate();
++      if constexpr (supports_async_dispatch && !supports_async_deallocate) {
++        space.fence(
++            "Kokkos::View::destruction before deallocation (does not support "
++            "async deallocation)");
++      }
++#endif
+     }
+   }
+ 
+diff --git a/core/src/impl/Kokkos_HostSpace.cpp b/core/src/impl/Kokkos_HostSpace.cpp
+index b29c74f0c..794b5ca0e 100644
+--- a/core/src/impl/Kokkos_HostSpace.cpp
++++ b/core/src/impl/Kokkos_HostSpace.cpp
+@@ -83,16 +83,20 @@ void HostSpace::deallocate(void *const arg_alloc_ptr,
+ 
+ void HostSpace::deallocate(const char *arg_label, void *const arg_alloc_ptr,
+                            const size_t arg_alloc_size) const {
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+   if (arg_alloc_ptr)
+     Kokkos::fence("Kokkos::HostSpace::impl_deallocate before free");
++#endif
+   impl_deallocate(arg_label, arg_alloc_ptr, arg_alloc_size);
+ }
+ 
+ void HostSpace::deallocate(const char *arg_label, void *const arg_alloc_ptr,
+                            const size_t arg_alloc_size,
+                            const size_t arg_logical_size) const {
++#if !defined(KOKKOS_ENABLE_IMPL_ASYNC)
+   if (arg_alloc_ptr)
+     Kokkos::fence("Kokkos::HostSpace::impl_deallocate before free");
++#endif
+   impl_deallocate(arg_label, arg_alloc_ptr, arg_alloc_size, arg_logical_size);
+ }
+ 
+-- 
+2.43.0

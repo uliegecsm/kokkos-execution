@@ -263,7 +263,8 @@ ARG CXX_STD
 
 ADD https://github.com/${KOKKOS_USERNAME}/kokkos/archive/${KOKKOS_SHA}.tar.gz /tmp/
 
-RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kokkos.json <<EOF
+RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kokkos.json \
+    --mount=target=/patches/async-deallocation-to-reduce-amount-of-synchronization.patch,type=bind,source=patches/async-deallocation-to-reduce-amount-of-synchronization.patch <<EOF
     set -ex
 
     cd /tmp
@@ -271,6 +272,8 @@ RUN --mount=target=/cmake/presets/kokkos.json,type=bind,source=cmake/presets/kok
     tar -xzf ${KOKKOS_SHA}.tar.gz
 
     cd kokkos-${KOKKOS_SHA}
+
+    patch -p1 < /patches/async-deallocation-to-reduce-amount-of-synchronization.patch
 
     cp /cmake/presets/kokkos.json CMakePresets.json
 

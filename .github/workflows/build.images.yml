@@ -242,7 +242,7 @@ jobs:
           TAG_SUFFIX=${{ matrix.kokkos_archs && '-' || '' }}${{ join(matrix.kokkos_archs, '-')}}${{ runner.arch == 'ARM64' && '-arm64' || '' }}
           TAG_SUFFIX=$(echo ${TAG_SUFFIX} | tr '[:upper:]' '[:lower:]')
           echo "Computed image tag suffix: ${TAG_SUFFIX}."
-          echo "TAG_SUFFIX=${TAG_SUFFIX}" >> $GITHUB_OUTPUT
+          echo "TAG_SUFFIX=${TAG_SUFFIX}-more-async" >> $GITHUB_OUTPUT
 
       - id : compute-tag
         run: |
@@ -255,7 +255,7 @@ jobs:
         with:
             context: .
             platforms: ${{ matrix.platforms }}
-            push: ${{ github.ref == 'refs/heads/main' }}
+            push: true #${{ github.ref == 'refs/heads/main' }}
             file: docker/dockerfile.backend
             tags: ${{ steps.compute-tag.outputs.tag }}
             cache-from: type=registry,ref=${{ steps.compute-tag.outputs.tag }}

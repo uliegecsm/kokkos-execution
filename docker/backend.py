@@ -98,7 +98,12 @@ def main(*, dependencies: pathlib.Path, cxxstd: int, cxxmodules: bool, kokkos_ba
 
     content: list[str] = []
 
-    kokkos_cmake_configure: str = '-GNinja -DKokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES=ON' if cxxmodules else ''
+    kokkos_cmake_configure: list[str] = [
+        '-DKOKKOS_ENABLE_IMPL_ASYNC=ON',
+    ]
+
+    if cxxmodules:
+        kokkos_cmake_configure += ['-GNinja', '-DKokkos_ENABLE_EXPERIMENTAL_CXX20_MODULES=ON']
 
     for x in kokkos_backends.split(','):
         match x:
@@ -109,7 +114,7 @@ def main(*, dependencies: pathlib.Path, cxxstd: int, cxxmodules: bool, kokkos_ba
 
     output.write_text(dockerfile.read_text().replace(
         'REPLACE_REQUIREMENTS_BACKEND', '\n'.join(content)).replace(
-        'REPLACE_KOKKOS_CMAKE_CONFIGURE', kokkos_cmake_configure))
+        'REPLACE_KOKKOS_CMAKE_CONFIGURE', ' '.join(kokkos_cmake_configure)))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
