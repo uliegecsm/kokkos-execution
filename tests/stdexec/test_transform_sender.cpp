@@ -32,18 +32,17 @@ TEST(TransformSender, transform_sender_moves_once) {
 
     counter_t::reset();
 
-    {
-        [[maybe_unused]]
-        const auto sndr = stdexec::then(
-            stdexec::then(stdexec::then(stdexec::just(counter_t{}), functor_t{}), functor_t{}), functor_t{});
+    [[maybe_unused]]
+    const auto sndr =
+        stdexec::then(stdexec::then(stdexec::then(stdexec::just(counter_t{}), functor_t{}), functor_t{}), functor_t{});
 
-        ASSERT_EQ(counter_t::default_constructions, 1);
-        ASSERT_EQ(counter_t::destructions, 4);
-        ASSERT_EQ(counter_t::copy_constructions, 0);
-        ASSERT_EQ(counter_t::copy_assignments, 0);
-        ASSERT_EQ(counter_t::move_constructions, 4);
-        ASSERT_EQ(counter_t::move_assignments, 0);
-    }
+    const auto num_destructions = counter_t::destructions.load();
+    const auto num_move_constructions = counter_t::move_constructions.load();
+
+    ASSERT_EQ(counter_t::default_constructions, 1);
+    ASSERT_EQ(counter_t::copy_constructions, 0);
+    ASSERT_EQ(counter_t::copy_assignments, 0);
+    ASSERT_EQ(counter_t::move_assignments, 0);
 
     counter_t::reset();
 
@@ -53,10 +52,10 @@ TEST(TransformSender, transform_sender_moves_once) {
         Tests::Utils::SinkReceiver{});
 
     ASSERT_EQ(counter_t::default_constructions, 1);
-    ASSERT_EQ(counter_t::destructions, 5);
+    ASSERT_EQ(counter_t::destructions, num_destructions + 1);
     ASSERT_EQ(counter_t::copy_constructions, 0);
     ASSERT_EQ(counter_t::copy_assignments, 0);
-    ASSERT_EQ(counter_t::move_constructions, 5);
+    ASSERT_EQ(counter_t::move_constructions, num_move_constructions + 1);
     ASSERT_EQ(counter_t::move_assignments, 0);
 }
 

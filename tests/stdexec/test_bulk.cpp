@@ -12,6 +12,7 @@ PRAGMA_DIAGNOSTIC_POP
 
 #include "tests/utils/functors/counter.hpp"
 #include "tests/utils/sink_receiver.hpp"
+#include "tests/utils/stdexec.hpp"
 
 /**
  * @addtogroup unittests
@@ -135,7 +136,12 @@ TYPED_TEST_P(BulkCopiesAndMovesTest, transform_sender) {
     [[maybe_unused]]
     const auto trnsfrmd_sndr = stdexec::transform_sender(this->make_sndr(), stdexec::env<>{});
 
-    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2 + 1)
+    CHECK_COUNTER_COPIES_AND_MOVES(
+        EXPECT,
+        0,
+        this->N,
+        0,
+        FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_TRANSFORM_BULK((this->N * (this->N + 3)) / 2 + 1))
 }
 
 //! @test Check how many copies and moves are needed to connect a @c stdexec::bulk sender.
@@ -148,7 +154,12 @@ TYPED_TEST_P(BulkCopiesAndMovesTest, connect) {
     const auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
 
     CHECK_COUNTER_COPIES_AND_MOVES(
-        EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2 + this->N * (this->N + 1) / 2 + this->N)
+        EXPECT,
+        0,
+        this->N,
+        0,
+        FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_CONNECT_BULK(
+            (this->N * (this->N + 3)) / 2 + this->N * (this->N + 1) / 2 + this->N))
 }
 
 REGISTER_TYPED_TEST_SUITE_P(BulkCopiesAndMovesTest, transform_sender, connect);

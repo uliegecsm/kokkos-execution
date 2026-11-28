@@ -32,6 +32,8 @@ TEST(forwarding, queryable) {
             stdexec::prop{fwd_prop_c, 123}
         };
 
+        static_assert(std::same_as<stdexec::__env::__held_t<decltype(env)>, decltype(env)>);
+
         static_assert(stdexec::__queryable_with<decltype(env), PropA>);
         static_assert(stdexec::__queryable_with<decltype(env), FwdPropC>);
 
@@ -41,7 +43,7 @@ TEST(forwarding, queryable) {
             std::same_as<
                 std::remove_const_t<decltype(fwd_env)>,
                 stdexec::__env::__fwd<
-                    stdexec::env<stdexec::prop<Tests::Impl::PropA, int>, stdexec::prop<Tests::Impl::FwdPropC, int>>&
+                    stdexec::env<stdexec::prop<Tests::Impl::PropA, int>, stdexec::prop<Tests::Impl::FwdPropC, int>>
                 >
             >);
 

@@ -23,9 +23,9 @@ constexpr struct PropB : public ::stdexec::__query<PropB> {
 
 consteval auto get_sndr() {
     using expected_env_t = stdexec::env<
-        const stdexec::prop<Tests::PropA, double>&,
+        stdexec::prop<Tests::PropA, double>,
         stdexec::__env::__fwd<stdexec::env<
-            const stdexec::__env::__fwd<stdexec::prop<Tests::PropB, double>>&,
+            stdexec::__env::__fwd<stdexec::prop<Tests::PropB, double>>,
             stdexec::__env::__fwd<stdexec::__sync_wait::__env>
         >>
     >;

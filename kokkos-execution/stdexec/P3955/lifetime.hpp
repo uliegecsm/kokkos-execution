@@ -60,7 +60,8 @@ struct t {
             std::is_nothrow_constructible_v<std::remove_cvref_t<SenderFactory>, SenderFactory>
             && std::is_nothrow_constructible_v<std::remove_cvref_t<F>, F>
             && (std::is_nothrow_constructible_v<std::remove_cvref_t<Objects>, Objects> && ...)) {
-        return ::STDEXEC::__sexpr{t(), std::tuple((SenderFactory&&) sender_factory, (F&&) f, (Objects&&) objects...)};
+        return ::STDEXEC::__facade::__sender{
+            t(), std::tuple((SenderFactory&&) sender_factory, (F&&) f, (Objects&&) objects...)};
     }
 };
 
@@ -157,7 +158,10 @@ class state {
 //  TODO: We should be able to get a better "message" than this
 struct FAILED_TO_FORM_COMPLETION_SIGNATURES { };
 
-class impl : public ::STDEXEC::__sexpr_defaults {
+//  The operation state connects (and starts) the sender it makes itself, and
+//  the completion signatures and attributes are given rather than derived by
+//  the facade from effect tokens
+class impl : public ::STDEXEC::__facade::__defaults {
     template <typename Self, typename... Env>
     using completions_ =
         ::STDEXEC::completion_signatures_of_t<typename make_sender<::STDEXEC::__data_of<Self>>::sender_type, Env...>;
@@ -176,18 +180,27 @@ class impl : public ::STDEXEC::__sexpr_defaults {
         }
     }
 
-    static constexpr auto __get_state = []<typename Sender, typename Receiver>(Sender&& sender, Receiver r) noexcept(
-                                            std::is_nothrow_constructible_v<
-                                                state<::STDEXEC::__data_of<Sender>, Receiver>,
-                                                ::STDEXEC::__data_of<Sender>,
-                                                Receiver
-                                            >) -> state<::STDEXEC::__data_of<Sender>, Receiver> {
+    template <typename Sender>
+    static constexpr ::STDEXEC::env<> __get_attrs(const Sender&) noexcept {
+        return {};
+    }
+
+    template <typename Sender, typename Receiver>
+    static constexpr auto
+        __get_state(Sender&& sender, Receiver r) noexcept(std::is_nothrow_constructible_v<
+                                                          state<::STDEXEC::__data_of<Sender>, Receiver>,
+                                                          ::STDEXEC::__data_of<Sender>,
+                                                          Receiver
+        >) -> state<::STDEXEC::__data_of<Sender>, Receiver> {
         auto&& [_, tuple] = (Sender&&) sender;
         return state<decltype(tuple), Receiver>((decltype(tuple)&&) tuple, (Receiver&&) r);
-    };
-    static constexpr auto __start = [](auto& state) noexcept {
+    }
+
+    template <typename State, typename Children>
+    static constexpr ::STDEXEC::__facade::__effects<> __start(State& state, Children&) noexcept {
         state.start();
-    };
+        return {};
+    }
 };
 
 } // namespace detail::lifetime
@@ -200,7 +213,7 @@ inline constexpr lifetime_t lifetime;
 namespace STDEXEC {
 
 template <>
-struct __sexpr_impl<::exec::lifetime_t> : ::exec::detail::lifetime::impl { };
+struct __facade::__algorithm<::exec::lifetime_t> : ::exec::detail::lifetime::impl { };
 
 } // namespace STDEXEC
 
