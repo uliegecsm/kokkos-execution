@@ -43,6 +43,20 @@ concept has_nothrow_apply_sender = requires(DomainOrTag domain_or_tag, Args&&...
     { domain_or_tag.apply_sender(std::forward<Args>(args)...) } noexcept;
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_TRANSFORM_BULK(_base_count_)                                           \
+    (this->N * (this->N + 3)) / 2 + _base_count_
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_CONNECT_BULK(_base_count_) this->N*(this->N + 1) + _base_count_
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_TRANSFORM_THEN(_base_count_)                                           \
+    (this->N * (this->N + 1)) / 2 + _base_count_
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_CONNECT_THEN(_base_count_) (this->N * (this->N + 1)) / 2 + _base_count_
+
 } // namespace Tests::Utils
 
 #endif // KOKKOS_EXECUTION_TESTS_UTILS_STDEXEC_HPP

@@ -121,7 +121,8 @@ TYPED_TEST_P(ThenCopiesAndMovesTest, transform_sender) {
     [[maybe_unused]]
     const auto trnsfrmd_sndr = stdexec::transform_sender(this->make_sndr(), stdexec::env<>{});
 
-    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2)
+    CHECK_COUNTER_COPIES_AND_MOVES(
+        EXPECT, 0, this->N, 0, FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_TRANSFORM_THEN((this->N * (this->N + 3)) / 2))
 }
 
 /**
@@ -141,7 +142,8 @@ TYPED_TEST_P(ThenCopiesAndMovesTest, connect) {
     [[maybe_unused]]
     const auto opstate = stdexec::connect(this->make_sndr(), Tests::Utils::SinkReceiver{});
 
-    CHECK_COUNTER_COPIES_AND_MOVES(EXPECT, 0, this->N, 0, (this->N * (this->N + 3)) / 2)
+    CHECK_COUNTER_COPIES_AND_MOVES(
+        EXPECT, 0, this->N, 0, FIX_STDEXEC_CHECK_WELL_FORMED_ADD_MOVES_CONNECT_THEN((this->N * (this->N + 3)) / 2))
 }
 
 REGISTER_TYPED_TEST_SUITE_P(ThenCopiesAndMovesTest, transform_sender, connect);
