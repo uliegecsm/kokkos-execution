@@ -68,6 +68,10 @@ include(/opt/cpm-${CPM_VERSION}/CPM.cmake)
 # Apply any stdexec patch here.
 include(cmake/functions/patch.cmake)
 
+apply_patch(
+  ${CMAKE_SOURCE_DIR}/external/stdexec_fork_join_get_state_missing_return_type.patch ${CMAKE_SOURCE_DIR}/external/stdexec
+)
+
 cpmaddpackage(
   NAME
   stdexec

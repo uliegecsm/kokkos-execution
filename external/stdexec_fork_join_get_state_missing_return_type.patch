@@ -1,0 +1,65 @@
+From daf151a0abacdea86c840d98edeece397f03e187 Mon Sep 17 00:00:00 2001
+From: Maarten Arnst <maarten.arnst@uliege.be>
+Date: Sat, 28 Nov 2026 15:04:35 +0100
+Subject: [PATCH] Fix missing trailing return type of get_state in fork_join
+
+---
+ include/exec/fork_join.hpp | 34 ++++++++++++++++++++--------------
+ 1 file changed, 20 insertions(+), 14 deletions(-)
+
+diff --git a/include/exec/fork_join.hpp b/include/exec/fork_join.hpp
+index 1144c8db..d74e674a 100644
+--- a/include/exec/fork_join.hpp
++++ b/include/exec/fork_join.hpp
+@@ -445,28 +445,34 @@ namespace experimental::execution
+                                                 Sndr,
+                                                 STDEXEC::env_of_t<Rcvr>>>::template __f<Sndr, Rcvr>;
+ 
+-      template <class Sndr, class Rcvr>
++      template <class Sndr, class Rcvr> requires (!STDEXEC::__minvocable_q<_child_domain_t, Sndr, STDEXEC::env_of_t<Rcvr>>)
+       STDEXEC_ATTRIBUTE(host, device)
+       static constexpr auto __get_state(Sndr&& sndr, Rcvr rcvr)
+-        noexcept(_algo::_nothrow_state<Sndr, Rcvr>())
++        noexcept
+       {
+         using namespace STDEXEC;
+-        if constexpr (!__minvocable_q<_child_domain_t, Sndr, env_of_t<Rcvr>>)
+-        {
+-          return __mexception<INVALID_ARGUMENTS_TO_FORK_JOIN,
++        return __mexception<INVALID_ARGUMENTS_TO_FORK_JOIN,
+                               _WITH_SENDERS_<__facade::__nth_child_of_t<Sndr, 0>>,
+                               _WITH_ENVIRONMENT_(env_of_t<Rcvr>)>();
+-        }
+-        else if constexpr (!__decay_copyable_results_t<
++      }
++
++      template <class Sndr, class Rcvr> requires (!STDEXEC::__decay_copyable_results_t<
+                              typename _state<Sndr, Rcvr>::_child_completions_t>::value)
+-        {
+-          return __mexception<_WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
++      STDEXEC_ATTRIBUTE(host, device)
++      static constexpr auto __get_state(Sndr&& sndr, Rcvr rcvr)
++        noexcept
++      {
++        using namespace STDEXEC;
++        return __mexception<_WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                               _IN_ALGORITHM_(fork_join_t)>();
+-        }
+-        else
+-        {
+-          return _state<Sndr, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
+-        }
++      }
++
++      template <class Sndr, class Rcvr>
++      STDEXEC_ATTRIBUTE(host, device)
++      static constexpr auto __get_state(Sndr&& sndr, Rcvr rcvr)
++        noexcept(_algo::_nothrow_state<Sndr, Rcvr>()) -> __state_type<Sndr, Rcvr>
++      {
++        return _state<Sndr, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
+       }
+ 
+       template <class State, class Children>
+-- 
+2.50.1 (Apple Git-155)
+
